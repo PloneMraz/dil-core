@@ -100,6 +100,8 @@ export interface DataStore {
   /** Clear all entries — `[data]` may be wiped each cycle. */
   clear(): void;
   size(): number;
+  /** Read-only enumeration of all entries, in insertion order (for inspection). */
+  entries(): readonly (readonly [string, TaggedDatum])[];
 }
 
 export function createDataStore(): DataStore {
@@ -111,5 +113,6 @@ export function createDataStore(): DataStore {
     delete: (id) => map.delete(id),
     clear: () => map.clear(),
     size: () => map.size,
+    entries: () => [...map.entries()],
   };
 }
