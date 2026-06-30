@@ -5,7 +5,10 @@
       "Bash(pnpm install *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm add *)",
+      "Bash(node --test \"dist/**/*.test.js\")"
     ]
   }
 }
