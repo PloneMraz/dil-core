@@ -25,9 +25,12 @@ import { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
 
 // ── Tagging-gate ──────────────────────────────────────────────────────────
 
+/** A valid open-tag set: ≥3 tags, one being domain, none a verdict. */
+const openOK = { domain: "weather", format: "json", platform: "cli" };
+
 test("host data is admitted stamped prior, no cycle-mark, floor-tag set", () => {
   const d = admitHostData(
-    { payload: "hello", admittingLayer: 1, open: { domain: "weather" } },
+    { payload: "hello", admittingLayer: 1, open: openOK },
     1000,
   );
   assert.equal(d.fixed.provenance, "prior");
@@ -38,10 +41,7 @@ test("host data is admitted stamped prior, no cycle-mark, floor-tag set", () => 
 });
 
 test("the four fixed tags are present and in order", () => {
-  const d = admitHostData(
-    { payload: 1, admittingLayer: 3, open: { domain: "weather" } },
-    5,
-  );
+  const d = admitHostData({ payload: 1, admittingLayer: 3, open: openOK }, 5);
   assert.deepEqual(Object.keys(d.fixed), [
     "timestamp",
     "cycleMark",
@@ -52,14 +52,29 @@ test("the four fixed tags are present and in order", () => {
 
 test("tagging-gate requires the mandatory open tag domain (auditability)", () => {
   assert.throws(
-    () => admitHostData({ payload: "x", admittingLayer: 1, open: {} }, 0),
+    () =>
+      admitHostData(
+        { payload: "x", admittingLayer: 1, open: { format: "json", platform: "cli" } },
+        0,
+      ),
     TaggingGateError,
   );
   // also rejected when domain is present but empty
   assert.throws(
     () =>
       admitHostData(
-        { payload: "x", admittingLayer: 1, open: { domain: "" } },
+        { payload: "x", admittingLayer: 1, open: { domain: "", format: "json", platform: "cli" } },
+        0,
+      ),
+    TaggingGateError,
+  );
+});
+
+test("tagging-gate requires at least three open tags", () => {
+  assert.throws(
+    () =>
+      admitHostData(
+        { payload: "x", admittingLayer: 1, open: { domain: "weather", format: "json" } },
         0,
       ),
     TaggingGateError,
@@ -73,7 +88,7 @@ test("tagging-gate rejects open tags that name a verdict (no side door)", () => 
         {
           payload: "x",
           admittingLayer: 1,
-          open: { domain: "weather", quality: "high" },
+          open: { domain: "weather", format: "json", platform: "cli", quality: "high" },
         },
         0,
       ),
@@ -81,13 +96,11 @@ test("tagging-gate rejects open tags that name a verdict (no side door)", () => 
   );
 });
 
-test("descriptive open tags are accepted", () => {
-  const d = admitHostData(
-    { payload: "x", admittingLayer: 1, open: { format: "json", domain: "weather" } },
-    0,
-  );
-  assert.equal(d.open.format, "json");
+test("a compliant open-tag set is accepted", () => {
+  const d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
   assert.equal(d.open.domain, "weather");
+  assert.equal(d.open.format, "json");
+  assert.equal(d.open.platform, "cli");
 });
 
 // ── [event] immutability ──────────────────────────────────────────────────
@@ -157,31 +170,31 @@ test("each [event] anchors the full field-state of its cycle", () => {
 // ── Lifecycle prior → running → scar ──────────────────────────────────────
 
 test("prior → running acquires a cycle-mark", () => {
-  const prior = admitHostData({ payload: "p", admittingLayer: 1, open: { domain: "weather" } }, 0);
+  const prior = admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 0);
   const running = toRunning(prior, 4);
   assert.equal(running.fixed.provenance, "running");
   assert.equal(running.fixed.cycleMark, 4);
 });
 
 test("running → scar requires a held collision", () => {
-  const running = toRunning(admitHostData({ payload: "p", admittingLayer: 1, open: { domain: "weather" } }, 0), 4);
+  const running = toRunning(admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 0), 4);
   const scar = toScar(running, true);
   assert.equal(scar.fixed.provenance, "scar");
 });
 
 test("running without a held collision cannot become a scar", () => {
-  const running = toRunning(admitHostData({ payload: "p", admittingLayer: 1, open: { domain: "weather" } }, 0), 4);
+  const running = toRunning(admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 0), 4);
   assert.throws(() => toScar(running, false), LifecycleError);
 });
 
 test("a prior cannot jump straight to scar (running does not wash a prior)", () => {
-  const prior = admitHostData({ payload: "p", admittingLayer: 1, open: { domain: "weather" } }, 0);
+  const prior = admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 0);
   assert.throws(() => toScar(prior, true), LifecycleError);
 });
 
 test("[data] is mutable and clearable each cycle", () => {
   const data = createDataStore();
-  const d = admitHostData({ payload: "p", admittingLayer: 1, open: { domain: "weather" } }, 0);
+  const d = admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 0);
   data.put("k", d);
   assert.ok(data.has("k"));
   data.clear();

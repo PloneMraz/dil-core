@@ -40,10 +40,11 @@ export const EVENT_WRITE_POLICY = "store-all" as const;
  *
  * The protocol fixes no industry vocabulary of open-tag keys (protocol §9,
  * "Open-tag discipline"): which keys exist beyond the mandatory `domain`, and
- * what each means, is environment-specific and declared here. There is no
- * required *number* of keys — sufficiency is whatever the deployment's audit
- * needs require; inventing tags to meet a quota would fabricate data to fill a
- * gap, which the loop forbids.
+ * what each means, is environment-specific and declared here. Protocol §9 does
+ * set a floor of at least three open tags per datum (one being `domain`), each
+ * describing a real dimension — a floor on honest description, not a quota to
+ * pad; a tag invented merely to reach the count, that does not describe the
+ * datum, fabricates data to fill a gap, which the loop forbids.
  *
  * For the minimal host we declare the registry FREE-FORM: only `domain` is
  * required (enforced at the tagging-gate); any other key is permitted so long as
