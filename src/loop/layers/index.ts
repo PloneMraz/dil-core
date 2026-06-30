@@ -40,3 +40,23 @@ export {
   type T5Output,
   type T5Options,
 } from "./t5.js";
+
+export {
+  createT6,
+  type IndependenceEvidence,
+  type T6Input,
+  type T6Output,
+} from "./t6.js";
+
+export {
+  createT7,
+  type T7Input,
+  type T7Output,
+  type T7Options,
+} from "./t7.js";
+
+export {
+  createT8,
+  type T8Input,
+  type T8Output,
+} from "./t8.js";
