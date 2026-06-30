@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 13:20 — feat: require mandatory open tag `domain` for auditability
+**Commit:** `239a08b`
+
+Protocol §9 correction. The open-tag layer was imprecise: it is now stated that every datum MUST carry at least the open tag `domain` (the data class) so the `[event]` log is auditable by class, while other open tags stay optional and may vary by data type. Updated protocol §9 and conformance §13.6, and enforced the rule at the tagging-gate (`REQUIRED_OPEN_TAG_KEYS` in `tags.ts`); admission now fails when `domain` is missing or empty. `HostDatum.open` is now required. 41 tests.
+
+---
+
 ### 13:05 — feat: experience store (tags, gate, [data]/[event], lifecycle, anchor)
 **Commit:** `d8f3509`
 
