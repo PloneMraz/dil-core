@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 15:50 — feat: layers T1 and T2 (stage 4d, part 1)
+**Commit:** `604317e`
+
+T1 (Activity-Environment Confirmation) confirms the root reference frame, no self/env line. T2 (Agency Differentiation) draws the agency line across cycles: UNDECIDED until `STABILITY_THRESHOLD` cycles accrue, then SELF_WRITTEN vs ENV_PUSHED by matching recent emissions. Where the self crystallizes (§7); no self-continuity claimed. State accrues (INV-5); once stable nothing leaves UNDECIDED (INV-6 postcondition). Declared tag-B thresholds (`MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`) openly as tunable starting values, not derived constants. 8 tests (88 total).
+
+---
+
 ### 15:35 — feat: layer scaffold + meaning-channel + topology (stage 4c)
 **Commit:** `1f6030f`
 
