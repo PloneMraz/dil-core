@@ -6,10 +6,12 @@
  *   (1) timestamp, (2) cycle-mark, (3) provenance, (4) floor-tag.
  * Every layer T1–T8 stamps a floor-tag; there are no pass-through layers.
  *
- * On top of the fixed layer the agent MAY mint OPEN tags denoting *what* the
- * datum is (format, platform, domain, object) — but never its quality,
- * correctness, or value. Open tags may be added or removed; they never overwrite
- * the fixed layer.
+ * On top of the fixed layer, every datum MUST carry at least the open tag
+ * `domain` (the class of data it is), so the `[event]` log is auditable by data
+ * class. The agent MAY mint further OPEN tags denoting *what* the datum is
+ * (format, platform, object) — but never its quality, correctness, or value.
+ * Open tags other than `domain` may be added, removed, or varied by data type;
+ * `domain` MUST be present. Open tags never overwrite the fixed layer.
  */
 
 import type { LayerIndex } from "../invariants/types.js";
@@ -57,11 +59,27 @@ const FORBIDDEN_OPEN_TAG_KEYS = new Set([
 ]);
 
 /**
- * Validate open tags carry no verdict dimension. Returns the reason a set is
- * invalid, or null if it is acceptable. (The tagging-gate enforces this; kept
+ * Open-tag keys that MUST be present on every datum (protocol §9, open layer).
+ * `domain` is mandatory so the `[event]` log is auditable by data class.
+ */
+export const REQUIRED_OPEN_TAG_KEYS = ["domain"] as const;
+
+/**
+ * Validate the open-tag layer against both schema rules: it must carry every
+ * required key (domain) and no forbidden verdict key. Returns the reason a set
+ * is invalid, or null if it is acceptable. (The tagging-gate enforces this; kept
  * here beside the schema it defends.)
  */
 export function invalidOpenTagReason(open: OpenTags): string | null {
+  for (const required of REQUIRED_OPEN_TAG_KEYS) {
+    const present =
+      Object.prototype.hasOwnProperty.call(open, required) &&
+      open[required] !== undefined &&
+      open[required] !== "";
+    if (!present) {
+      return `open tag "${required}" is required for auditability but is missing`;
+    }
+  }
   for (const key of Object.keys(open)) {
     if (FORBIDDEN_OPEN_TAG_KEYS.has(key.toLowerCase())) {
       return `open tag "${key}" names a verdict (quality/correctness/value), which the schema forbids`;

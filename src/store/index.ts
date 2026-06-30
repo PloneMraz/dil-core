@@ -22,7 +22,7 @@ export type {
   OpenTags,
   TaggedDatum,
 } from "./tags.js";
-export { invalidOpenTagReason } from "./tags.js";
+export { invalidOpenTagReason, REQUIRED_OPEN_TAG_KEYS } from "./tags.js";
 
 export type {
   MismatchKind,

@@ -3,8 +3,9 @@
  *
  * Host data (a pre-existing memory file, say) is admitted to the loop ONLY after
  * passing the tagging rule: stamped provenance `prior`, with NO cycle-mark until
- * it has run, plus whatever open tags apply. Untagged data MUST NOT enter the
- * loop. There is no other way in.
+ * it has run, plus the open-tag layer — which MUST include the mandatory
+ * `domain` tag (protocol §9) and MUST NOT name a verdict. Untagged data MUST NOT
+ * enter the loop. There is no other way in.
  *
  * Admission failure is a halt (a thrown error), not a silent drop: data that
  * cannot be admitted cleanly must not slip into the store half-stamped.
@@ -26,8 +27,11 @@ export interface HostDatum<T = unknown> {
   readonly payload: T;
   /** The layer admitting it (T1 ingestion, normally). */
   readonly admittingLayer: LayerIndex;
-  /** Descriptive open tags, if any. Never verdict tags. */
-  readonly open?: OpenTags;
+  /**
+   * Descriptive open tags. MUST include `domain`; never verdict tags. Admission
+   * fails if `domain` is missing or any key names a verdict.
+   */
+  readonly open: OpenTags;
 }
 
 /**
@@ -40,7 +44,7 @@ export function admitHostData<T>(
   datum: HostDatum<T>,
   now: number,
 ): TaggedDatum<T> {
-  const open: OpenTags = datum.open ?? {};
+  const open: OpenTags = datum.open;
   const bad = invalidOpenTagReason(open);
   if (bad !== null) {
     throw new TaggingGateError(bad);

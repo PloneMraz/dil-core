@@ -8,7 +8,8 @@
       "Bash(npx tsc *)",
       "Bash(pnpm test *)",
       "Bash(pnpm add *)",
-      "Bash(node --test \"dist/**/*.test.js\")"
+      "Bash(node --test \"dist/**/*.test.js\")",
+      "Bash(grep -n 'admitHostData\\({ payload: \"p\", admittingLayer: 1 }, 0\\)' src/store/store.test.ts)"
     ]
   }
 }
