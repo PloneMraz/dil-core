@@ -14,6 +14,17 @@ export {
 
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 
+export {
+  validateLayerSpec,
+  runLayer,
+  type LayerSpec,
+  type LayerRun,
+} from "./layer.js";
+
+export { createMeaningChannel, type MeaningChannel } from "./meaning-channel.js";
+
+export { canonicalLoopTopology, validateLoopTopology } from "./topology.js";
+
 // Only the loop's OWN new shared types are surfaced here; the borrowed shapes
 // (LayerIndex, AgencyTag, LayerTrace, ResistEvent, MismatchKind) are already
 // exported by the invariants/store rings, so re-exporting them would collide
