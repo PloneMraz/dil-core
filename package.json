@@ -1,0 +1,17 @@
+{
+  "name": "dil-core",
+  "version": "0.1.0",
+  "description": "Data Integration Loop — dil-core",
+  "type": "module",
+  "bin": {
+    "dil": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
