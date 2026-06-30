@@ -1,0 +1,137 @@
+/**
+ * Smoke test — Stage 4e, the cycle driver (protocol §6).
+ *
+ * The fixed checks for stage 4: a datum traverses T1→T8 leaving a floor-tag at
+ * each layer; cycle-0 is single-threaded; a collision is recorded as a scar in
+ * the [event] log. Plus: the appraisal step runs under the field context (INV-8),
+ * the response feeds back as the next emission (INV-1), and GLOB-MOD advances to
+ * N+1.
+ */
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { createCycle, type Layers } from "./cycle.js";
+import { createGlobMod } from "./glob-mod.js";
+import { createT1 } from "./layers/t1.js";
+import { createT2 } from "./layers/t2.js";
+import { createT3 } from "./layers/t3.js";
+import { createT4 } from "./layers/t4.js";
+import { createT5 } from "./layers/t5.js";
+import { createT6 } from "./layers/t6.js";
+import { createT7 } from "./layers/t7.js";
+import { createT8 } from "./layers/t8.js";
+import { createDataStore } from "../store/data-store.js";
+import { createEventLog } from "../store/event-log.js";
+import type { Signal } from "./types.js";
+
+function freshLayers(): Layers {
+  return {
+    t1: createT1(),
+    t2: createT2(),
+    t3: createT3(),
+    t4: createT4(),
+    t5: createT5(),
+    t6: createT6(),
+    t7: createT7(),
+    t8: createT8(),
+  };
+}
+
+function freshCycle() {
+  const data = createDataStore();
+  const events = createEventLog();
+  const glob = createGlobMod({ appraisalGain: 1 }, 0);
+  const cycle = createCycle({
+    layers: freshLayers(),
+    glob,
+    data,
+    events,
+    initialEmission: { action: "boot" },
+  });
+  return { cycle, data, events, glob };
+}
+
+// A signal whose entity is "weather", carrying a value.
+function weather(value: unknown, t = 1): Signal {
+  return { source_id: "ch", raw_payload: { entity: "weather", value }, t };
+}
+
+test("a cycle datum traverses T1→T8, stamping a floor-tag at each layer", () => {
+  const { cycle, data } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  const datum = data.get("cycle-0")!;
+  assert.equal(datum.fixed.floorTag, 8); // ended at T8
+  assert.deepEqual(datum.trace, [1, 1, 2, 3, 4, 5, 6, 7, 8]);
+});
+
+test("cycle-0 runs and advances the cycle counter (single-threaded pass)", () => {
+  const { cycle } = freshCycle();
+  const r0 = cycle.run({ signals: [weather("sun")], changes: [] });
+  assert.equal(r0.cycle, 0);
+  assert.equal(cycle.cycleCount(), 1);
+});
+
+test("a collision is recorded as a scar in the [event] log", () => {
+  const { cycle, events } = freshCycle();
+  // first cycle establishes the expectation for 'weather' (predicts itself, no error)
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  // second cycle returns a different value → resistance → scar
+  const r = cycle.run({ signals: [weather("rain")], changes: [] });
+  assert.ok(r.scars >= 1);
+  assert.ok(events.size() >= 1);
+  const rec = events.all()[0]!;
+  assert.equal(rec.scar.fixed.provenance, "scar");
+  assert.equal(rec.event.mismatch_kind, "value-mismatch");
+  assert.notEqual(rec.event.received, null); // a value was received (not absence)
+});
+
+test("the [event] record inherits the cycle datum's domain tag (auditable)", () => {
+  const { cycle, events } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  cycle.run({ signals: [weather("rain")], changes: [] });
+  assert.equal(events.all()[0]!.scar.open.domain, "cycle");
+});
+
+test("the response feeds back as the next cycle's emission (INV-1)", () => {
+  const { cycle } = freshCycle();
+  const r0 = cycle.run({ signals: [weather("sun")], changes: [] });
+  // the response carries the cycle that produced it; next cycle's T2 sees it.
+  assert.equal((r0.response.action as { kind: string }).kind, "respond");
+  // a second cycle runs without error, consuming the fed-back emission
+  assert.doesNotThrow(() => cycle.run({ signals: [weather("sun")], changes: [] }));
+});
+
+test("GLOB-MOD advances to N+1 each cycle (INV-7)", () => {
+  const { cycle, glob } = freshCycle();
+  assert.equal(glob.cycle(), 0);
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  assert.equal(glob.cycle(), 1);
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  assert.equal(glob.cycle(), 2);
+});
+
+test("the appraisal reflects the field context (§8.5): different gain, different valence", () => {
+  // high gain field amplifies the resistance's negative valence
+  const data = createDataStore();
+  const events = createEventLog();
+  const glob = createGlobMod({ appraisalGain: 10 }, 0);
+  const cycle = createCycle({
+    layers: freshLayers(),
+    glob,
+    data,
+    events,
+    initialEmission: { action: "boot" },
+  });
+  cycle.run({ signals: [weather("sun")], changes: [] });
+  const r = cycle.run({ signals: [weather("rain")], changes: [] });
+  // resistance=1 under gain 10 → valence -10 (context-dependent)
+  assert.equal(r.appraisal.valence, -10);
+});
+
+test("an absence is registered when an expected entity stops returning", () => {
+  const { cycle } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] }); // 'weather' seen
+  const r = cycle.run({ signals: [], changes: [] }); // nothing returns
+  assert.ok(r.absences >= 1);
+});

@@ -13,11 +13,24 @@ export {
   BASELINE_WINDOW,
   SUFFICIENT_RECURRENCE,
   EXPECTATION_UPDATE_LAW,
+  APPRAISAL_ANCHOR_KIND,
+  APPRAISAL_ANCHOR_ID,
   GLOB_MOD_REPRESENTATION,
   GLOB_MOD_UPDATE_LAW,
 } from "./decisions.js";
 
 export * from "./layers/index.js";
+
+export { appraise, type AppraisalInput } from "./appraisal.js";
+
+export {
+  createCycle,
+  type Cycle,
+  type CycleDeps,
+  type CycleResult,
+  type HostCycleInput,
+  type Layers,
+} from "./cycle.js";
 
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 

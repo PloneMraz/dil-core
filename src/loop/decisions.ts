@@ -93,6 +93,21 @@ export const EXPECTATION_UPDATE_LAW =
  * (e.g. moving mode) is a later tuning, declared if adopted.
  */
 
+/** DECIDE@IMPL tag C — the kind of out-of-loop anchor for Mode-A (protocol §8.3, §12). */
+export const APPRAISAL_ANCHOR_KIND = "static" as const;
+/** Identifier of the appraisal's criteria source — external to the agent's edited state (INV-8). */
+export const APPRAISAL_ANCHOR_ID = "mode-a-static-guide" as const;
+/**
+ * Rationale + HONEST CAVEAT: the minimal host uses a STATIC external anchor (a
+ * frozen Guide) for the appraisal step. Per §8.3 a static anchor reaches only
+ * content-degradation — it buys time, it does not cure a systematic lens-bias,
+ * because a fixed test is memorizable. It satisfies INV-8 (criteria are frozen
+ * against the agent's edits and external to the edited state) but it is NOT a
+ * real Mode-B brake. The live Mode-B source (DECIDE@IMPL tag D — user, another
+ * agent, or a mix) is deferred to stage 5, where the loop runs continuously and
+ * a live Other can be attached. Declared static here, not silently assumed.
+ */
+
 /** DECIDE@IMPL — GLOB-MOD's concrete representation and update law (protocol §12, INV-7). */
 export const GLOB_MOD_REPRESENTATION =
   "ModField.params: Record<string, number> (per-key gains/biases — how to read)" as const;
