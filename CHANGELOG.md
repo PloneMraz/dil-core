@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 12:20 — docs: add Vietnamese-only response rule to CLAUDE.md
+**Commit:** `7852250`
+
+Added a MUST rule: always respond in Vietnamese-only (English allowed for special phrases/terms).
+
+---
+
 ### 12:15 — feat: precondition gate (E1-E4, P(a/b/c))
 **Commit:** `f9d03cd`
 
