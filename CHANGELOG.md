@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 16:40 — feat: cycle driver — one full loop pass (stage 4e, stage 4 complete)
+**Commit:** `4f3dfbe`
+
+`createCycle`/`run` drives one pass T1→T8 single-threaded (cycle-0), threading a cycle datum through every layer so it accrues a floor-tag and trace entry at each (trace `[1,1..8]`, floor-tag 8). Runs the appraisal step (INV-8) under the cycle's GLOB-MOD context (§8.5), produces a response that feeds back as the next emission (INV-1), records held collisions as scars in the `[event]` log (the event inheriting the cycle datum's `domain`), and advances GLOB-MOD to N+1 (INV-7). Declared the Mode-A appraisal anchor as static (tag C) with the honest §8.3 caveat; live Mode-B (tag D) deferred to stage 5. Added `appraisal.ts`. 8 tests (112 total). **Stage 4 complete** — the loop runs one cycle correctly.
+
+---
+
 ### 16:20 — feat: layers T6, T7, T8 (stage 4d, part 3 — all eight layers)
 **Commit:** `3837e07`
 
