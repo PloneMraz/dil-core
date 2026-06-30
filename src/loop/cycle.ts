@@ -73,6 +73,8 @@ export interface CycleResult {
   /** Collisions recorded as scars in [event] this cycle. */
   readonly scars: number;
   readonly absences: number;
+  /** Distinct sources whose return resisted this cycle (for diversity monitoring). */
+  readonly collisionSources: readonly string[];
 }
 
 export interface Cycle {
@@ -186,8 +188,16 @@ export function createCycle(deps: CycleDeps): Cycle {
       const response: Emission = { action: { kind: "respond", cycle, valence: appraisal.valence } };
 
       // ── Collisions that hold → scars in [event] ──
-      const collisions = predErrs.filter((e) => e.delta > 0);
+      // Each collision is sourced: a value-mismatch by the entity that resisted,
+      // an absence by the region. The source set drives diversity monitoring.
+      const collisions: { source_id: string; e: PredErr }[] = [
+        ...t5.output.results
+          .filter((r) => r.predErr.delta > 0)
+          .map((r) => ({ source_id: r.entity_id, e: r.predErr })),
+        ...t7.output.absences.map((e) => ({ source_id: "region", e })),
+      ];
       let scars = 0;
+      const collisionSources = new Set<string>();
       if (collisions.length > 0) {
         const scarDatum = toScar(datum, true);
         const anchor: ContextAnchor = {
@@ -195,12 +205,12 @@ export function createCycle(deps: CycleDeps): Cycle {
           cycle,
           fieldState: field.params,
         };
-        for (const e of collisions) {
+        for (const { source_id, e } of collisions) {
           events.append(
             recordScar(
               scarDatum,
               {
-                source_id: "region",
+                source_id,
                 expected: e.predicted.content,
                 received: e.observed?.content ?? null,
                 mismatch_kind: e.observed === null ? "absence" : "value-mismatch",
@@ -209,6 +219,7 @@ export function createCycle(deps: CycleDeps): Cycle {
               anchor,
             ),
           );
+          collisionSources.add(source_id);
           scars += 1;
         }
         datum = scarDatum;
@@ -232,6 +243,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         response,
         scars,
         absences: t7.output.absences.length,
+        collisionSources: [...collisionSources],
       };
     },
   };
