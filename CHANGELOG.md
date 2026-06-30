@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 16:20 — feat: layers T6, T7, T8 (stage 4d, part 3 — all eight layers)
+**Commit:** `3837e07`
+
+T6 (Other-Model Synthesis) accrues per-entity independence evidence (resistance met, env-pushed), non-zero only under Mode-B, degenerating under Mode-A. T7 (Absence Registration) registers an expected entity's failure to return as a signed-negative PredErr (observed null, signed "-"), accruing expected entities (INV-5). T8 (Multi-Entity Abstraction) builds RelValue only when N≥2 (ranked by resistance) and passes through Other↔Other SocialEdges; asserts its output is a correlation, never an identity (T8-INV / INV-2). 8 tests (104 total). All eight layers T1–T8 now exist.
+
+---
+
 ### 16:05 — feat: layers T3, T4, T5 (stage 4d, part 2)
 **Commit:** `ce32db1`
 
