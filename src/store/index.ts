@@ -37,6 +37,7 @@ export type {
   ContextAnchor,
   EventRecord,
 } from "./resist-event.js";
+export { recordScar, EventRecordError } from "./resist-event.js";
 
 export {
   TaggingGateError,

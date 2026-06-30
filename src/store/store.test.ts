@@ -21,7 +21,12 @@ import {
   toScar,
   LifecycleError,
 } from "./data-store.js";
-import type { EventRecord } from "./resist-event.js";
+import {
+  recordScar,
+  EventRecordError,
+  type EventRecord,
+  type ContextAnchor,
+} from "./resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
 
 // ── Tagging-gate ──────────────────────────────────────────────────────────
@@ -133,22 +138,32 @@ test("layer_trace accumulates the full path while floor-tag tracks the head", ()
 
 // ── [event] immutability ──────────────────────────────────────────────────
 
+/** Build a realistic scar datum: admit → run → traverse a layer → hold. */
+function makeScar() {
+  let d = admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 1);
+  d = toRunning(d, 2);
+  d = stampLayer(d, 7);
+  return toScar(d, true);
+}
+
+const sampleAnchor: ContextAnchor = {
+  depth: CONTEXT_ANCHOR_DEPTH,
+  cycle: 2,
+  fieldState: { gain: 0.5, bias: 0.1 },
+};
+
 function sampleRecord(source_id = "s1"): EventRecord {
-  return {
-    event: {
+  return recordScar(
+    makeScar(),
+    {
       source_id,
       expected: "sun",
       received: "rain",
       mismatch_kind: "value-mismatch",
       t: 1,
     },
-    fixed: { timestamp: 1, cycleMark: 2, provenance: "scar", floorTag: 7 },
-    anchor: {
-      depth: CONTEXT_ANCHOR_DEPTH,
-      cycle: 2,
-      fieldState: { gain: 0.5, bias: 0.1 },
-    },
-  };
+    sampleAnchor,
+  );
 }
 
 test("an appended [event] record cannot be altered (deep-frozen)", () => {
@@ -164,7 +179,39 @@ test("an appended [event] record cannot be altered (deep-frozen)", () => {
     // @ts-expect-error — intentional
     rec.anchor.fieldState.gain = 9;
   }, TypeError);
+  // the inherited scar tags are frozen as well
+  assert.throws(() => {
+    // @ts-expect-error — intentional
+    rec.scar.fixed.floorTag = 1;
+  }, TypeError);
   assert.equal(log.all()[0]!.event.received, "rain");
+});
+
+test("[event] inherits the scar's tags (≥7: 4 fixed + ≥3 open + trace)", () => {
+  const log = createEventLog();
+  log.append(sampleRecord());
+  const rec = log.all()[0]!;
+  // four fixed tags, provenance is scar
+  assert.equal(rec.scar.fixed.provenance, "scar");
+  assert.equal(Object.keys(rec.scar.fixed).length, 4);
+  // ≥3 open tags including the mandatory domain (audit-by-class)
+  assert.ok(Object.keys(rec.scar.open).length >= 3);
+  assert.equal(rec.scar.open.domain, "weather");
+  // the layer_trace came along for audit
+  assert.deepEqual(rec.scar.trace, [1, 7]);
+});
+
+test("a non-scar datum cannot be recorded to [event]", () => {
+  const prior = admitHostData({ payload: "p", admittingLayer: 1, open: openOK }, 1);
+  assert.throws(
+    () =>
+      recordScar(
+        prior,
+        { source_id: "x", expected: 1, received: 2, mismatch_kind: "value-mismatch", t: 1 },
+        sampleAnchor,
+      ),
+    EventRecordError,
+  );
 });
 
 test("the [event] log exposes no remove/update API", () => {

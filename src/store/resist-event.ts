@@ -11,7 +11,7 @@
  */
 
 import type { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
-import type { FixedTags } from "./tags.js";
+import type { TaggedDatum } from "./tags.js";
 
 /** The kind of mismatch a ResistEvent registers. */
 export type MismatchKind = "value-mismatch" | "absence" | "unexpected-presence";
@@ -40,11 +40,47 @@ export interface ContextAnchor {
 }
 
 /**
- * An [event] record: the ResistEvent, its fixed tags, and its context anchor.
- * Once written to the [event] log it is read-only forever (event-log.ts).
+ * An [event] record: the ResistEvent, the `scar` datum it recorded, and the
+ * context anchor. Once written to the [event] log it is read-only forever
+ * (event-log.ts).
+ *
+ * The record INHERITS its tags from the `[data]` datum it traced: rather than
+ * re-stating fixed/open/trace (which could drift), the record embeds the whole
+ * scar datum, so the event carries exactly that datum's four fixed tags, its
+ * ≥3 open tags (including `domain`, the reason audit-by-class works), and its
+ * `layer_trace`. An [event] record therefore carries the same minimum of seven
+ * tags as any datum, plus the anchor.
  */
 export interface EventRecord {
   readonly event: ResistEvent;
-  readonly fixed: FixedTags;
+  /** The `[data]` datum that collided and held (provenance `scar`); its tags are the event's tags. */
+  readonly scar: TaggedDatum;
   readonly anchor: ContextAnchor;
+}
+
+export class EventRecordError extends Error {
+  constructor(detail: string) {
+    super(`cannot build [event] record: ${detail}`);
+    this.name = "EventRecordError";
+    Object.setPrototypeOf(this, EventRecordError.prototype);
+  }
+}
+
+/**
+ * Build an [event] record from the scar datum that produced it, the registered
+ * mismatch, and the cycle's context anchor. The datum MUST be a `scar` (only
+ * collision-and-hold reaches the [event] log, protocol §9). The event inherits
+ * the scar's full tag set by embedding it.
+ */
+export function recordScar(
+  scar: TaggedDatum,
+  event: ResistEvent,
+  anchor: ContextAnchor,
+): EventRecord {
+  if (scar.fixed.provenance !== "scar") {
+    throw new EventRecordError(
+      `datum is "${scar.fixed.provenance}", not a scar; only collision-and-hold reaches [event]`,
+    );
+  }
+  return { event, scar, anchor };
 }
