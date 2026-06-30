@@ -16,3 +16,27 @@ export {
   type T2Output,
   type T2Options,
 } from "./t2.js";
+
+export {
+  createT3,
+  type ChannelTransducer,
+  type T3Input,
+  type T3Output,
+} from "./t3.js";
+
+export {
+  createT4,
+  STRANGER,
+  type ContextResolver,
+  type BoundInfo,
+  type T4Input,
+  type T4Output,
+} from "./t4.js";
+
+export {
+  createT5,
+  type T5Result,
+  type T5Input,
+  type T5Output,
+  type T5Options,
+} from "./t5.js";

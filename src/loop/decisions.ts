@@ -64,6 +64,35 @@ export const STABILITY_THRESHOLD = 3;
  * agency stays UNDECIDED (the postcondition INV-6 applies only once stable).
  */
 
+/**
+ * DECIDE@IMPL tag B — T5 (Temporal Expectation) thresholds (protocol §6.3).
+ * Same HONEST STATUS as the T2 thresholds: tunable starting values, not derived.
+ */
+
+/** Past observations kept per entity to build its baseline. */
+export const BASELINE_WINDOW = 16;
+/**
+ * Rationale: enough history to characterise an entity's behaviour, bounded so
+ * per-entity memory stays finite.
+ */
+
+/** Consistent observations before an expectation is trusted (confidence → 1). */
+export const SUFFICIENT_RECURRENCE = 3;
+/**
+ * Rationale: an expectation earns confidence as the same return recurs; below
+ * this count it is held with proportionally lower confidence, not asserted.
+ */
+
+/** DECIDE@IMPL — T5's expectation-update function. */
+export const EXPECTATION_UPDATE_LAW =
+  "persistence: predict the most recent observation for the entity" as const;
+/**
+ * Rationale: the simplest update that satisfies C2 (PredErr falls with
+ * repetition against a stable entity) — if an entity keeps returning the same
+ * value, the prediction matches and the error goes to zero. A richer update
+ * (e.g. moving mode) is a later tuning, declared if adopted.
+ */
+
 /** DECIDE@IMPL — GLOB-MOD's concrete representation and update law (protocol §12, INV-7). */
 export const GLOB_MOD_REPRESENTATION =
   "ModField.params: Record<string, number> (per-key gains/biases — how to read)" as const;
