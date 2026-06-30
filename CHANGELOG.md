@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 12:45 — feat: eight invariant guards (INV-1..INV-8)
+**Commit:** `77f3aeb`
+
+Stage 2 of the build order. Each invariant (protocol §5) is a guard that halts via a thrown `InvariantViolation` when a step would violate it — never a returned boolean. Added `violation.ts` (halt signal), provisional minimal `types.ts` (to be reconciled with full shared types in stage 4), and `guards.ts` (the eight guards). No thresholds, no `DECIDE@IMPL` touched. 17 dummy-data smoke cases assert each guard both halts a violating step and passes a conforming one (27 tests total).
+
+---
+
 ### 12:30 — test: stage-1 smoke test for the precondition gate
 **Commit:** `d8cfd56`
 
