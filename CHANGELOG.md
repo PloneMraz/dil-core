@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 15:35 — feat: layer scaffold + meaning-channel + topology (stage 4c)
+**Commit:** `1f6030f`
+
+The uniform harness T1–T8 plug into, no layer logic yet. `LayerSpec` fixes the In/Out/Pre/Post contract; `runLayer` runs pre→process→post, asserts INV-4 (ref_frame≠null) on emitted InfoUnits, and stamps the floor-tag/layer_trace. `validateLayerSpec` enforces INV-3 at registration. The meaning-channel (up) guards reads by INV-3, separate from the modulatory field (down). `topology.ts` gives the canonical T1→T8→T1 edges and validates closure (INV-1). 10 stub-driven tests (80 total): a datum traverses leaving a floor-tag at each layer; halts on INV-3/INV-4/INV-1.
+
+---
+
 ### 15:20 — feat: GLOB-MOD modulatory field (stage 4b)
 **Commit:** `c218100`
 
