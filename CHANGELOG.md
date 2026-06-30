@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 14:50 — feat: read-only inspector for [data] and [event]
+**Commit:** `784dca0`
+
+Added `inspectData` and `inspectEventLog`: a read-only human-readable view of the store using the `displayName` projection, so a person can see each item's tags on access. Read-only by construction (calls only read methods, never mutates); added a read-only `entries()` enumeration to `DataStore`. Rendering complete and tested; live-daemon wiring is stage 5. 56 tests.
+
+---
+
 ### 14:35 — feat: displayName — derived tag→name projection
 **Commit:** `35efb4a`
 
