@@ -8,9 +8,13 @@ export {
   SIGNAL_PAYLOAD_REPR,
   INFOUNIT_CONTENT_REPR,
   REF_FRAME_REPR,
+  MATCHING_WINDOW,
+  STABILITY_THRESHOLD,
   GLOB_MOD_REPRESENTATION,
   GLOB_MOD_UPDATE_LAW,
 } from "./decisions.js";
+
+export * from "./layers/index.js";
 
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 

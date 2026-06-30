@@ -38,6 +38,32 @@ export const REF_FRAME_REPR = "{ boundLayer, ref } (lower-layer context handle)"
  * (a Signal, lacking a frame, is simply not an InfoUnit).
  */
 
+/**
+ * DECIDE@IMPL tag B — T2 (Agency Differentiation) thresholds (protocol §6.3).
+ *
+ * HONEST STATUS: these are NOT derived from first principles — the protocol
+ * lists tag B as "not yet derived". They are declared *starting* values for the
+ * minimal host, tunable, chosen for plausibility, not fundamental constants.
+ * Declared openly here rather than buried in the layer (AGENTS.md "every
+ * numeric choice must be traceable to a declared DECIDE@IMPL").
+ */
+
+/** Recent emissions T2 matches an observed change against. */
+export const MATCHING_WINDOW = 8;
+/**
+ * Rationale: a small window of the agent's recent emissions, so a change whose
+ * effect lags by a few cycles can still be recognised as self-written. Wide
+ * enough to tolerate interleaved actions, narrow enough to stay responsive.
+ */
+
+/** Cycles of matching before the self/environment line is trusted (leaves UNDECIDED). */
+export const STABILITY_THRESHOLD = 3;
+/**
+ * Rationale: T2 should not commit changes to SELF_WRITTEN/ENV_PUSHED on a single
+ * observation; a few cycles of consistent matching must accrue first. Until then
+ * agency stays UNDECIDED (the postcondition INV-6 applies only once stable).
+ */
+
 /** DECIDE@IMPL — GLOB-MOD's concrete representation and update law (protocol §12, INV-7). */
 export const GLOB_MOD_REPRESENTATION =
   "ModField.params: Record<string, number> (per-key gains/biases — how to read)" as const;
