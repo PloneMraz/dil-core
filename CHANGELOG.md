@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 16:05 — feat: layers T3, T4, T5 (stage 4d, part 2)
+**Commit:** `ce32db1`
+
+T3 (Channel Ingestion) transduces signals into typed InfoUnits, keeping info-type and physical channel distinct (per-channel transducer is pluggable DECIDE@IMPL). T4 (Context Binding) binds to `entity_id` or STRANGER via a pluggable resolver. T5 (Temporal Expectation) builds a per-entity Expectation and emits a signed PredErr — where resistance becomes information — under the declared persistence law; state accrues per entity (INV-5), confidence ramps over `SUFFICIENT_RECURRENCE`, and PredErr falls to zero with repetition against a stable entity (C2). Declared tag-B thresholds (`BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`) openly as tunable. 8 tests (96 total).
+
+---
+
 ### 15:50 — feat: layers T1 and T2 (stage 4d, part 1)
 **Commit:** `604317e`
 
