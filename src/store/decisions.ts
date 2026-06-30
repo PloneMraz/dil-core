@@ -20,6 +20,12 @@ export const STORE_REPRESENTATION = "in-memory" as const;
  * deeply-frozen records; `[data]` is a mutable map. Durable backing (SQLite/
  * file) is a host-declared concern layered on later; E3 persistence is a host
  * faculty, not the store module's responsibility.
+ *
+ * Planned file-backed layout (when STORE_REPRESENTATION becomes file-based):
+ * a `memory/` directory with two sub-locations — `memory/data/` for `[data]`
+ * content and `memory/event-log/` for `[event]` records. The store-kind is then
+ * carried by *location*, not by a name prefix; an item's human-readable name is
+ * the derived projection of its tags (display-name.ts), not a place tags live.
  */
 
 /** DECIDE@IMPL tag F — index keys. */

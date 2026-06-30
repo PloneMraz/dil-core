@@ -47,6 +47,8 @@ export {
 
 export { createEventLog, deepFreeze, type EventLog } from "./event-log.js";
 
+export { displayName, eventDisplayName } from "./display-name.js";
+
 export {
   LifecycleError,
   stampLayer,
