@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 15:20 — feat: GLOB-MOD modulatory field (stage 4b)
+**Commit:** `c218100`
+
+The modulatory field (INV-7) as a double-buffered `ModField`: `createGlobMod` / `current` / `contribute` / `advance`. Update law (option A, declared): a convex per-key weighted average of a cycle's contributions, untouched keys carrying over, effect at N+1. Guarantees: `contribute()` never changes the active field (within-cycle immutable; `advance` routes through `assertGlobModUpdate`), and the convex blend keeps the field within its contributions' range — no runaway, no gain cap, no inertia constant invented. 9 tests including a 50-cycle randomized no-runaway check (70 total).
+
+---
+
 ### 15:05 — feat: loop shared types §6.1 (stage 4a)
 **Commit:** `8620c11`
 
