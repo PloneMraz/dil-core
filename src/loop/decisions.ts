@@ -37,3 +37,30 @@ export const REF_FRAME_REPR = "{ boundLayer, ref } (lower-layer context handle)"
  * `ref_frame` non-nullable, which is where INV-4 is enforced at the type level
  * (a Signal, lacking a frame, is simply not an InfoUnit).
  */
+
+/** DECIDE@IMPL — GLOB-MOD's concrete representation and update law (protocol §12, INV-7). */
+export const GLOB_MOD_REPRESENTATION =
+  "ModField.params: Record<string, number> (per-key gains/biases — how to read)" as const;
+export const GLOB_MOD_UPDATE_LAW =
+  "convex per-key weighted average of a cycle's contributions; untouched keys carry over; effect at N+1" as const;
+/**
+ * Rationale (the chosen law, "option A" — no inertia constant):
+ *   - Each layer contributes a value and a non-negative weight for one or more
+ *     param keys during cycle N (INV-7: "one competing parameter; contributions
+ *     blend, re-weighted each cycle").
+ *   - At the cycle boundary, the next field's value for each contributed key is
+ *     the convex weighted average of that cycle's contributions naming the key
+ *     (Σ wᵢ·vᵢ / Σ wᵢ). A key no layer contributed simply carries over — that is
+ *     "no new disposition information, so no update", not a weighted self-term.
+ *   - The blend is applied to a *pending* buffer and becomes the active field
+ *     only at N+1; the active field is immutable within its own cycle (INV-7:
+ *     "conditions the field only from N+1, never within-cycle").
+ *
+ * Why no inertia term / no constant: a previous-field inertia weight would be a
+ * tag-B constant with no derivation yet (forbidden to invent), and would make
+ * the field partly self-constituted, softening the protocol's "constituted by
+ * the eight layers → runaway precluded by construction" guarantee. A convex
+ * average of the current cycle's contributions keeps that guarantee exact: the
+ * result is always within the range of the contributions, so the field cannot
+ * amplify itself from within. No gain cap is needed.
+ */

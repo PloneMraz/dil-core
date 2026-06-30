@@ -8,7 +8,11 @@ export {
   SIGNAL_PAYLOAD_REPR,
   INFOUNIT_CONTENT_REPR,
   REF_FRAME_REPR,
+  GLOB_MOD_REPRESENTATION,
+  GLOB_MOD_UPDATE_LAW,
 } from "./decisions.js";
+
+export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 
 // Only the loop's OWN new shared types are surfaced here; the borrowed shapes
 // (LayerIndex, AgencyTag, LayerTrace, ResistEvent, MismatchKind) are already
