@@ -35,6 +35,32 @@ export const EVENT_WRITE_POLICY = "store-all" as const;
  * [data], not [event].
  */
 
+/**
+ * DECIDE@IMPL tag F — the open-tag registry beyond `domain`.
+ *
+ * The protocol fixes no industry vocabulary of open-tag keys (protocol §9,
+ * "Open-tag discipline"): which keys exist beyond the mandatory `domain`, and
+ * what each means, is environment-specific and declared here. There is no
+ * required *number* of keys — sufficiency is whatever the deployment's audit
+ * needs require; inventing tags to meet a quota would fabricate data to fill a
+ * gap, which the loop forbids.
+ *
+ * For the minimal host we declare the registry FREE-FORM: only `domain` is
+ * required (enforced at the tagging-gate); any other key is permitted so long as
+ * it is not a verdict. An empty `OPEN_TAG_REGISTRY` means "no fixed vocabulary
+ * declared". A real, industry-specific deployment replaces this with its own
+ * keys and their definitions (e.g. platform, role, region, env) and MAY then
+ * enforce them — that enforcement is intentionally not built here.
+ */
+export const OPEN_TAG_REGISTRY = "free-form" as const;
+/**
+ * Declared well-known keys for this host. Empty under the free-form choice. The
+ * shape is fixed so a deployment can fill it: key → human-readable definition.
+ */
+export const OPEN_TAG_DEFINITIONS: Readonly<Record<string, string>> = Object.freeze(
+  {},
+);
+
 /** DECIDE@IMPL tag F — store scope. */
 export const STORE_SCOPE = "private" as const;
 /**

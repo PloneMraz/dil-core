@@ -14,6 +14,8 @@ export {
   STORE_SCOPE,
   CONTEXT_ANCHOR_DEPTH,
   COMMIT_CADENCE,
+  OPEN_TAG_REGISTRY,
+  OPEN_TAG_DEFINITIONS,
 } from "./decisions.js";
 
 export type {

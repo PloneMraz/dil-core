@@ -35,9 +35,16 @@ export interface FixedTags {
 }
 
 /**
- * Open tags: descriptive only. The schema forbids quality/correctness/value
- * tags here — the store records origin, never a verdict (protocol §9). Keys are
- * descriptive dimensions (e.g. "format", "domain"); values are their settings.
+ * Open tags: descriptive only (protocol §9, "Open-tag discipline").
+ *
+ * A key names a descriptive *dimension* of the datum (what it is); the value is
+ * its setting on that dimension. Two rules govern the layer and nothing more:
+ *   - a key MUST denote the same dimension wherever it appears (consistency, so
+ *     the [event] log is filterable by an auditor);
+ *   - no tag MAY name a verdict (quality, correctness, value).
+ * There is no fixed industry vocabulary and no required number of tags: which
+ * keys exist beyond the mandatory `domain` is declared per deployment
+ * (decisions.ts OPEN_TAG_REGISTRY), not enumerated here.
  */
 export type OpenTags = Readonly<Record<string, string>>;
 
