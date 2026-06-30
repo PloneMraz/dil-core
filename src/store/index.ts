@@ -22,6 +22,7 @@ export type {
   Provenance,
   FixedTags,
   OpenTags,
+  LayerTrace,
   TaggedDatum,
 } from "./tags.js";
 export {
@@ -47,6 +48,7 @@ export { createEventLog, deepFreeze, type EventLog } from "./event-log.js";
 
 export {
   LifecycleError,
+  stampLayer,
   toRunning,
   toScar,
   createDataStore,

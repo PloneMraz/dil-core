@@ -16,6 +16,7 @@ import { admitHostData, TaggingGateError } from "./tagging-gate.js";
 import { createEventLog } from "./event-log.js";
 import {
   createDataStore,
+  stampLayer,
   toRunning,
   toScar,
   LifecycleError,
@@ -101,6 +102,33 @@ test("a compliant open-tag set is accepted", () => {
   assert.equal(d.open.domain, "weather");
   assert.equal(d.open.format, "json");
   assert.equal(d.open.platform, "cli");
+});
+
+// ── floor-tag (updatable slot) and layer_trace (audit path) ────────────────
+
+test("admission starts the layer_trace at the admitting layer", () => {
+  const d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
+  assert.equal(d.fixed.floorTag, 1);
+  assert.deepEqual(d.trace, [1]);
+});
+
+test("stampLayer overwrites the floor-tag to the current layer", () => {
+  let d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
+  d = stampLayer(d, 2);
+  d = stampLayer(d, 5);
+  // floor-tag answers "where is it now" — always the latest layer
+  assert.equal(d.fixed.floorTag, 5);
+});
+
+test("layer_trace accumulates the full path while floor-tag tracks the head", () => {
+  let d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
+  for (const layer of [2, 3, 4] as const) {
+    d = stampLayer(d, layer);
+  }
+  // trace answers "where has it been" — the full ordered path
+  assert.deepEqual(d.trace, [1, 2, 3, 4]);
+  // and its tail equals the floor-tag
+  assert.equal(d.trace[d.trace.length - 1], d.fixed.floorTag);
 });
 
 // ── [event] immutability ──────────────────────────────────────────────────

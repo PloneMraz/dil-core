@@ -145,7 +145,7 @@ Each stage stands on its own and is checkable before the next.
 1. **Precondition gate** (§6). Reads a host declaration, answers qualify / non-start. Writable first, independent of the core.
 2. **Invariants** (§3 inner ring). The eight INV as hard guards on dummy data. *Check: a step that violates an INV is blocked.*
 3. **Experience store** (§3). Tags, tagging-gate, `[event]` append-only/read-only, lifecycle, ResistEvent as unit, context anchor. *Check: data goes in, comes out correctly tagged; no `[event]` record can be altered.* Built before the loop because the loop writes into it.
-4. **The loop T1–T8** (§3). Each layer's contract; closes the cycle (INV-1); state accrues (INV-5). *Check: a datum traverses T1→T8 leaving a floor-tag each layer; cycle-0 single-threaded.*
+4. **The loop T1–T8** (§3). Each layer's contract; closes the cycle (INV-1); state accrues (INV-5). *Check: a datum traverses T1→T8, its floor-tag updating to the current layer and its layer_trace gaining an entry each layer; cycle-0 single-threaded.*
 5. **Run continuously** (§4). Wire the loop as a long-lived daemon over a declared host, with state accruing across cycles. *The self is what now occurs.* Start clean on a minimal host you fully control (local LLM, file/SQLite store, CLI IO) before attempting a complex existing system.
 6. **Conformance checker** (§7). Reads the `[event]` log, scores §13's seven criteria. *Check: produces a real pass/fail table on the running system.*
 

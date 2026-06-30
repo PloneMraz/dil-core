@@ -32,7 +32,12 @@ export interface FixedTags {
   readonly cycleMark: number | null;
   /** (3) provenance — prior | running | scar. */
   readonly provenance: Provenance;
-  /** (4) floor-tag — the layer that last stamped this datum. */
+  /**
+   * (4) floor-tag — a single slot naming the layer the datum just exited. Each
+   * layer overwrites it as the datum passes, so it always names the *current*
+   * layer ("where is it now"). The full path is the separate `layer_trace`, not
+   * this slot.
+   */
   readonly floorTag: LayerIndex;
 }
 
@@ -54,11 +59,22 @@ export interface FixedTags {
  */
 export type OpenTags = Readonly<Record<string, string>>;
 
-/** A tagged datum: payload + the fixed four + any open tags. */
+/**
+ * The path a datum has travelled: the ordered layers it has passed, appended to
+ * at each layer (protocol §6.1 `layer_trace`, §9). This is NOT one of the four
+ * fixed tags and is NOT the floor-tag. The floor-tag answers "where is it now"
+ * (a single updatable slot); the trace answers "where has it been" (the full
+ * ordered path), and is read for audit.
+ */
+export type LayerTrace = readonly LayerIndex[];
+
+/** A tagged datum: payload + the fixed four + open tags + the layer_trace. */
 export interface TaggedDatum<T = unknown> {
   readonly payload: T;
   readonly fixed: FixedTags;
   readonly open: OpenTags;
+  /** The audit path (layer_trace); see LayerTrace. */
+  readonly trace: LayerTrace;
 }
 
 /** Open-tag keys that name a verdict are forbidden (protocol §9). */

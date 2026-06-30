@@ -17,6 +17,27 @@
  */
 
 import type { TaggedDatum } from "./tags.js";
+import type { LayerIndex } from "../invariants/types.js";
+
+/**
+ * Stamp a datum as it exits a layer: overwrite the floor-tag to the current
+ * layer ("where is it now") and append that layer to the layer_trace ("where
+ * has it been"). This is the operation every layer T1–T8 performs as a datum
+ * passes; there are no pass-through layers (protocol §9). The floor-tag slot is
+ * overwritten by design — the four fixed slots are never stripped or reordered,
+ * but their values advance under defined rules, and the floor-tag's rule is to
+ * track the current layer.
+ */
+export function stampLayer<T>(
+  datum: TaggedDatum<T>,
+  layer: LayerIndex,
+): TaggedDatum<T> {
+  return {
+    ...datum,
+    fixed: { ...datum.fixed, floorTag: layer },
+    trace: [...datum.trace, layer],
+  };
+}
 
 export class LifecycleError extends Error {
   constructor(detail: string) {
