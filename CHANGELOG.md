@@ -6,6 +6,27 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 18:05 — docs: README updated for evidence-based checker + durable sink
+**Commit:** `d396a08`
+
+Status reports the real 4 pass / 3 partial / 0 fail of a short run (honest partials explained); Quick start drops the removed `diversityWired` flag and adds a JSONL file-sink example; the store section documents durability vs tamper-evidence; Deferred lists tamper-evidence honestly.
+
+---
+
+### 17:55 — fix: durable append-only JSONL sink for the [event] log (ISSUE 3)
+**Commit:** `5e1a451`
+
+Added an `EventSink` interface (only method: `write` — no update/delete/truncate by construction) and a JSONL file sink (`node:fs`, append mode, one immutable fsynced line per record, tags serialized in fixed order). `createEventLog` gains an optional sink and mirrors every appended record; in-memory stays the default. Declared `EVENT_DURABILITY` in `store/decisions.ts`. Durability only — tamper-evidence (content-addressed/hash-chained markers) stays deferred, not faked. Tests: survive reopen, no mutation surface, ordered round-trip.
+
+---
+
+### 17:45 — fix: conformance checker derives diversity from evidence (ISSUE 2)
+**Commit:** `fa23f07`
+
+Removed the `diversityWired`/`diversitySignal`/`reflectionWired` self-attestation flags — a criterion satisfied by the caller's claim is not a measurement. Criterion 7 (§13.7) is now derived from the `[event]` log's source_id distribution over a declared window (enough evidence + diverse → pass; single-source collapse → fail; too thin → partial, never a false pass). Criterion 5's reflection status reads from `REFLECTION_MECHANISM`. Declared `CONFORMANCE_DIVERSITY_WINDOW=8` / `CONFORMANCE_MIN_DISTINCT_SOURCES=2` in `conformance/decisions.ts` as tunable, not-derived. Result: a thin run scores 4/3/0; a genuinely diverse run scores 5/2/0.
+
+---
+
 ### 17:35 — docs: add README
 **Commit:** `a915a70`
 
