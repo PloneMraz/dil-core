@@ -7,6 +7,7 @@
  *   Stage 3: the experience store.
  *   Stage 4: the loop (T1–T8, GLOB-MOD, cycle driver).
  *   Stage 5: the runtime daemon (continuous run).
+ *   Stage 6: the conformance checker.
  */
 
 export type {
@@ -28,3 +29,5 @@ export * from "./store/index.js";
 export * from "./loop/index.js";
 
 export * from "./runtime/index.js";
+
+export * from "./conformance/index.js";
