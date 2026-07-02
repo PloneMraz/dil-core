@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 17:35 — docs: add README
+**Commit:** `a915a70`
+
+Added a project README: the `host + self = agent` equation and the reign-not-rule principle, the four concentric rings mapped to `src/` directories, the six build stages with their fixed checks, install/test commands, an end-to-end quick-start (daemon + inspector + conformance), the `[data]`/`[event]` store and tag schema, the declared DECIDE@IMPL choices, and an honest list of deferred items.
+
+---
+
 ### 17:20 — feat: conformance checker — the seven §13 criteria (stage 6)
 **Commit:** `b284ced`
 
