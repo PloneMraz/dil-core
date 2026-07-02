@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 17:20 — feat: conformance checker — the seven §13 criteria (stage 6)
+**Commit:** `b284ced`
+
+`checkConformance` reads the `[event]` log (the one trusted trace) plus observable facts (gate outcome, diversity signal) and scores each §13 criterion into a per-criterion pass/partial/fail/unverifiable table; `renderConformance` prints it. Deliberately honest: criterion 4 (Self) is PARTIAL because self-continuity is attributable only by a third party (§7); criterion 5 (Resistance) is PARTIAL while reflection is DEFERRED (§8.4); an empty log is unverifiable, never passed. Verified end-to-end over a real daemon run (5 pass, 2 partial, 0 fail). 8 tests (127 total). **Stage 6 complete — the build order is finished.**
+
+---
+
 ### 17:00 — feat: runtime daemon — continuous run (stage 5)
 **Commit:** `1c962cb`
 
