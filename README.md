@@ -19,9 +19,13 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **127 tests, 0 failures.**
+All six build stages are implemented and green: **136 tests, 0 failures.**
 
-A running loop scores **5 pass / 2 partial / 0 fail** against the seven §13 conformance criteria (the two partials are honest: self-continuity is attributable only by a third party, and reflection is deferred — see [Deferred](#deferred-and-honest-about-it)).
+A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria. The three partials are honest and derived, not attested:
+
+- **§13.4 Self** — self-continuity is attributable only by a third party (§7); the checker verifies accrual but never claims continuity.
+- **§13.5 Resistance** — reflection is deferred (§8.4).
+- **§13.7 Failure signals** — diversity is *derived from the recorded resistance-source distribution*, never a caller flag; a short run has too few recorded collisions to establish diversity over the window, so it renders `partial` rather than a false `pass`. A longer run whose `[event]` log actually shows diverse sources renders `pass`; a single-source collapse renders `fail`.
 
 ---
 
@@ -123,10 +127,23 @@ daemon.run();                         // run cycles until the source is idle
 
 console.log(inspectEventLog(events)); // human-readable [event] audit trail
 console.log(
-  renderConformance(
-    checkConformance(events, { gate, diversityWired: true }),
-  ),
+  // the checker takes only the gate outcome; diversity is DERIVED from the
+  // [event] log, never a caller flag (no self-attestation).
+  renderConformance(checkConformance(events, { gate })),
 );
+```
+
+For a **durable** audit trail that survives the process, back the `[event]` log
+with an append-only JSONL file sink:
+
+```ts
+import { createJsonlFileSink, createEventLog, readJsonlSink } from "dil-core";
+
+const sink = createJsonlFileSink("./memory/event-log.jsonl"); // append-only, fsync'd
+const events = createEventLog(sink);   // every appended record is mirrored to disk
+// … run the daemon …
+sink.close();
+const durable = readJsonlSink("./memory/event-log.jsonl"); // records survive, tags in fixed order
 ```
 
 `inspectEventLog` renders each scar by its *derived* name — tags are stored as
@@ -148,6 +165,8 @@ Two store kinds (protocol §9):
 
 Every datum carries, in fixed order, four tags that are never stripped or reordered — **timestamp, cycle-mark, provenance (`prior`→`running`→`scar`), floor-tag** — plus **at least three open tags** (one being `domain`, for audit-by-class) and a **`layer_trace`** (the full path). The floor-tag is a single updatable slot ("where is it now"); the `layer_trace` is the accumulated path ("where has it been"). An `[event]` record **inherits** the scar datum's tags.
 
+**Durability.** By default the `[event]` log is in-memory: append-only with read-only records *within the process*, but it does not survive the process on its own. For a durable audit trail, wire an append-only **JSONL file sink** (`createJsonlFileSink`) into `createEventLog`; each record is mirrored to disk and fsynced, one immutable line per record, with tags serialized in the fixed order. The sink opens the file in append mode only — it can never rewrite or truncate, and its surface has no update/delete method. This provides **durability**, not tamper-evidence: a party with write access to the file could append forged lines. Detecting that (content-addressed / hash-chained markers) is deliberately deferred — see below.
+
 ---
 
 ## Declared DECIDE@IMPL choices
@@ -168,7 +187,7 @@ Left open and marked, rather than faked:
 
 - **Reflection** (§8.4, tag E) — the read-collision-into-coordinates mechanism is not wired; the ENV_PUSHED ingestion path exists.
 - **Live Mode-B** (tag D) — the minimal host uses a scripted source; a real deployment supplies a live Other. The static appraisal anchor only decelerates (§8.3), it is not a real brake.
-- **Commit / snapshot** (§9) — content-addressed markers (the stronger, tamper-evident guarantee beyond in-memory freezing) are deferred.
+- **Tamper-evidence** (§9) — the JSONL file sink gives durability (records survive the process, append-only, no update/delete surface) but **not** tamper-evidence. Content-addressed / hash-chained commit markers, which would let an auditor detect a forged or reordered line, are deferred. Do not read "durable" as "tamper-proof".
 - **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
 
 ---
