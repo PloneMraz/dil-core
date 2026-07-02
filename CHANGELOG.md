@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-06-30
 
+### 17:00 — feat: runtime daemon — continuous run (stage 5)
+**Commit:** `1c962cb`
+
+Wired the loop as a long-lived daemon (CONTEXT.md §4). `createDaemon` holds **one** persistent cycle instance and drives it over a `HostSource`, so state accrues across cycles (INV-5) and the causal line is unbroken — the self is what occurs while it runs, with no internal continuity claim. Startup is precondition-gated (non-qualifying host → clean non-start). Added the requisition ring `src/runtime/`: `HostSource` + scripted source, the diversity-loss monitor (§11, conformance criterion 7), and the daemon. Collisions are now sourced by entity so diversity is measurable. Declared tag D (live Mode-B = host source) as the real brake replacing the static anchor; tag E (reflection) declared DEFERRED; diversity thresholds tunable. End-to-end verified (5-cycle run records value-mismatch + absence scars). 7 tests (119 total). **Stage 5 complete.**
+
+---
+
 ### 16:40 — feat: cycle driver — one full loop pass (stage 4e, stage 4 complete)
 **Commit:** `4f3dfbe`
 
