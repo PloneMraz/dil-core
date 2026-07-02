@@ -14,3 +14,8 @@ export {
 } from "./checker.js";
 
 export { renderConformance } from "./render.js";
+
+export {
+  CONFORMANCE_DIVERSITY_WINDOW,
+  CONFORMANCE_MIN_DISTINCT_SOURCES,
+} from "./decisions.js";

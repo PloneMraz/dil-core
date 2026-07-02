@@ -68,7 +68,7 @@ test("the checker produces a verdict for all seven criteria", () => {
     { signals: [sig("market", "up")], changes: [] },
     { signals: [sig("market", "down")], changes: [] },
   ]);
-  const report = checkConformance(events, { gate, diversityWired: true });
+  const report = checkConformance(events, { gate });
   assert.equal(report.results.length, 7);
   assert.deepEqual(
     report.results.map((r) => r.id),
@@ -81,7 +81,7 @@ test("Store (§13.6) passes: every scar is well-formed with domain + anchor", ()
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("weather", "rain")], changes: [] },
   ]);
-  const report = checkConformance(events, { gate, diversityWired: true });
+  const report = checkConformance(events, { gate });
   const store = report.results.find((r) => r.id === "6")!;
   assert.equal(store.verdict, "pass");
 });
@@ -91,13 +91,13 @@ test("Loop (§13.3) passes: every scar shows a T1→T8 traversal", () => {
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("weather", "rain")], changes: [] },
   ]);
-  const report = checkConformance(events, { gate, diversityWired: true });
+  const report = checkConformance(events, { gate });
   assert.equal(report.results.find((r) => r.id === "3")!.verdict, "pass");
 });
 
 test("Host conditions (§13.2) reflect the gate outcome", () => {
   const { events, gate } = runDaemon([{ signals: [sig("weather", "sun")], changes: [] }]);
-  const report = checkConformance(events, { gate, diversityWired: true });
+  const report = checkConformance(events, { gate });
   assert.equal(report.results.find((r) => r.id === "2")!.verdict, "pass");
 });
 
@@ -106,7 +106,7 @@ test("Self (§13.4) is reported partial — continuity is third-party-attributab
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("weather", "rain")], changes: [] },
   ]);
-  const report = checkConformance(events, { gate, diversityWired: true });
+  const report = checkConformance(events, { gate });
   assert.equal(report.results.find((r) => r.id === "4")!.verdict, "partial");
 });
 
@@ -116,8 +116,57 @@ test("Resistance (§13.5) is partial while reflection is deferred", () => {
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("market", "down")], changes: [] },
   ]);
-  const report = checkConformance(events, { gate, diversityWired: true, reflectionWired: false });
+  const report = checkConformance(events, { gate });
   assert.equal(report.results.find((r) => r.id === "5")!.verdict, "partial");
+});
+
+test("Failure signals (§13.7) is partial when evidence is too thin to establish diversity", () => {
+  // a short run records fewer collisions than the diversity window
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  const report = checkConformance(events, { gate });
+  const c7 = report.results.find((r) => r.id === "7")!;
+  assert.equal(c7.verdict, "partial");
+  assert.ok(c7.detail.includes("insufficient evidence"));
+});
+
+test("Failure signals (§13.7) passes when the [event] log itself shows diverse sources", () => {
+  // two entities both resist every cycle → the recorded source set is diverse
+  const inputs = Array.from({ length: 10 }, (_, i) => ({
+    signals: [sig("weather", i % 2 ? "sun" : "rain"), sig("market", i % 2 ? "up" : "down")],
+    changes: [],
+  }));
+  const { events, gate } = runDaemon(inputs);
+  const report = checkConformance(events, { gate });
+  const c7 = report.results.find((r) => r.id === "7")!;
+  assert.equal(c7.verdict, "pass");
+  assert.ok(c7.detail.includes("diversity established"));
+});
+
+test("Failure signals (§13.7) fails when the [event] log shows a single-source collapse", () => {
+  // one entity resists every cycle and never absents → a single resistance source
+  const inputs = Array.from({ length: 20 }, (_, i) => ({
+    signals: [sig("solo", i % 2 ? "a" : "b")],
+    changes: [],
+  }));
+  const { events, gate } = runDaemon(inputs);
+  const report = checkConformance(events, { gate });
+  const c7 = report.results.find((r) => r.id === "7")!;
+  assert.equal(c7.verdict, "fail");
+  assert.ok(c7.detail.includes("diversity-loss established"));
+});
+
+test("Failure signals cannot be forced to pass by any caller flag (no self-attestation)", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  // ObservableFacts has no diversity flag — the only accepted fact is the gate.
+  const report = checkConformance(events, { gate });
+  // a thin run must NOT pass criterion 7 regardless of intent
+  assert.notEqual(report.results.find((r) => r.id === "7")!.verdict, "pass");
 });
 
 test("an empty [event] log is honestly reported unverifiable, not passed", () => {
@@ -132,7 +181,7 @@ test("the report renders a readable table", () => {
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("weather", "rain")], changes: [] },
   ]);
-  const text = renderConformance(checkConformance(events, { gate, diversityWired: true }));
+  const text = renderConformance(checkConformance(events, { gate }));
   assert.ok(text.includes("Conformance (§13)"));
   assert.ok(text.includes("§13.6 Store"));
 });

@@ -18,6 +18,11 @@
 import type { EventLog } from "../store/event-log.js";
 import type { EventRecord } from "../store/resist-event.js";
 import type { GateResult } from "../precondition/gate.js";
+import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
+import {
+  CONFORMANCE_DIVERSITY_WINDOW,
+  CONFORMANCE_MIN_DISTINCT_SOURCES,
+} from "./decisions.js";
 
 export type ConformanceVerdict = "pass" | "partial" | "fail" | "unverifiable";
 
@@ -33,16 +38,18 @@ export interface ConformanceReport {
   readonly summary: Readonly<Record<ConformanceVerdict, number>>;
 }
 
-/** Observable facts a third party can read alongside the [event] log. */
+/**
+ * Observable facts a third party can read alongside the [event] log.
+ *
+ * There is NO self-attestation flag here: a criterion satisfied by the caller's
+ * own claim is not a measurement. Diversity (criterion 7) is derived from the
+ * recorded resistance-source distribution; reflection (criterion 5) is read from
+ * the declared REFLECTION_MECHANISM. Only the gate outcome — itself a structured
+ * result the system computed, not a bare boolean — is accepted here.
+ */
 export interface ObservableFacts {
   /** The precondition gate outcome (criterion 2). */
   readonly gate?: GateResult;
-  /** The current diversity-loss signal, or null (criterion 7). */
-  readonly diversitySignal?: string | null;
-  /** Whether the diversity-loss monitor is wired at all (criterion 7). */
-  readonly diversityWired?: boolean;
-  /** Whether reflection (read-collision-into-coordinates) is wired (criterion 5). */
-  readonly reflectionWired?: boolean;
 }
 
 function wellFormedStore(rec: EventRecord): string | null {
@@ -148,7 +155,8 @@ export function checkConformance(
   } else {
     const sources = new Set(records.map((r) => r.event.source_id));
     const modeBEvidence = sources.size >= 2;
-    const reflection = facts.reflectionWired === true;
+    // Reflection status is read from the declared decision, not a caller flag.
+    const reflection = REFLECTION_MECHANISM !== "DEFERRED";
     results.push({
       id: "5",
       title: "Resistance",
@@ -182,21 +190,32 @@ export function checkConformance(
     });
   }
 
-  // C7 — Failure signals (§11): the diversity-loss signal is wired and emits.
-  if (facts.diversityWired === false) {
-    results.push({ id: "7", title: "Failure signals", verdict: "fail", detail: "no diversity-loss monitor wired" });
-  } else if (facts.diversityWired === undefined && facts.diversitySignal === undefined) {
-    results.push({ id: "7", title: "Failure signals", verdict: "unverifiable", detail: "no diversity monitor facts supplied" });
-  } else {
-    results.push({
-      id: "7",
-      title: "Failure signals",
-      verdict: "pass",
-      detail:
-        facts.diversitySignal
-          ? `diversity-loss signal active: ${facts.diversitySignal}`
-          : "diversity-loss monitor wired; signal silent (diversity intact)",
-    });
+  // C7 — Failure signals (§11): resistance-source diversity, DERIVED from the
+  // [event] log's source_id distribution — never from a caller's claim. Over the
+  // most recent CONFORMANCE_DIVERSITY_WINDOW records: enough evidence + diverse
+  // → pass; enough evidence + collapsed → fail (diversity loss established);
+  // not enough evidence to establish diversity → partial (never pass).
+  {
+    const window = records.slice(-CONFORMANCE_DIVERSITY_WINDOW);
+    if (window.length < CONFORMANCE_DIVERSITY_WINDOW) {
+      results.push({
+        id: "7",
+        title: "Failure signals",
+        verdict: "partial",
+        detail: `insufficient evidence: ${window.length} recorded collision(s) < window ${CONFORMANCE_DIVERSITY_WINDOW}; diversity cannot be established from traces`,
+      });
+    } else {
+      const distinct = new Set(window.map((r) => r.event.source_id)).size;
+      const diverse = distinct >= CONFORMANCE_MIN_DISTINCT_SOURCES;
+      results.push({
+        id: "7",
+        title: "Failure signals",
+        verdict: diverse ? "pass" : "fail",
+        detail: diverse
+          ? `resistance-source diversity established from traces: ${distinct} distinct sources over the last ${CONFORMANCE_DIVERSITY_WINDOW} records`
+          : `diversity-loss established from traces: only ${distinct} distinct source(s) over the last ${CONFORMANCE_DIVERSITY_WINDOW} records (< ${CONFORMANCE_MIN_DISTINCT_SOURCES})`,
+      });
+    }
   }
 
   const summary: Record<ConformanceVerdict, number> = { pass: 0, partial: 0, fail: 0, unverifiable: 0 };
