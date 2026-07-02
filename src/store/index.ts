@@ -11,6 +11,7 @@ export {
   STORE_REPRESENTATION,
   INDEX_KEYS,
   EVENT_WRITE_POLICY,
+  EVENT_DURABILITY,
   STORE_SCOPE,
   CONTEXT_ANCHOR_DEPTH,
   COMMIT_CADENCE,
@@ -46,6 +47,15 @@ export {
 } from "./tagging-gate.js";
 
 export { createEventLog, deepFreeze, type EventLog } from "./event-log.js";
+
+export {
+  createJsonlFileSink,
+  serializeEventRecord,
+  readJsonlSink,
+  type EventSink,
+  type FileEventSink,
+  type SerializedEventRecord,
+} from "./event-sink.js";
 
 export { displayName, eventDisplayName } from "./display-name.js";
 

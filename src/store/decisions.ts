@@ -32,6 +32,20 @@ export const STORE_REPRESENTATION = "in-memory" as const;
 export const INDEX_KEYS = ["source_id", "provenance"] as const;
 /** Rationale: the two access paths the loop and an auditor actually need. */
 
+/** DECIDE@IMPL tag F — [event] durability. */
+export const EVENT_DURABILITY =
+  "in-memory by default; optional append-only JSONL file sink (event-sink.ts)" as const;
+/**
+ * Rationale: the in-memory [event] log is append-only with read-only records but
+ * dies with the process, so on its own it is not audit-ready after the run. A
+ * deployment that needs durability wires a JSONL file sink into `createEventLog`
+ * (a durable daemon is configured by passing a sink-backed [event] log); each
+ * appended record is mirrored to disk, fsynced, one immutable line per record,
+ * with tags serialized in the fixed order. The default stays in-memory so tests
+ * need no filesystem. This provides DURABILITY only — tamper-evidence
+ * (content-addressed / hash-chained markers) remains deferred (COMMIT_CADENCE).
+ */
+
 /** DECIDE@IMPL tag F — write policy for the [event] log. */
 export const EVENT_WRITE_POLICY = "store-all" as const;
 /**

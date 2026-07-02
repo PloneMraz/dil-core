@@ -10,12 +10,15 @@
  *
  * Enforcement boundary (honest scope): in-memory, this module deep-freezes every
  * record and exposes NO update/remove API — only append and read. That stops
- * accidental and in-process mutation. The stronger, tamper-EVIDENT guarantee
- * against a compromised host (content-addressed commit markers) ships with the
- * deferred commit/snapshot sub-step (decisions.ts COMMIT_CADENCE).
+ * accidental and in-process mutation. For DURABILITY (records surviving the
+ * process), pass an optional EventSink: every appended record is mirrored to it
+ * at append time. The stronger, tamper-EVIDENT guarantee against a compromised
+ * host (content-addressed commit markers) remains deferred (decisions.ts
+ * COMMIT_CADENCE) and is NOT provided by the sink.
  */
 
 import type { EventRecord } from "./resist-event.js";
+import type { EventSink } from "./event-sink.js";
 import { INDEX_KEYS } from "./decisions.js";
 
 /** Recursively freeze an object so no nested field can be altered. */
@@ -45,7 +48,12 @@ export interface EventLog {
   bySourceId(source_id: string): readonly EventRecord[];
 }
 
-export function createEventLog(): EventLog {
+/**
+ * Create an [event] log. Pass an optional `sink` to mirror every appended record
+ * to durable storage (e.g. a JSONL file sink) at append time (DECIDE@IMPL tag F,
+ * EVENT_DURABILITY in decisions.ts). Without a sink the log is in-memory only.
+ */
+export function createEventLog(sink?: EventSink): EventLog {
   const records: EventRecord[] = [];
   const bySource = new Map<string, EventRecord[]>();
 
@@ -62,6 +70,8 @@ export function createEventLog(): EventLog {
       } else {
         bySource.set(key, [frozen]);
       }
+      // Mirror to the durable sink, if one is wired (append-only, write-once).
+      sink?.write(frozen);
     },
     all(): readonly EventRecord[] {
       return records;
