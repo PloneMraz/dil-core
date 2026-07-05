@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-07-05
+
+### — docs: README — fix blockquote lead-in, qualify audit-ready claim
+**Commit:** `edbc4bf`
+
+Blockquote lead-in corrected from "the two normative documents" (three bullets, only one normative) to "Read this alongside:", keeping the normative annotation on the protocol bullet only. Line 1's unconditional "audit-ready" scoped to the `[event]` trail, durable only when backed by the JSONL file sink. Raw sink bytes verified on disk (fixed-order tags, ≥3 open tags incl `domain`, full layer_trace) via a temporary script, deleted after the run.
+
+---
+
 ## [Unreleased] — 2026-06-30
 
 ### 18:05 — docs: README updated for evidence-based checker + durable sink
