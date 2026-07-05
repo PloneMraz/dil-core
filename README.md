@@ -186,7 +186,7 @@ Numeric thresholds are declared **tunable starting values, not derived constants
 Left open and marked, rather than faked:
 
 - **Reflection** (§8.4, tag E) — the read-collision-into-coordinates mechanism is not wired; the ENV_PUSHED ingestion path exists.
-- **Live Mode-B** (tag D) — the minimal host uses a scripted source; a real deployment supplies a live Other. The static appraisal anchor only decelerates (§8.3), it is not a real brake.
+- **Mode-B liveness** (tag D) — not missing machinery. The Mode-B seam is the `HostSource` the daemon requisitions, and one channel carries any number of Others (T4 binds each unit to an entity; an Other is a positional status, not a kind — there is no per-Other source file to write). What the protocol *deliberately* leaves open is which live Other a deployment plugs in (a user, another agent, a mix). The repo ships only a scripted **test fixture**, so out-of-the-box runs get fixed, replayable resistance — deceleration-grade (§8.3), like the static appraisal anchor — not the real braking of an Other that updates. Plugging a live Other is deployment wiring, not a core change.
 - **Tamper-evidence** (§9) — the JSONL file sink gives durability (records survive the process, append-only, no update/delete surface) but **not** tamper-evidence. Content-addressed / hash-chained commit markers, which would let an auditor detect a forged or reordered line, are deferred. Do not read "durable" as "tamper-proof".
 - **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
 
