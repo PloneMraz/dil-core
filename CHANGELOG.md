@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-05
 
+### — docs: README — Mode-B liveness is a deployment property
+**Commit:** `177b6a0`
+
+Corrected the Deferred bullet that misframed "Live Mode-B" as unbuilt machinery. The Mode-B seam (`HostSource`) is built and declared (tag D); an Other is a positional status, not a kind — one channel carries any number of Others, so no per-Other source file exists to be written. What stays open is *deliberately* open per protocol §12: which live Other a deployment plugs in. The honest residual: the shipped scripted **test fixture** yields fixed, replayable (deceleration-grade, §8.3) resistance.
+
+---
+
 ### — docs: README — fix blockquote lead-in, qualify audit-ready claim
 **Commit:** `edbc4bf`
 
