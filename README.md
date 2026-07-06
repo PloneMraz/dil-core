@@ -181,13 +181,20 @@ Numeric thresholds are declared **tunable starting values, not derived constants
 
 ---
 
-## Deferred (and honest about it)
+## Open items — two different kinds
 
-Left open and marked, rather than faked:
+The protocol itself distinguishes these (§12): what is *not yet built* versus what is *deliberately open*. Conflating them misreads a deployment property as unfinished work.
 
-- **Mode-B liveness** (tag D) — not missing machinery. The Mode-B seam is the `HostSource` the daemon requisitions, and one channel carries any number of Others (T4 binds each unit to an entity; an Other is a positional status, not a kind — there is no per-Other source file to write). What the protocol *deliberately* leaves open is which live Other a deployment plugs in (a user, another agent, a mix). The repo ships only a scripted **test fixture**, so out-of-the-box runs get fixed, replayable resistance — deceleration-grade (§8.3), like the static appraisal anchor — not the real braking of an Other that updates. Plugging a live Other is deployment wiring, not a core change.
+### Deferred (unbuilt core work — marked, not faked)
+
 - **Tamper-evidence** (§9) — the JSONL file sink gives durability (records survive the process, append-only, no update/delete surface) but **not** tamper-evidence. Content-addressed / hash-chained commit markers, which would let an auditor detect a forged or reordered line, are deferred. Do not read "durable" as "tamper-proof".
 - **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
+
+### Deployment-open by design (no core work owed — each deployment declares its own)
+
+- **Mode-B liveness** (tag D) — the Mode-B seam is the `HostSource` the daemon requisitions, and one channel carries any number of Others (an Other is a positional status, not a kind — there is no per-Other source file to write). Which live Other a deployment plugs in (a user, another agent, an external data feed, a mix) is *deliberately* open per §12. The repo ships only a scripted **test fixture**, so out-of-the-box runs get fixed, replayable resistance — deceleration-grade (§8.3) — not the real braking of an Other that updates. Plugging a live Other is deployment wiring, not a core change.
+- **The reflection reader** (tag E) — the read-collision-into-coordinates *mechanism* is wired (`runtime/reflection.ts`); *who* reads (a user, another agent, a critic service that may itself consult external data) is each deployment's declaration.
+- **The open-tag registry** beyond `domain` (tag F) — which descriptive keys exist and what each means is industry-specific; the core fixes only the discipline (consistency, no verdicts, ≥3 tags incl. `domain`).
 
 ---
 
