@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-07-06
+
+### — feat: reflection mechanism — read collision into coordinates (tag E)
+**Commits:** `c40f50a` (mechanism), `560389b` (README)
+
+Wired tag E (§8.4): a third party reads a recorded collision out of the `[event]` log into coordinates (`collisionCoordinates`/`formReading` — fabrication about a non-existent collision is refused) and returns it through a declared T3 channel (`reflectionSignal` + `reflectionTransducer`), classified ENV_PUSHED. The coordinate system is the `[event]` log itself; no parallel channel, no self-reflection faculty; who the reader is stays deployment-open like tag D. `REFLECTION_MECHANISM` no longer DEFERRED; §13.5 now passes on runs whose traces show diverse sources (diverse run: 6 pass / 1 partial — the remainder is §13.4 Self, partial by design). 144 tests.
+
+---
+
 ## [Unreleased] — 2026-07-05
 
 ### — docs: README — Mode-B liveness is a deployment property
