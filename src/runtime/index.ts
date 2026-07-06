@@ -21,3 +21,13 @@ export {
 } from "./diversity.js";
 
 export { createDaemon, type Daemon, type DaemonDeps } from "./daemon.js";
+
+export {
+  collisionCoordinates,
+  formReading,
+  reflectionSignal,
+  reflectionTransducer,
+  ReflectionError,
+  type CollisionCoordinate,
+  type ReflectionReading,
+} from "./reflection.js";

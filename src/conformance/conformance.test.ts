@@ -110,14 +110,27 @@ test("Self (§13.4) is reported partial — continuity is third-party-attributab
   assert.equal(report.results.find((r) => r.id === "4")!.verdict, "partial");
 });
 
-test("Resistance (§13.5) is partial while reflection is deferred", () => {
+test("Resistance (§13.5) passes with diverse sources now that reflection (tag E) is declared", () => {
   const { events, gate } = runDaemon([
     { signals: [sig("weather", "rain")], changes: [] },
     { signals: [sig("weather", "sun")], changes: [] },
     { signals: [sig("market", "down")], changes: [] },
   ]);
   const report = checkConformance(events, { gate });
-  assert.equal(report.results.find((r) => r.id === "5")!.verdict, "partial");
+  const c5 = report.results.find((r) => r.id === "5")!;
+  assert.equal(c5.verdict, "pass");
+  assert.ok(c5.detail.includes("reflection wired"));
+});
+
+test("Resistance (§13.5) stays partial when resistance sources lack diversity", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  const report = checkConformance(events, { gate });
+  const c5 = report.results.find((r) => r.id === "5")!;
+  assert.equal(c5.verdict, "partial");
+  assert.ok(c5.detail.includes("limited diversity"));
 });
 
 test("Failure signals (§13.7) is partial when evidence is too thin to establish diversity", () => {

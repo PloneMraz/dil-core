@@ -17,15 +17,20 @@ export const MODE_B_SOURCE = "host-source (live external input the agent does no
  * B-source rule, §8.4); the diversity monitor below flags its loss.
  */
 
-/** DECIDE@IMPL tag E — the read-collision-into-coordinates mechanism for reflection. */
-export const REFLECTION_MECHANISM = "DEFERRED" as const;
+/** DECIDE@IMPL tag E — the read-collision-into-coordinates mechanism for reflection (§8.4). */
+export const REFLECTION_MECHANISM: string =
+  "event-coordinate reading (runtime/reflection.ts): a third party reads a recorded collision out of the [event] log into coordinates (collisionCoordinates/formReading) and returns it through a declared T3 channel (reflectionSignal + reflectionTransducer); the agency-gate classifies it ENV_PUSHED";
 /**
- * HONEST STATUS: reflection (§8.4) — a collision read into coordinates by a
- * third party ("you drifted here"), entering through T3 tagged ENV_PUSHED — is
- * NOT yet wired. The ingestion path exists (T3 ingests, T2 classifies
- * ENV_PUSHED), but the *reading* mechanism (tag E) is left open rather than
- * invented. Without it the agent takes a collision but cannot read where it
- * collided; this is a known limitation of the minimal runtime, declared not hidden.
+ * Rationale: the coordinate system is the [event] log itself — the one trace a
+ * third party already reads (§13); a coordinate addresses one recorded
+ * collision (index, cycle, source, mismatch kind). formReading refuses a
+ * coordinate that references no real record: a reflection cannot be fabricated
+ * about a collision that never happened. WHO reads (a user, another agent, a
+ * critic service — which may itself consult external data such as the web)
+ * stays deliberately deployment-open, like tag D. No internal self-reflection
+ * faculty exists, per §8.4 ("it cannot self-reflect on call"). Typed `string`
+ * (not a literal) so the conformance checker's "is it still DEFERRED?"
+ * comparison stays a genuine runtime read.
  */
 
 /** DECIDE@IMPL — diversity-loss monitor window and minimum source count (§11). */
