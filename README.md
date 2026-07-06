@@ -19,12 +19,12 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **136 tests, 0 failures.**
+All six build stages are implemented and green: **144 tests, 0 failures.**
 
-A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria. The three partials are honest and derived, not attested:
+A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**. Every partial is honest and derived, not attested:
 
-- **§13.4 Self** — self-continuity is attributable only by a third party (§7); the checker verifies accrual but never claims continuity.
-- **§13.5 Resistance** — reflection is deferred (§8.4).
+- **§13.4 Self** — always `partial` by design: self-continuity is attributable only by a third party (§7); the checker verifies accrual but never claims continuity.
+- **§13.5 Resistance** — `partial` only while the run's traces show a single resistance source (limited diversity). The reflection mechanism (tag E) is wired: a third party reads a recorded collision out of the `[event]` log into coordinates and returns it through a declared T3 channel, classified ENV_PUSHED; who the reader is stays deployment-open.
 - **§13.7 Failure signals** — diversity is *derived from the recorded resistance-source distribution*, never a caller flag; a short run has too few recorded collisions to establish diversity over the window, so it renders `partial` rather than a false `pass`. A longer run whose `[event]` log actually shows diverse sources renders `pass`; a single-source collapse renders `fail`.
 
 ---
@@ -175,7 +175,7 @@ The protocol leaves constants open on purpose; a conforming implementation must 
 
 - Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total).
 - Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor.
-- Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum.
+- Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum; reflection (tag E) = event-coordinate reading over the `[event]` log, entering through a declared T3 channel (reader identity deployment-open).
 
 Numeric thresholds are declared **tunable starting values, not derived constants** — stated honestly, not dressed up as fundamental.
 
@@ -185,7 +185,6 @@ Numeric thresholds are declared **tunable starting values, not derived constants
 
 Left open and marked, rather than faked:
 
-- **Reflection** (§8.4, tag E) — the read-collision-into-coordinates mechanism is not wired; the ENV_PUSHED ingestion path exists.
 - **Mode-B liveness** (tag D) — not missing machinery. The Mode-B seam is the `HostSource` the daemon requisitions, and one channel carries any number of Others (T4 binds each unit to an entity; an Other is a positional status, not a kind — there is no per-Other source file to write). What the protocol *deliberately* leaves open is which live Other a deployment plugs in (a user, another agent, a mix). The repo ships only a scripted **test fixture**, so out-of-the-box runs get fixed, replayable resistance — deceleration-grade (§8.3), like the static appraisal anchor — not the real braking of an Other that updates. Plugging a live Other is deployment wiring, not a core change.
 - **Tamper-evidence** (§9) — the JSONL file sink gives durability (records survive the process, append-only, no update/delete surface) but **not** tamper-evidence. Content-addressed / hash-chained commit markers, which would let an auditor detect a forged or reordered line, are deferred. Do not read "durable" as "tamper-proof".
 - **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
