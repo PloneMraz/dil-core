@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — docs: layout — event-log/ and commits/ beside memory/, not inside
+**Commit:** `de3e312`
+
+The directory boundary is now the rollback boundary: `memory/` holds only `[data]` and restorable working state (the one location recovery rewrites); `event-log/` and `commits/` sit **beside** it, outside the loop's mutable reach — never rolled back. A rollback rewrites `memory/`, keeps recording into `event-log/`, and adds a fork marker to `commits/`; it deletes nothing. Declared in `store/decisions.ts`.
+
+---
+
 ### — feat: activity records + daily/size-segmented [event] sink (§9 amendment)
 **Commits:** `a1e72fb` (protocol + code), `31cf6dc` (README)
 
