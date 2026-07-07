@@ -183,7 +183,7 @@ export function checkConformance(
       verdict: "partial",
       detail: nonDecreasing
         ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
-        : "cycle-marks not monotonic — accrual suspect",
+        : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect",
     });
   }
 
