@@ -22,9 +22,10 @@ export const STORE_REPRESENTATION = "in-memory" as const;
  * faculty, not the store module's responsibility.
  *
  * File-backed layout (DECIDE@IMPL tag F — the directory boundary IS the
- * rollback boundary):
+ * rollback boundary). One parent root, `store/`, named after the ring itself
+ * (§3: "[data], [event] — the two store kinds"):
  *
- *   <deployment root>/
+ *   <deployment root>/store/
  *     memory/      — [data] and restorable working state: the ONLY location a
  *                    recovery/rollback rewrites (mutable by design)
  *     event-log/   — [event] segments: append-only, records read-only forever;
