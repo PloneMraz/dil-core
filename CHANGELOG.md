@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — feat: §9 commit/snapshot/recovery — git-style markers, scar rhythm, rollback
+**Commit:** `ec8d591`
+
+Mục core cuối cùng. `CommitStore` (`store/commits/`) giữ object kiểu git: content-addressed, write-once (`wx`, dedup tự nhiên, sửa file là gãy chính tên nó), marker trỏ parent thành DAG, `HEAD` là ref di động duy nhất. Marker ghim chain head của `[event]`, counters, config đã khai, và địa chỉ nội dung của snapshot **toàn hệ thống** (2-(a)): T2/T5/T6/T7 có `snapshot()/restore()`, GLOB-MOD `restore` (recovery-only), cycle driver (resume + snapshot), `[data]`. Commit tự động sau `COMMIT_EVERY = 9` scars tại ranh giới cycle (nhịp scar theo tác giả; chuỗi êm ả không tự commit — thuộc tính khai báo); `daemon.commit()` là cò thủ công ngoài loop. Recovery (`recoverFrom`) khôi phục trọn state đã tích lũy (INV-5 nguyên vẹn) + đóng **fork marker** (`parent = recoveredFrom`, đúng ngữ nghĩa nhánh git); `[event]` log **không bao giờ roll** — ghi xuyên qua recovery. Retention: marker không bao giờ prune; payload `all`, sàn `MIN_SNAPSHOTS_RETAINED = 9`. 6 test mới, gồm chứng minh hành vi (expectation khôi phục dự đoán đúng — không scar giả) và log-sống-sót-qua-rollback. 177 tests. **Danh sách Deferred giờ TRỐNG.**
+
+---
+
 ### — docs: layout — one parent root `store/{memory,event-log,commits}`
 **Commit:** `dcd471e`
 
