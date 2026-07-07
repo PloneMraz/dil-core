@@ -74,6 +74,14 @@ export interface CycleDeps {
   readonly events: EventLog;
   /** The host's bootstrap first emission for cycle-0 (P(a)). */
   readonly initialEmission: Emission;
+  /** RECOVERY-ONLY: resume the driver from a §9 snapshot instead of cycle-0. */
+  readonly resume?: DriverState;
+}
+
+/** The cycle driver's own accrued state (part of the §9 snapshot). */
+export interface DriverState {
+  readonly cycle: number;
+  readonly lastEmission: Emission;
 }
 
 /** What the host supplies for one cycle. */
@@ -104,6 +112,8 @@ export interface CycleResult {
 export interface Cycle {
   run(host: HostCycleInput): CycleResult;
   cycleCount(): number;
+  /** The driver's accrued state, for the §9 commit snapshot. */
+  snapshot(): DriverState;
 }
 
 /** Identifier of the agent's editable state, for the INV-8 appraisal check. */
@@ -119,8 +129,8 @@ interface LayerPass {
 export function createCycle(deps: CycleDeps): Cycle {
   const { layers, glob, data, events } = deps;
   const channel = createMeaningChannel();
-  let cycle = 0;
-  let lastEmission = deps.initialEmission;
+  let cycle = deps.resume?.cycle ?? 0;
+  let lastEmission = deps.resume?.lastEmission ?? deps.initialEmission;
 
   /** Cycle-0: direct hand-off — one thread of flow, the driver dispatches. */
   function passSingleThreaded(
@@ -213,6 +223,7 @@ export function createCycle(deps: CycleDeps): Cycle {
 
   return {
     cycleCount: () => cycle,
+    snapshot: () => ({ cycle, lastEmission }),
     run(host): CycleResult {
       const field = glob.current();
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";

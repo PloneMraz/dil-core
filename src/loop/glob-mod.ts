@@ -56,6 +56,12 @@ export interface GlobMod {
    * return the new active field.
    */
   advance(nextCycle: number): ModField;
+  /**
+   * RECOVERY-ONLY: re-instate a field state this loop previously accrued (a §9
+   * snapshot). Not a within-cycle operation — INV-7's N+1 rule governs cycle
+   * advancement, not full-system recovery; pending contributions are cleared.
+   */
+  restore(params: Readonly<Record<string, number>>, atCycle: number): void;
 }
 
 /** Freeze a params map so an active field cannot be mutated within its cycle. */
@@ -120,6 +126,11 @@ export function createGlobMod(
       currentCycle = nextCycle;
       pending = [];
       return field;
+    },
+    restore(params, atCycle) {
+      field = freezeField({ ...params }, atCycle);
+      currentCycle = atCycle;
+      pending = [];
     },
   };
 }

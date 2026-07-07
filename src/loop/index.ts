@@ -29,6 +29,7 @@ export {
   type Cycle,
   type CycleDeps,
   type CycleResult,
+  type DriverState,
   type FlowMode,
   type HostCycleInput,
   type Layers,
@@ -41,8 +42,10 @@ export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 export {
   validateLayerSpec,
   runLayer,
+  isSnapshottable,
   type LayerSpec,
   type LayerRun,
+  type Snapshottable,
 } from "./layer.js";
 
 export { createMeaningChannel, type MeaningChannel } from "./meaning-channel.js";

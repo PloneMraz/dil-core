@@ -144,12 +144,39 @@ export const EVENT_TAMPER_EVIDENCE =
  */
 
 /**
- * DECIDE@IMPL — commit/snapshot cadence (protocol §9: events between commits;
- * snapshots retained; the snapshot covers the ENTIRE system — loop
- * configuration, layer state, field parameters — with full-system recovery).
- * DEFERRED: layer state is not yet serializable, so the full-system snapshot
- * cannot be built without faking it. The log's tamper-evidence shipped
- * separately (EVENT_TAMPER_EVIDENCE above) and does not pretend to be this.
- * Left open rather than filled with an invented number.
+ * DECIDE@IMPL — commit/snapshot cadence and retention (protocol §9: "the
+ * [event] log acts as a counter: after a set volume, a commit fires,
+ * snapshotting the entire system … into an immutable, content-addressed
+ * marker. Recovery is full-system. DECIDE@IMPL: events between commits;
+ * snapshots retained").
  */
-export const COMMIT_CADENCE = "DEFERRED" as const;
+
+/** A commit fires after this many SCARS since the last commit. */
+export const COMMIT_EVERY = 9;
+/**
+ * Rationale (tunable, NOT derived): the cadence counts scars, not all records —
+ * state changes most when collisions are digested (the author's chosen rhythm).
+ * Because activity records carry entity ids, not full observation content,
+ * replay between commits is PARTIAL: a marker is a real restore point, not a
+ * mere accelerator — hence a dense-ish cadence. Two declared valves: a quiet
+ * stretch produces no automatic commit (an intended property of scar-rhythm;
+ * crash during it falls back to the last marker), and the daemon exposes a
+ * manual commit() for out-of-loop triggers (e.g. right before attaching an
+ * untrusted source).
+ */
+
+/** How the marker/payload repo retains snapshots. */
+export const SNAPSHOTS_RETAINED = "all (minimal host: nothing is pruned)" as const;
+/** If a deployment prunes payloads, it MUST keep at least this many newest restore points. */
+export const MIN_SNAPSHOTS_RETAINED = 9;
+/**
+ * Rationale (tunable, NOT derived): MARKERS are never pruned by anyone — they
+ * are the audit DAG (parent-linked; deleting one holes the fork history).
+ * Retention governs snapshot PAYLOADS only: the minimal host keeps all; a
+ * pruning deployment must keep ≥ MIN_SNAPSHOTS_RETAINED newest payloads so the
+ * roll-back depth covers a reader's detection lag (≈ 9 commits × 9 scars of
+ * lookback). A pruned payload's marker remains — auditable, just not
+ * restorable. No pruning machinery is implemented here (keep-all).
+ */
+export const COMMIT_CADENCE =
+  "every COMMIT_EVERY scars, at a cycle boundary; manual commit() and a fork marker at recovery" as const;

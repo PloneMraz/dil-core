@@ -53,6 +53,25 @@ export function validateLayerSpec(spec: {
   }
 }
 
+/**
+ * A stateful layer exposes its accrued state for the §9 commit snapshot, and a
+ * RECOVERY-ONLY restore. Restoring re-instates state this very loop accrued
+ * (resuming the causal line) — it is not a within-cycle operation and never a
+ * pre-load of fabricated history, so INV-5 is untouched.
+ */
+export interface Snapshottable {
+  snapshot(): unknown;
+  restore(state: unknown): void;
+}
+
+/** Whether a layer spec exposes snapshot surfaces. */
+export function isSnapshottable(spec: object): spec is Snapshottable {
+  return (
+    typeof (spec as Snapshottable).snapshot === "function" &&
+    typeof (spec as Snapshottable).restore === "function"
+  );
+}
+
 export interface LayerRun<Out> {
   readonly output: Out;
   /** The datum after this layer stamped its floor-tag and appended to the trace. */

@@ -18,6 +18,9 @@ export {
   STORE_SCOPE,
   CONTEXT_ANCHOR_DEPTH,
   COMMIT_CADENCE,
+  COMMIT_EVERY,
+  SNAPSHOTS_RETAINED,
+  MIN_SNAPSHOTS_RETAINED,
   OPEN_TAG_REGISTRY,
   OPEN_TAG_DEFINITIONS,
 } from "./decisions.js";
@@ -88,3 +91,9 @@ export {
   createDataStore,
   type DataStore,
 } from "./data-store.js";
+
+export {
+  createDirCommitStore,
+  type CommitStore,
+  type CommitMarker,
+} from "./commit-store.js";

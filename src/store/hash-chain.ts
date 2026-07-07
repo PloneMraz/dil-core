@@ -17,8 +17,9 @@
  *   - This protects the log AT REST. In-process tampering defeats any
  *     in-process check by definition; the in-memory log's guard remains
  *     deep-freeze + no-mutation API.
- *   - This is NOT the §9 full-system commit/snapshot (loop configuration,
- *     layer state, recovery) — that remains deferred (decisions.ts).
+ *   - The §9 full-system commit/snapshot is the commit repo's job
+ *     (commit-store.ts); its markers pin this chain's head, and an external
+ *     copy of a marker anchors the whole chain.
  *
  * Canonicalization: the hash covers `JSON.stringify(record)`. Records are
  * built with fixed key order (serializeEventRecord) and JSON round-trips

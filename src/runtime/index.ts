@@ -31,3 +31,5 @@ export {
   type CollisionCoordinate,
   type ReflectionReading,
 } from "./reflection.js";
+
+export { takeSnapshot, restoreSnapshot, type SystemSnapshot } from "./commit.js";

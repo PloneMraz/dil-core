@@ -8,7 +8,7 @@
  * and the model degenerates. State accrues per entity (INV-5).
  */
 
-import type { LayerSpec } from "../layer.js";
+import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { OtherModel } from "../types.js";
 import type { T5Result } from "./t5.js";
 
@@ -36,11 +36,18 @@ interface EntityState {
   observations: number;
 }
 
-export function createT6(): LayerSpec<T6Input, T6Output> {
+export function createT6(): LayerSpec<T6Input, T6Output> & Snapshottable {
   const state = new Map<string, EntityState>();
 
   return {
     index: 6,
+    // §9 snapshot surface (recovery-only restore; see Snapshottable).
+    snapshot: () => ({ entities: [...state.entries()] }),
+    restore(snap: unknown): void {
+      const s = snap as { entities: [string, EntityState][] };
+      state.clear();
+      for (const [k, v] of s.entities) state.set(k, v);
+    },
     // T6 consumes T5's results AND T2's agency tags (the env-pushed evidence);
     // under multi-stream it reads both from the meaning-channel itself, rather
     // than having the T2 digest smuggled in by the driver.

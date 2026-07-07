@@ -11,7 +11,7 @@
  * least `minObservationsToExpect` times is expected next cycle.
  */
 
-import type { LayerSpec } from "../layer.js";
+import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { InfoUnit, PredErr } from "../types.js";
 
 export interface T7Input {
@@ -35,13 +35,20 @@ interface ExpectState {
   seen: number;
 }
 
-export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> {
+export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> & Snapshottable {
   const minSeen = opts.minObservationsToExpect ?? 1;
   const expected = new Map<string, ExpectState>();
 
   return {
     index: 7,
     consumes: [5],
+    // §9 snapshot surface (recovery-only restore; see Snapshottable).
+    snapshot: () => ({ expected: [...expected.entries()] }),
+    restore(state: unknown): void {
+      const s = state as { expected: [string, ExpectState][] };
+      expected.clear();
+      for (const [k, v] of s.expected) expected.set(k, v);
+    },
     process(input): T7Output {
       // Accrue this cycle's expectations into memory.
       for (const e of input.expectations) {

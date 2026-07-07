@@ -13,7 +13,7 @@
  * confidence ramps over SUFFICIENT_RECURRENCE.
  */
 
-import type { LayerSpec } from "../layer.js";
+import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
@@ -41,7 +41,7 @@ function contentEqual(a: InfoUnit, b: InfoUnit): boolean {
   return JSON.stringify(a.content) === JSON.stringify(b.content);
 }
 
-export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> {
+export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & Snapshottable {
   const windowSize = opts.baselineWindow ?? BASELINE_WINDOW;
   const recurrence = opts.sufficientRecurrence ?? SUFFICIENT_RECURRENCE;
 
@@ -52,6 +52,15 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> {
   return {
     index: 5,
     consumes: [4],
+    // §9 snapshot surface (recovery-only restore; see Snapshottable).
+    snapshot: () => ({ windows: [...windows.entries()], counts: [...counts.entries()] }),
+    restore(state: unknown): void {
+      const s = state as { windows: [string, InfoUnit[]][]; counts: [string, number][] };
+      windows.clear();
+      for (const [k, v] of s.windows) windows.set(k, v);
+      counts.clear();
+      for (const [k, v] of s.counts) counts.set(k, v);
+    },
     process(input): T5Output {
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;

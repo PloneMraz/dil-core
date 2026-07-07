@@ -17,7 +17,7 @@
  */
 
 import { assertAgencyClassified } from "../../invariants/guards.js";
-import type { LayerSpec } from "../layer.js";
+import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { ActivityEnvironment, AgencyTag } from "../types.js";
 import { MATCHING_WINDOW, STABILITY_THRESHOLD } from "../decisions.js";
 
@@ -60,7 +60,7 @@ function jsonEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> {
+export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & Snapshottable {
   const window = opts.window ?? MATCHING_WINDOW;
   const stability = opts.stabilityThreshold ?? STABILITY_THRESHOLD;
   const matches = opts.matches ?? jsonEqual;
@@ -72,6 +72,14 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> {
   return {
     index: 2,
     consumes: [1],
+    // §9 snapshot surface (recovery-only restore; see Snapshottable).
+    snapshot: () => ({ recentEmissions: [...recentEmissions], cyclesRun }),
+    restore(state: unknown): void {
+      const s = state as { recentEmissions: unknown[]; cyclesRun: number };
+      recentEmissions.length = 0;
+      recentEmissions.push(...s.recentEmissions);
+      cyclesRun = s.cyclesRun;
+    },
     process(input): T2Output {
       // Accrue this cycle's emission into the bounded matching window.
       recentEmissions.push(input.emitted.action);
