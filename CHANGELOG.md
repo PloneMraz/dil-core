@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — fix: §13.4 detail is fork-aware
+**Commit:** `afa92cd`
+
+Sau recovery, cycle mới hợp lệ đi lại các số cycle cũ — cycle-mark không đơn điệu trong log không tự động là "accrual hỏng": detail của §13.4 giờ hướng auditor đối chiếu commit DAG (fork marker mang `recoveredFrom`). Verdict không đổi (§13.4 partial by design). Tổng duyệt cuối chạy sạch: 177/177 tests; run đa nguồn 6 pass / 1 partial / 0 fail.
+
+---
+
 ### — feat: §9 commit/snapshot/recovery — git-style markers, scar rhythm, rollback
 **Commit:** `ec8d591`
 
