@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — feat: precondition gate probes E3/E4 — evidence-graded verdicts
+**Commit:** `eeff8e7`
+
+Each gate verdict now carries a basis: `probed` (the gate exercised a host-declared handle — StoreProbe marker round-trip for E3/P(b), TraceProbe marker read-back for E4) or `declared` (requisition's designed mechanism, graded honestly). Evidence beats claim: a failing/throwing probe fails a true declaration; a negative declaration is not overruled by a working probe. E1/E2/P(a)/P(c) stay declaration-based with declared reasons (E2: idle is the default — a silent probe window proves nothing; P(c): testing self-wipe means inducing a mismatch, i.e. running). §13.2 surfaces probed/declared counts. 151 tests.
+
+---
+
 ### — docs: README — split open items into deferred vs deployment-open
 **Commit:** `9b7ed8d`
 
