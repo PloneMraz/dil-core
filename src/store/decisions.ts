@@ -42,8 +42,8 @@ export const EVENT_DURABILITY =
  * (a durable daemon is configured by passing a sink-backed [event] log); each
  * appended record is mirrored to disk, fsynced, one immutable line per record,
  * with tags serialized in the fixed order. The default stays in-memory so tests
- * need no filesystem. This provides DURABILITY only — tamper-evidence
- * (content-addressed / hash-chained markers) remains deferred (COMMIT_CADENCE).
+ * need no filesystem. This provides DURABILITY; tamper-evidence at rest is
+ * provided by the hash chain (EVENT_TAMPER_EVIDENCE below).
  */
 
 /** DECIDE@IMPL tag F — write policy for the [event] log. */
@@ -100,11 +100,26 @@ export const CONTEXT_ANCHOR_DEPTH = "full-field-state" as const;
  * storage cost for audit fidelity — the chosen trade for this host.
  */
 
+/** DECIDE@IMPL tag F — tamper-evidence of the persisted [event] log. */
+export const EVENT_TAMPER_EVIDENCE =
+  "sha256 hash chain over the JSONL sink lines (hash-chain.ts): each line carries seq + prev + hash; verifyJsonlSink detects any altered, removed, inserted, or reordered line; the chain resumes across restarts" as const;
+/**
+ * Rationale + honest limits: sha256 via node:crypto (built-in, no dependency).
+ * Detection is relative to a trusted head — a party with full write access can
+ * rewrite the whole chain consistently, so a deployment anchors the sink's
+ * head() outside its own write reach (publish to the user, an external log);
+ * that anchoring is deployment-open, like tag D. In-process tampering is out of
+ * scope by definition (the in-memory guard remains deep-freeze + no-mutation
+ * API). This is NOT the §9 full-system commit/snapshot (COMMIT_CADENCE below).
+ */
+
 /**
  * DECIDE@IMPL — commit/snapshot cadence (protocol §9: events between commits;
- * snapshots retained). DEFERRED: not yet implemented. The commit counter and
- * content-addressed snapshot marker (which also provides the stronger,
- * tamper-evident guarantee beyond in-memory freezing) are a later sub-step.
- * Left open here rather than filled with an invented number.
+ * snapshots retained; the snapshot covers the ENTIRE system — loop
+ * configuration, layer state, field parameters — with full-system recovery).
+ * DEFERRED: layer state is not yet serializable, so the full-system snapshot
+ * cannot be built without faking it. The log's tamper-evidence shipped
+ * separately (EVENT_TAMPER_EVIDENCE above) and does not pretend to be this.
+ * Left open rather than filled with an invented number.
  */
 export const COMMIT_CADENCE = "DEFERRED" as const;

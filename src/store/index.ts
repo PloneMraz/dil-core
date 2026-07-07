@@ -12,6 +12,7 @@ export {
   INDEX_KEYS,
   EVENT_WRITE_POLICY,
   EVENT_DURABILITY,
+  EVENT_TAMPER_EVIDENCE,
   STORE_SCOPE,
   CONTEXT_ANCHOR_DEPTH,
   COMMIT_CADENCE,
@@ -52,10 +53,21 @@ export {
   createJsonlFileSink,
   serializeEventRecord,
   readJsonlSink,
+  readChainedLines,
+  verifyJsonlSink,
   type EventSink,
   type FileEventSink,
   type SerializedEventRecord,
 } from "./event-sink.js";
+
+export {
+  CHAIN_GENESIS,
+  chainNext,
+  hashChainEntry,
+  verifyChain,
+  type ChainedEventLine,
+  type ChainVerification,
+} from "./hash-chain.js";
 
 export { displayName, eventDisplayName } from "./display-name.js";
 
