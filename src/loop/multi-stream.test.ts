@@ -92,7 +92,8 @@ test("behaviour is unchanged across the switch: a multi-stream collision still s
   const r1 = cycle.run({ signals: [weather("rain")], changes: [] }); // multi-stream mismatch
   assert.equal(r1.flow, "multi-stream");
   assert.ok(r1.scars >= 1);
-  assert.equal(events.all()[0]!.scar.open.flow, "multi-stream"); // the scar carries the mode
+  const scar = events.all().find((x): x is import("../store/resist-event.js").EventRecord => x.kind === "scar")!;
+  assert.equal(scar.scar.open.flow, "multi-stream"); // the scar carries the mode
 });
 
 // ── Consumption, not dispatch ───────────────────────────────────────────────

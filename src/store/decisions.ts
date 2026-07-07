@@ -100,6 +100,22 @@ export const CONTEXT_ANCHOR_DEPTH = "full-field-state" as const;
  * storage cost for audit fidelity — the chosen trade for this host.
  */
 
+/** DECIDE@IMPL tag F — [event] log length policy and segmentation. */
+export const MAX_SEGMENT_BYTES = 64 * 1024 * 1024;
+export const EVENT_LOG_SEGMENTATION =
+  "daily segments `event-log-yyyymmdd.jsonl`, overflowing to `-002`, `-003`… when a segment would exceed MAX_SEGMENT_BYTES; records never split across files; the hash chain continues across segments" as const;
+/**
+ * Rationale + law: the log itself has NO maximum length — records, once
+ * written, are never altered or removed (§9), so any "full → truncate" policy
+ * is flatly forbidden, and snapshots never license pruning pre-snapshot
+ * records. What IS managed is the single-file size: MAX_SEGMENT_BYTES (64 MiB
+ * — a tunable starting value, NOT derived; it bounds verify-time memory and
+ * keeps segments tooling-friendly) rotates to a new file. A closed segment is
+ * immutable and may be archived to cold storage (deployment-open, never
+ * deleted). An append failure (e.g. disk full) throws and halts the loop —
+ * a record is never dropped to keep running.
+ */
+
 /** DECIDE@IMPL tag F — tamper-evidence of the persisted [event] log. */
 export const EVENT_TAMPER_EVIDENCE =
   "sha256 hash chain over the JSONL sink lines (hash-chain.ts): each line carries seq + prev + hash; verifyJsonlSink detects any altered, removed, inserted, or reordered line; the chain resumes across restarts" as const;

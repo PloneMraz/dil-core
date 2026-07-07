@@ -2,8 +2,10 @@
  * Smoke test — the durable [event] sink (protocol §9).
  *
  * Fixed checks: records survive a sink reopen (durability across the process);
- * the sink surface offers no mutation path (write-once by construction); and a
- * serialized record round-trips with its full tag set intact and in fixed order.
+ * the sink surface offers no mutation path (write-once by construction); a
+ * serialized record round-trips with its full tag set intact and in fixed
+ * order (both kinds: scar and activity); daily/size segmentation rotates
+ * without ever splitting or rewriting a record.
  */
 
 import { test } from "node:test";
@@ -12,11 +14,23 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createJsonlFileSink, readJsonlSink, serializeEventRecord } from "./event-sink.js";
+import {
+  createJsonlFileSink,
+  readJsonlSink,
+  listSegments,
+  serializeEventRecord,
+  verifyJsonlSink,
+} from "./event-sink.js";
 import { createEventLog } from "./event-log.js";
 import { admitHostData } from "./tagging-gate.js";
 import { toRunning, toScar, stampLayer } from "./data-store.js";
-import { recordScar, type EventRecord, type ContextAnchor } from "./resist-event.js";
+import {
+  recordScar,
+  recordActivity,
+  type EventRecord,
+  type ActivityRecord,
+  type ContextAnchor,
+} from "./resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
 
 const open = { domain: "weather", format: "json", platform: "cli" };
@@ -35,54 +49,63 @@ function makeRecord(source_id = "s1"): EventRecord {
   );
 }
 
-function tmpFile(): string {
-  return path.join(os.tmpdir(), `dil-sink-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.jsonl`);
+/** Build a per-cycle activity record. */
+function makeActivity(cycle = 2): ActivityRecord {
+  let d = admitHostData({ payload: "cyc", admittingLayer: 1, open }, cycle);
+  d = toRunning(d, cycle);
+  d = stampLayer(d, 8);
+  return recordActivity(
+    d,
+    { cycle, flow: "multi-stream", emitted: "respond", observed: ["weather"], scars: 0, t: cycle },
+    anchor,
+  );
+}
+
+function tmpDir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "dil-sink-"));
 }
 
 test("records survive a sink reopen (durability across the process)", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    const sink1 = createJsonlFileSink(file);
+    const sink1 = createJsonlFileSink(dir);
     sink1.write(makeRecord("a"));
     sink1.write(makeRecord("b"));
     sink1.close();
 
     // reopen: a fresh sink appends after the existing records, never truncating
-    const sink2 = createJsonlFileSink(file);
+    const sink2 = createJsonlFileSink(dir);
     sink2.write(makeRecord("c"));
     sink2.close();
 
-    const back = readJsonlSink(file);
+    const back = readJsonlSink(dir);
     assert.equal(back.length, 3);
-    assert.deepEqual(back.map((r) => r.event.source_id), ["a", "b", "c"]);
+    assert.deepEqual(back.map((r) => r.event!.source_id), ["a", "b", "c"]);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("the sink surface exposes no mutation path (write-once by construction)", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    const sink = createJsonlFileSink(file);
+    const sink = createJsonlFileSink(dir);
     const keys = Object.keys(sink);
-    assert.ok(!keys.includes("update"));
-    assert.ok(!keys.includes("delete"));
-    assert.ok(!keys.includes("remove"));
-    assert.ok(!keys.includes("truncate"));
-    assert.ok(!keys.includes("rewrite"));
-    // only write (+ close for the fd) exist
+    for (const forbidden of ["update", "delete", "remove", "truncate", "rewrite"]) {
+      assert.ok(!keys.includes(forbidden));
+    }
     assert.ok(keys.includes("write"));
     sink.close();
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("a serialized record round-trips with tags intact and in fixed order", () => {
+test("a scar record round-trips with tags intact and in fixed order", () => {
   const rec = makeRecord("s");
   const serialized = serializeEventRecord(rec);
-  // fixed order: timestamp, cycle-mark, provenance, floor-tag, open, layer_trace, ...
   assert.deepEqual(Object.keys(serialized), [
+    "kind",
     "timestamp",
     "cycleMark",
     "provenance",
@@ -93,42 +116,115 @@ test("a serialized record round-trips with tags intact and in fixed order", () =
     "event",
     "anchor",
   ]);
-  // tags intact
+  assert.equal(serialized.kind, "scar");
   assert.equal(serialized.provenance, "scar");
   assert.equal(serialized.floorTag, 7);
   assert.equal(serialized.open.domain, "weather");
   assert.deepEqual(serialized.layer_trace, [1, 7]);
 
-  // round-trip through the file preserves the same key order and values
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    const sink = createJsonlFileSink(file);
+    const sink = createJsonlFileSink(dir);
     sink.write(rec);
     sink.close();
-    const [back] = readJsonlSink(file);
+    const [back] = readJsonlSink(dir);
     assert.deepEqual(Object.keys(back!), Object.keys(serialized));
     assert.equal(back!.open.domain, "weather");
     assert.deepEqual(back!.layer_trace, [1, 7]);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("createEventLog mirrors every appended record to the sink at append time", () => {
-  const file = tmpFile();
+test("an activity record round-trips with the same fixed-order tag set", () => {
+  const rec = makeActivity(4);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), [
+    "kind",
+    "timestamp",
+    "cycleMark",
+    "provenance",
+    "floorTag",
+    "open",
+    "layer_trace",
+    "payload",
+    "activity",
+    "anchor",
+  ]);
+  assert.equal(serialized.kind, "activity");
+  assert.equal(serialized.provenance, "running");
+  assert.equal(serialized.activity!.cycle, 4);
+
+  const dir = tmpDir();
   try {
-    const sink = createJsonlFileSink(file);
+    const sink = createJsonlFileSink(dir);
+    sink.write(rec);
+    sink.close();
+    const [back] = readJsonlSink(dir);
+    assert.equal(back!.kind, "activity");
+    assert.equal(back!.activity!.flow, "multi-stream");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("createEventLog mirrors every appended record (both kinds) to the sink", () => {
+  const dir = tmpDir();
+  try {
+    const sink = createJsonlFileSink(dir);
     const log = createEventLog(sink);
     log.append(makeRecord("x"));
-    log.append(makeRecord("y"));
+    log.append(makeActivity(3));
     sink.close();
 
-    // in-memory log and durable file agree
     assert.equal(log.size(), 2);
-    const back = readJsonlSink(file);
-    assert.deepEqual(back.map((r) => r.event.source_id), ["x", "y"]);
+    const back = readJsonlSink(dir);
+    assert.deepEqual(back.map((r) => r.kind), ["scar", "activity"]);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("segments are daily-named and rotate on the size cap without splitting a record", () => {
+  const dir = tmpDir();
+  try {
+    // a tiny cap forces rotation after every record
+    const sink = createJsonlFileSink(dir, { maxSegmentBytes: 700, dateStamp: () => "20260707" });
+    sink.write(makeRecord("a"));
+    sink.write(makeRecord("b"));
+    sink.write(makeRecord("c"));
+    sink.close();
+
+    const segs = listSegments(dir);
+    assert.ok(segs.length >= 2); // the cap forced overflow segments
+    assert.ok(segs[0]!.file.endsWith("event-log-20260707.jsonl"));
+    assert.ok(segs[1]!.file.endsWith("event-log-20260707-002.jsonl"));
+    // every line is a whole record; the chain verifies across segments
+    const v = verifyJsonlSink(dir);
+    assert.ok(v.ok);
+    if (v.ok) assert.equal(v.count, 3);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a date change opens a new daily segment and the chain spans both days", () => {
+  const dir = tmpDir();
+  try {
+    let today = "20260707";
+    const sink = createJsonlFileSink(dir, { dateStamp: () => today });
+    sink.write(makeRecord("a"));
+    today = "20260708"; // midnight passes
+    sink.write(makeRecord("b"));
+    sink.close();
+
+    const segs = listSegments(dir);
+    assert.deepEqual(segs.map((s) => s.date), ["20260707", "20260708"]);
+    const v = verifyJsonlSink(dir);
+    assert.ok(v.ok);
+    if (v.ok) assert.equal(v.count, 2);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 

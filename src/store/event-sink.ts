@@ -2,29 +2,31 @@
  * EventSink — durable, write-once mirroring of the [event] log (protocol §9).
  *
  * The in-memory [event] log is append-only with read-only records, but it dies
- * with the process. For the log to be audit-ready in the strong sense — a trace
- * a third party can read *after* the run — records must also be persisted. An
- * EventSink is that persistence: an append-only, WRITE-ONCE surface. It exposes
- * `write` and nothing else — there is, by construction, no method to update,
- * delete, or truncate a record.
+ * with the process. An EventSink is the persistence: an append-only, WRITE-ONCE
+ * surface — `write` and nothing else; no update, delete, or truncate exists.
  *
- * The JSONL file sink writes one immutable record per line and fsyncs each
- * append; it opens the file for append only, so it can never rewrite or
- * truncate. On restart it may only append — and it CONTINUES the hash chain
- * from the existing last line, so the chain spans restarts.
+ * The JSONL sink writes into a DIRECTORY of daily segments:
+ *   event-log-YYYYMMDD.jsonl, overflowing to -002, -003… when a segment would
+ *   exceed MAX_SEGMENT_BYTES (records are never split across files). Segments
+ *   are opened append-only and never rewritten or truncated; the hash chain
+ *   (hash-chain.ts) continues ACROSS segments and restarts, so the whole
+ *   directory verifies as one chain. No segment is ever pruned — records, once
+ *   written, are never removed (§9); an append failure (e.g. disk full) throws,
+ *   halting the loop rather than dropping a record. Archival of closed segments
+ *   is deployment-open.
  *
- * Enforcement boundary (honest scope): this gives DURABILITY (records survive
- * the process) and TAMPER-EVIDENCE at rest (each line is hash-chained,
- * hash-chain.ts; verifyJsonlSink detects any altered, removed, inserted, or
- * reordered line). It does NOT defeat a total rewrite by a party with full
- * write access — that requires anchoring the chain head outside their reach,
- * which is deployment-open — and it is NOT the §9 full-system commit/snapshot,
- * which remains deferred (store/decisions.ts COMMIT_CADENCE).
+ * Enforcement boundary (honest scope): durability + tamper-evidence at rest
+ * (verifyJsonlSink detects any altered, removed, inserted, or reordered line).
+ * A total rewrite by a party with full write access requires anchoring the
+ * chain head outside their reach (deployment-open). NOT the §9 full-system
+ * commit/snapshot, which remains deferred (decisions.ts COMMIT_CADENCE).
  */
 
 import * as fs from "node:fs";
-import type { EventRecord, ResistEvent, ContextAnchor } from "./resist-event.js";
-import type { LayerTrace, OpenTags, Provenance } from "./tags.js";
+import * as path from "node:path";
+import type { LogRecord, ResistEvent, ActivityEvent, ContextAnchor } from "./resist-event.js";
+import type { LayerTrace, OpenTags, Provenance, TaggedDatum } from "./tags.js";
+import { MAX_SEGMENT_BYTES } from "./decisions.js";
 import {
   CHAIN_GENESIS,
   chainNext,
@@ -34,11 +36,13 @@ import {
 } from "./hash-chain.js";
 
 /**
- * A record serialized WITH its full tag set, in the fixed order:
- * timestamp, cycle-mark, provenance, floor-tag, open tags (incl. domain),
- * layer_trace — then the payload, the ResistEvent, and the context anchor.
+ * A record serialized WITH its full tag set, in the fixed order after the kind
+ * discriminator: timestamp, cycle-mark, provenance, floor-tag, open tags
+ * (incl. domain), layer_trace — then the payload, the kind-specific body
+ * (ResistEvent or ActivityEvent), and the context anchor.
  */
 export interface SerializedEventRecord {
+  readonly kind: "scar" | "activity";
   readonly timestamp: number;
   readonly cycleMark: number | null;
   readonly provenance: Provenance;
@@ -46,22 +50,25 @@ export interface SerializedEventRecord {
   readonly open: OpenTags;
   readonly layer_trace: LayerTrace;
   readonly payload: unknown;
-  readonly event: ResistEvent;
+  readonly event?: ResistEvent;
+  readonly activity?: ActivityEvent;
   readonly anchor: ContextAnchor;
 }
 
-/** Project an EventRecord into its serialized form, tags in fixed order. */
-export function serializeEventRecord(rec: EventRecord): SerializedEventRecord {
-  const f = rec.scar.fixed;
+/** Project a LogRecord into its serialized form, tags in fixed order. */
+export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
+  const datum: TaggedDatum = rec.kind === "activity" ? rec.datum : rec.scar;
+  const f = datum.fixed;
   return {
+    kind: rec.kind,
     timestamp: f.timestamp,
     cycleMark: f.cycleMark,
     provenance: f.provenance,
     floorTag: f.floorTag,
-    open: rec.scar.open,
-    layer_trace: rec.scar.trace,
-    payload: rec.scar.payload,
-    event: rec.event,
+    open: datum.open,
+    layer_trace: datum.trace,
+    payload: datum.payload,
+    ...(rec.kind === "scar" ? { event: rec.event } : { activity: rec.activity }),
     anchor: rec.anchor,
   };
 }
@@ -71,10 +78,10 @@ export function serializeEventRecord(rec: EventRecord): SerializedEventRecord {
  * `write` — no update, delete, or truncate exists to be called.
  */
 export interface EventSink {
-  write(record: EventRecord): void;
+  write(record: LogRecord): void;
 }
 
-/** A JSONL file sink also exposes an explicit close and the current chain head. */
+/** A JSONL directory sink also exposes close and the current chain head. */
 export interface FileEventSink extends EventSink {
   close(): void;
   /**
@@ -84,71 +91,143 @@ export interface FileEventSink extends EventSink {
   head(): string;
 }
 
+export interface JsonlSinkOptions {
+  /** Segment size cap in bytes (DECIDE@IMPL MAX_SEGMENT_BYTES by default). */
+  readonly maxSegmentBytes?: number;
+  /** UTC yyyymmdd stamp provider — a seam for tests and deployments. */
+  readonly dateStamp?: () => string;
+}
+
+function utcStamp(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+const SEGMENT_RE = /^event-log-(\d{8})(?:-(\d{3}))?\.jsonl$/;
+
+interface Segment {
+  readonly file: string;
+  readonly date: string;
+  readonly seq: number;
+}
+
+/** All segments in the directory, ordered by (date, seq). */
+export function listSegments(dir: string): Segment[] {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .map((name) => {
+      const m = SEGMENT_RE.exec(name);
+      return m ? { file: path.join(dir, name), date: m[1]!, seq: m[2] ? Number(m[2]) : 1 } : null;
+    })
+    .filter((s): s is Segment => s !== null)
+    .sort((a, b) => (a.date === b.date ? a.seq - b.seq : a.date < b.date ? -1 : 1));
+}
+
+function segmentName(date: string, seq: number): string {
+  return seq === 1 ? `event-log-${date}.jsonl` : `event-log-${date}-${String(seq).padStart(3, "0")}.jsonl`;
+}
+
 /**
- * Create a JSONL append-only file sink. Opens the file in append mode (`a`), so
- * it can never rewrite or truncate existing content; each `write` appends one
- * hash-chained line and fsyncs it to durable storage. On a fresh process it
- * opens the same file, resumes the chain from the last existing line, and
- * appends after it. If the existing tail cannot be parsed, opening THROWS
- * rather than appending past corruption and burying the evidence.
+ * Create the segmented JSONL sink over a directory. Resumes the chain from the
+ * last line of the last segment; refuses to open on an unparsable tail rather
+ * than appending past corruption and burying the evidence.
  */
-export function createJsonlFileSink(filePath: string): FileEventSink {
-  // Resume the chain from the existing file, if any.
+export function createJsonlFileSink(dir: string, opts: JsonlSinkOptions = {}): FileEventSink {
+  const cap = opts.maxSegmentBytes ?? MAX_SEGMENT_BYTES;
+  const stamp = opts.dateStamp ?? utcStamp;
+  fs.mkdirSync(dir, { recursive: true });
+
+  // Resume the chain from the existing segments, if any.
   let seq = 0;
   let prev = CHAIN_GENESIS;
-  const existing = readChainedLines(filePath);
-  if (existing.length > 0) {
-    const last = existing[existing.length - 1]!;
-    if (typeof last.hash !== "string" || typeof last.seq !== "number") {
-      throw new Error(
-        `event sink: cannot resume chain in ${filePath} — unparsable tail; refusing to append past corruption`,
-      );
+  const existing = listSegments(dir);
+  const lastSeg = existing[existing.length - 1];
+  if (lastSeg) {
+    const lines = readSegmentLines(lastSeg.file);
+    const last = lines[lines.length - 1];
+    if (last) {
+      if (typeof last.hash !== "string" || typeof last.seq !== "number") {
+        throw new Error(
+          `event sink: cannot resume chain in ${lastSeg.file} — unparsable tail; refusing to append past corruption`,
+        );
+      }
+      seq = last.seq + 1;
+      prev = last.hash;
     }
-    seq = last.seq + 1;
-    prev = last.hash;
   }
 
-  const fd = fs.openSync(filePath, "a"); // append-only; never truncates
+  let fd: number | null = null;
+  let currentDate = "";
+  let currentSeq = 0;
+  let currentBytes = 0;
+
+  /** Open (or continue) the right segment for `date`, respecting the cap. */
+  function openSegment(date: string, lineBytes: number): void {
+    if (fd !== null) fs.closeSync(fd);
+    // Continue the day's highest segment if it still has room; else the next.
+    const todays = listSegments(dir).filter((s) => s.date === date);
+    const tail = todays[todays.length - 1];
+    let target: Segment;
+    if (tail && fs.statSync(tail.file).size + lineBytes <= cap) {
+      target = tail;
+    } else {
+      target = { file: path.join(dir, segmentName(date, (tail?.seq ?? 0) + 1)), date, seq: (tail?.seq ?? 0) + 1 };
+    }
+    fd = fs.openSync(target.file, "a"); // append-only; never truncates
+    currentDate = date;
+    currentSeq = target.seq;
+    currentBytes = fs.fstatSync(fd).size;
+  }
+
   return {
-    write(record: EventRecord): void {
-      const line = chainNext(prev, seq, serializeEventRecord(record));
-      fs.writeSync(fd, JSON.stringify(line) + "\n");
-      fs.fsyncSync(fd); // durability: flush to disk before returning
-      prev = line.hash;
+    write(record: LogRecord): void {
+      const chained = chainNext(prev, seq, serializeEventRecord(record));
+      const line = JSON.stringify(chained) + "\n";
+      const lineBytes = Buffer.byteLength(line, "utf8");
+      const today = stamp();
+      // Rotate on date change or when the segment would exceed the cap; a
+      // record is never split across files.
+      if (fd === null || today !== currentDate || currentBytes + lineBytes > cap) {
+        openSegment(today, lineBytes);
+      }
+      fs.writeSync(fd!, line);
+      fs.fsyncSync(fd!); // durability: flush to disk before returning
+      currentBytes += lineBytes;
+      prev = chained.hash;
       seq += 1;
+      void currentSeq;
     },
     close(): void {
-      fs.closeSync(fd);
+      if (fd !== null) fs.closeSync(fd);
+      fd = null;
     },
     head: () => prev,
   };
 }
 
-/**
- * Read back the chained lines a JSONL sink has written. Never mutates the file.
- */
-export function readChainedLines(filePath: string): ChainedEventLine[] {
-  if (!fs.existsSync(filePath)) return [];
+function readSegmentLines(file: string): ChainedEventLine[] {
   return fs
-    .readFileSync(filePath, "utf8")
+    .readFileSync(file, "utf8")
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line) => JSON.parse(line) as ChainedEventLine);
 }
 
-/**
- * Read back the serialized records (chain envelope unwrapped), tags in fixed
- * order. Reading is a separate concern from the write-once sink.
- */
-export function readJsonlSink(filePath: string): SerializedEventRecord[] {
-  return readChainedLines(filePath).map((line) => line.record);
+/** All chained lines across the directory's segments, in chain order. */
+export function readChainedLines(dir: string): ChainedEventLine[] {
+  return listSegments(dir).flatMap((s) => readSegmentLines(s.file));
+}
+
+/** All serialized records (chain envelope unwrapped), tags in fixed order. */
+export function readJsonlSink(dir: string): SerializedEventRecord[] {
+  return readChainedLines(dir).map((line) => line.record);
 }
 
 /**
- * Verify the whole chain in a sink file: detects any altered, removed,
- * inserted, or reordered line (relative to a trusted head — see hash-chain.ts
- * for the honest scope). Returns the head hash on success.
+ * Verify the whole chain across all segments: detects any altered, removed,
+ * inserted, or reordered line (relative to a trusted head — hash-chain.ts).
  */
-export function verifyJsonlSink(filePath: string): ChainVerification {
-  return verifyChain(readChainedLines(filePath));
+export function verifyJsonlSink(dir: string): ChainVerification {
+  return verifyChain(readChainedLines(dir));
 }

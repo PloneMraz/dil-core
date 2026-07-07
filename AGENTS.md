@@ -88,7 +88,7 @@ Two that bite hardest in code:
 (Protocol §9; `CONTEXT.md` §7.)
 
 - `[data]` is mutable, overwritten each cycle. `[event]` is **append-only, records read-only**: new records may be appended; **no record, once written, is ever altered or removed** — not by the loop, not by anything, not by a third party that compromised the rest of the system.
-- The **ResistEvent** (a registered mismatch, not a document) is the store's atomic unit.
+- The **ResistEvent** (a registered mismatch, not a document) is the atomic unit of **experience**; each cycle additionally leaves an **activity record** in the `[event]` log (trace, not experience — no layer learns from it).
 - Four fixed tags, in order, never stripped or reordered: (1) timestamp, (2) cycle-mark, (3) provenance (`prior`/`running`/`scar`), (4) floor-tag. Their values change only under defined rules; the floor-tag is a single slot that **updates** to the layer just exited ("where is it now"). Every layer T1–T8 stamps it; no pass-through layers. The full path lives in a separate `layer_trace` ("where has it been"), appended at each layer for audit.
 - **Tagging-gate, no side door.** Host data enters only stamped provenance `prior`. Untagged data MUST NOT enter the loop.
 - Each `[event]` MUST anchor the **context** of its cycle, so a third party can re-appraise it later without borrowing the present context.

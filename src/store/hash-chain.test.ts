@@ -1,7 +1,7 @@
 /**
  * Smoke test — tamper-evidence of the [event] sink (hash chain).
  *
- * Fixed checks: an intact file verifies with a stable head; ANY altered,
+ * Fixed checks: an intact directory verifies with a stable head; ANY altered,
  * removed, inserted, or reordered line is detected at the break point; the
  * chain resumes across a reopen (restart-append) and still verifies; opening a
  * sink on a corrupt tail refuses rather than appending past the evidence.
@@ -13,7 +13,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createJsonlFileSink, verifyJsonlSink, readChainedLines } from "./event-sink.js";
+import { createJsonlFileSink, verifyJsonlSink, readChainedLines, listSegments } from "./event-sink.js";
 import { CHAIN_GENESIS, chainNext } from "./hash-chain.js";
 import { admitHostData } from "./tagging-gate.js";
 import { toRunning, toScar, stampLayer } from "./data-store.js";
@@ -35,145 +35,155 @@ function makeRecord(source_id: string, received: string): EventRecord {
   );
 }
 
-function tmpFile(): string {
-  return path.join(os.tmpdir(), `dil-chain-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.jsonl`);
+function tmpDir(): string {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "dil-chain-"));
 }
 
-function writeThree(file: string): void {
-  const sink = createJsonlFileSink(file);
+/** The single segment file after a small same-day run. */
+function onlySegment(dir: string): string {
+  const segs = listSegments(dir);
+  assert.equal(segs.length, 1);
+  return segs[0]!.file;
+}
+
+function writeThree(dir: string): void {
+  const sink = createJsonlFileSink(dir);
   sink.write(makeRecord("a", "rain"));
   sink.write(makeRecord("b", "snow"));
   sink.write(makeRecord("c", "hail"));
   sink.close();
 }
 
-test("an intact chained file verifies, with a 64-hex head", () => {
-  const file = tmpFile();
+test("an intact chained directory verifies, with a 64-hex head", () => {
+  const dir = tmpDir();
   try {
-    writeThree(file);
-    const v = verifyJsonlSink(file);
+    writeThree(dir);
+    const v = verifyJsonlSink(dir);
     assert.ok(v.ok);
     if (v.ok) {
       assert.equal(v.count, 3);
       assert.match(v.head, /^[0-9a-f]{64}$/);
     }
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("altering one byte of a middle line is detected at that line", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    writeThree(file);
-    const tampered = fs.readFileSync(file, "utf8").replace('"snow"', '"SNOW"');
-    fs.writeFileSync(file, tampered); // the adversary's edit, not the sink's
-    const v = verifyJsonlSink(file);
+    writeThree(dir);
+    const file = onlySegment(dir);
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace('"snow"', '"SNOW"'));
+    const v = verifyJsonlSink(dir);
     assert.ok(!v.ok);
     if (!v.ok) {
       assert.equal(v.atLine, 1);
       assert.ok(v.reason.includes("content break"));
     }
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("removing a line is detected (sequence break)", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    writeThree(file);
+    writeThree(dir);
+    const file = onlySegment(dir);
     const lines = fs.readFileSync(file, "utf8").split("\n").filter((l) => l.length > 0);
     fs.writeFileSync(file, [lines[0], lines[2]].join("\n") + "\n");
-    const v = verifyJsonlSink(file);
+    const v = verifyJsonlSink(dir);
     assert.ok(!v.ok);
     if (!v.ok) assert.equal(v.atLine, 1);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("reordering two lines is detected", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    writeThree(file);
+    writeThree(dir);
+    const file = onlySegment(dir);
     const lines = fs.readFileSync(file, "utf8").split("\n").filter((l) => l.length > 0);
     fs.writeFileSync(file, [lines[1], lines[0], lines[2]].join("\n") + "\n");
-    const v = verifyJsonlSink(file);
+    const v = verifyJsonlSink(dir);
     assert.ok(!v.ok);
     if (!v.ok) assert.equal(v.atLine, 0);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("a forged appended line with a wrong prev is detected", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    writeThree(file);
-    // the forger crafts a structurally valid line but cannot know the real head
+    writeThree(dir);
+    const file = onlySegment(dir);
     const forged = chainNext("f".repeat(64), 3, {
+      kind: "scar",
       timestamp: 1, cycleMark: 2, provenance: "scar", floorTag: 7,
       open, layer_trace: [1, 7], payload: "forged",
       event: { source_id: "x", expected: 1, received: 2, mismatch_kind: "value-mismatch", t: 9 },
       anchor,
     });
     fs.appendFileSync(file, JSON.stringify(forged) + "\n");
-    const v = verifyJsonlSink(file);
+    const v = verifyJsonlSink(dir);
     assert.ok(!v.ok);
     if (!v.ok) {
       assert.equal(v.atLine, 3);
       assert.ok(v.reason.includes("chain break"));
     }
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("the chain resumes across a reopen and still verifies as one chain", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    const sink1 = createJsonlFileSink(file);
+    const sink1 = createJsonlFileSink(dir);
     sink1.write(makeRecord("a", "rain"));
     const headAfterOne = sink1.head();
     sink1.close();
 
-    const sink2 = createJsonlFileSink(file); // restart: resumes, never truncates
+    const sink2 = createJsonlFileSink(dir); // restart: resumes, never truncates
     assert.equal(sink2.head(), headAfterOne); // picked the chain up where it stood
     sink2.write(makeRecord("b", "snow"));
     sink2.close();
 
-    const v = verifyJsonlSink(file);
+    const v = verifyJsonlSink(dir);
     assert.ok(v.ok);
     if (v.ok) assert.equal(v.count, 2);
-    const lines = readChainedLines(file);
+    const lines = readChainedLines(dir);
     assert.equal(lines[1]!.prev, headAfterOne); // restart line chains to the pre-restart head
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("an empty sink has the genesis head and verifies vacuously", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    const sink = createJsonlFileSink(file);
+    const sink = createJsonlFileSink(dir);
     assert.equal(sink.head(), CHAIN_GENESIS);
     sink.close();
-    const v = verifyJsonlSink(file);
+    const v = verifyJsonlSink(dir);
     assert.ok(v.ok);
     if (v.ok) assert.equal(v.count, 0);
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test("opening a sink on an unparsable tail refuses rather than appending past corruption", () => {
-  const file = tmpFile();
+  const dir = tmpDir();
   try {
-    writeThree(file);
-    fs.appendFileSync(file, "not json at all\n");
-    assert.throws(() => createJsonlFileSink(file));
+    writeThree(dir);
+    fs.appendFileSync(onlySegment(dir), "not json at all\n");
+    assert.throws(() => createJsonlFileSink(dir));
   } finally {
-    fs.rmSync(file, { force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 });

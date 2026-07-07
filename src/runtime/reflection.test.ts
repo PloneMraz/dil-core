@@ -79,13 +79,21 @@ function daemonWithScar() {
   return { daemon, events };
 }
 
-test("collisionCoordinates addresses the real recorded collisions", () => {
+test("collisionCoordinates addresses the real recorded collisions (scars only)", () => {
   const { events } = daemonWithScar();
   const coords = collisionCoordinates(events);
   assert.ok(coords.length >= 1);
-  assert.equal(coords[0]!.index, 0);
+  // the index is the record's absolute position in the log — a stable address
+  assert.equal(events.all()[coords[0]!.index]!.kind, "scar");
   assert.equal(coords[0]!.source_id, "weather");
   assert.equal(coords[0]!.mismatch_kind, "value-mismatch");
+});
+
+test("a reading cannot address an activity record (trace, not a collision)", () => {
+  const { events } = daemonWithScar();
+  // index 0 is cycle-0's activity record, not a scar
+  assert.equal(events.all()[0]!.kind, "activity");
+  assert.throws(() => formReading(events, 0, "reader-1", "note"), ReflectionError);
 });
 
 test("a reading about a collision that never happened is refused", () => {
@@ -98,15 +106,16 @@ test("a reading about a collision that never happened is refused", () => {
 
 test("formReading copies the coordinate of the addressed record", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, 0, "reader-1", "expectation built on dry-season data");
-  assert.equal(reading.about.index, 0);
+  const at = collisionCoordinates(events)[0]!.index;
+  const reading = formReading(events, at, "reader-1", "expectation built on dry-season data");
+  assert.equal(reading.about.index, at);
   assert.equal(reading.about.source_id, "weather");
   assert.equal(reading.reader_id, "reader-1");
 });
 
 test("the reading enters through T3 on the declared channel, typed reflection", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, 0, "reader-1", "note");
+  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
   const signal = reflectionSignal(reading, "reflect", 9);
   const t3 = createT3({ reflect: reflectionTransducer });
   const out = runLayer(t3, { signals: [signal] }, field, datum());
@@ -120,7 +129,7 @@ test("the reading enters through T3 on the declared channel, typed reflection", 
 
 test("T4 binds the reading to the reader-as-Other", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, 0, "reader-1", "note");
+  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
   const t3 = createT3({ reflect: reflectionTransducer });
   const t3out = runLayer(t3, { signals: [reflectionSignal(reading, "reflect", 9)] }, field, datum());
   const t4out = runLayer(createT4(), { units: t3out.output.units }, field, datum());
@@ -129,7 +138,7 @@ test("T4 binds the reading to the reader-as-Other", () => {
 
 test("the agency-gate classifies a reading ENV_PUSHED (the agent never emitted it)", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, 0, "reader-1", "note");
+  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
   const t2 = createT2({ stabilityThreshold: 1 });
   runLayer(t2, { env: envUnit(), emitted: { action: "boot" }, changes: [] }, field, datum());
   const out = runLayer(
@@ -161,8 +170,9 @@ test("the SAME running daemon ingests a reflection about its own scar without ha
       i += 1;
       if (i === 1) return { signals: [sig("weather", "sun")], changes: [] };
       if (i === 2) return { signals: [sig("weather", "rain")], changes: [] };
-      if (i === 3 && events.size() >= 1) {
-        const reading = formReading(events, 0, "reader-1", "history window skewed dry");
+      const coords = collisionCoordinates(events);
+      if (i === 3 && coords.length >= 1) {
+        const reading = formReading(events, coords[0]!.index, "reader-1", "history window skewed dry");
         return {
           signals: [reflectionSignal(reading, "reflect", 9)],
           changes: [{ id: "reader-1", value: reading }],

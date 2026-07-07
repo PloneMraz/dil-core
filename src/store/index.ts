@@ -13,6 +13,8 @@ export {
   EVENT_WRITE_POLICY,
   EVENT_DURABILITY,
   EVENT_TAMPER_EVIDENCE,
+  MAX_SEGMENT_BYTES,
+  EVENT_LOG_SEGMENTATION,
   STORE_SCOPE,
   CONTEXT_ANCHOR_DEPTH,
   COMMIT_CADENCE,
@@ -38,8 +40,11 @@ export type {
   ResistEvent,
   ContextAnchor,
   EventRecord,
+  ActivityEvent,
+  ActivityRecord,
+  LogRecord,
 } from "./resist-event.js";
-export { recordScar, EventRecordError } from "./resist-event.js";
+export { recordScar, recordActivity, EventRecordError } from "./resist-event.js";
 
 export {
   TaggingGateError,
@@ -55,8 +60,10 @@ export {
   readJsonlSink,
   readChainedLines,
   verifyJsonlSink,
+  listSegments,
   type EventSink,
   type FileEventSink,
+  type JsonlSinkOptions,
   type SerializedEventRecord,
 } from "./event-sink.js";
 

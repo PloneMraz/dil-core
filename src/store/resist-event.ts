@@ -52,10 +52,57 @@ export interface ContextAnchor {
  * tags as any datum, plus the anchor.
  */
 export interface EventRecord {
+  readonly kind: "scar";
   readonly event: ResistEvent;
   /** The `[data]` datum that collided and held (provenance `scar`); its tags are the event's tags. */
   readonly scar: TaggedDatum;
   readonly anchor: ContextAnchor;
+}
+
+/**
+ * One cycle's activity, for the log's AUDIT role (§9 "completeness of trace"):
+ * what was emitted, what returned, in which flow mode. Trace, not experience —
+ * no layer learns from it.
+ */
+export interface ActivityEvent {
+  readonly cycle: number;
+  readonly flow: string;
+  /** The action the agent emitted this cycle (link 5). */
+  readonly emitted: unknown;
+  /** The entity ids observed this cycle. */
+  readonly observed: readonly string[];
+  /** Collisions recorded as scars this cycle. */
+  readonly scars: number;
+  readonly t: number;
+}
+
+/** The per-cycle activity record: the activity, the cycle datum, the anchor. */
+export interface ActivityRecord {
+  readonly kind: "activity";
+  readonly activity: ActivityEvent;
+  /** The cycle datum (provenance `running`, or `scar` if the cycle collided). */
+  readonly datum: TaggedDatum;
+  readonly anchor: ContextAnchor;
+}
+
+/** What the [event] log holds: scars (experience) and activity records (trace). */
+export type LogRecord = EventRecord | ActivityRecord;
+
+/**
+ * Build the per-cycle activity record. The datum must have run (bear a
+ * cycle-mark) — an activity record describes a cycle that happened.
+ */
+export function recordActivity(
+  datum: TaggedDatum,
+  activity: ActivityEvent,
+  anchor: ContextAnchor,
+): ActivityRecord {
+  if (datum.fixed.cycleMark === null) {
+    throw new EventRecordError(
+      "an activity record requires a datum that has run (no cycle-mark present)",
+    );
+  }
+  return { kind: "activity", activity, datum, anchor };
 }
 
 export class EventRecordError extends Error {
@@ -82,5 +129,5 @@ export function recordScar(
       `datum is "${scar.fixed.provenance}", not a scar; only collision-and-hold reaches [event]`,
     );
   }
-  return { event, scar, anchor };
+  return { kind: "scar", event, scar, anchor };
 }

@@ -25,7 +25,7 @@
 
 import { admitHostData } from "../store/tagging-gate.js";
 import { toRunning, toScar } from "../store/data-store.js";
-import { recordScar } from "../store/resist-event.js";
+import { recordScar, recordActivity } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
@@ -261,15 +261,15 @@ export function createCycle(deps: CycleDeps): Cycle {
           .map((r) => ({ source_id: r.entity_id, e: r.predErr })),
         ...pass.t7.absences.map((e) => ({ source_id: "region", e })),
       ];
+      const anchor: ContextAnchor = {
+        depth: CONTEXT_ANCHOR_DEPTH,
+        cycle,
+        fieldState: field.params,
+      };
       let scars = 0;
       const collisionSources = new Set<string>();
       if (collisions.length > 0) {
         const scarDatum = toScar(datum, true);
-        const anchor: ContextAnchor = {
-          depth: CONTEXT_ANCHOR_DEPTH,
-          cycle,
-          fieldState: field.params,
-        };
         for (const { source_id, e } of collisions) {
           events.append(
             recordScar(
@@ -289,6 +289,24 @@ export function createCycle(deps: CycleDeps): Cycle {
         }
         datum = scarDatum;
       }
+
+      // ── Activity record: the cycle's trace, sealing the cycle (§9) ──
+      // Trace, not experience: no layer learns from it. It keeps the audit
+      // trail complete across quiet stretches (E4) — one record per cycle.
+      events.append(
+        recordActivity(
+          datum,
+          {
+            cycle,
+            flow,
+            emitted: response.action,
+            observed: pass.t5.results.map((r) => r.entity_id),
+            scars,
+            t: cycle,
+          },
+          anchor,
+        ),
+      );
 
       // Persist the cycle datum in [data] (mutable working memory).
       data.put(`cycle-${cycle}`, datum);

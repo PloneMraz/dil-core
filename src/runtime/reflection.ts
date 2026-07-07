@@ -51,13 +51,19 @@ export interface CollisionCoordinate {
  * reader to browse and address. Read-only; carries no judgment.
  */
 export function collisionCoordinates(log: EventLog): CollisionCoordinate[] {
-  return log.all().map((rec, index) => ({
-    index,
-    cycle: rec.anchor.cycle,
-    source_id: rec.event.source_id,
-    mismatch_kind: rec.event.mismatch_kind,
-    t: rec.event.t,
-  }));
+  // Coordinates address SCARS (collisions); the index stays the record's
+  // absolute position in the log, so a coordinate is a stable address.
+  return log.all().flatMap((rec, index) =>
+    rec.kind === "scar"
+      ? [{
+          index,
+          cycle: rec.anchor.cycle,
+          source_id: rec.event.source_id,
+          mismatch_kind: rec.event.mismatch_kind,
+          t: rec.event.t,
+        }]
+      : [],
+  );
 }
 
 /** A third party's reading of one collision, anchored to its coordinate. */
@@ -80,9 +86,9 @@ export function formReading(
   reading: unknown,
 ): ReflectionReading {
   const rec = log.all()[index];
-  if (!rec) {
+  if (!rec || rec.kind !== "scar") {
     throw new ReflectionError(
-      `no [event] record at index ${index}; a reading must reference a real recorded collision`,
+      `no collision record at index ${index}; a reading must reference a real recorded collision (not an activity record)`,
     );
   }
   return {

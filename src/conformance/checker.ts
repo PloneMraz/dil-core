@@ -16,7 +16,8 @@
  */
 
 import type { EventLog } from "../store/event-log.js";
-import type { EventRecord } from "../store/resist-event.js";
+import type { EventRecord, LogRecord } from "../store/resist-event.js";
+import type { TaggedDatum } from "../store/tags.js";
 import type { GateResult } from "../precondition/gate.js";
 import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
 import {
@@ -52,17 +53,31 @@ export interface ObservableFacts {
   readonly gate?: GateResult;
 }
 
-function wellFormedStore(rec: EventRecord): string | null {
-  const { event, scar, anchor } = rec;
-  if (!event || typeof event.source_id !== "string" || !event.mismatch_kind) {
-    return "record is not a ResistEvent";
+/** The tagged datum a record embeds: the scar, or the activity's cycle datum. */
+function datumOf(rec: LogRecord): TaggedDatum {
+  return rec.kind === "activity" ? rec.datum : rec.scar;
+}
+
+function wellFormedStore(rec: LogRecord): string | null {
+  const datum = datumOf(rec);
+  const { anchor } = rec;
+  if (rec.kind === "scar") {
+    if (!rec.event || typeof rec.event.source_id !== "string" || !rec.event.mismatch_kind) {
+      return "record is not a ResistEvent";
+    }
+    if (datum.fixed?.provenance !== "scar") return "scar record embeds a non-scar datum";
+  } else {
+    if (typeof rec.activity?.cycle !== "number") return "activity record carries no cycle";
+    if (datum.fixed?.provenance !== "running" && datum.fixed?.provenance !== "scar") {
+      return "activity record embeds a datum that has not run";
+    }
   }
-  const f = scar?.fixed;
-  if (!f || typeof f.timestamp !== "number" || f.provenance !== "scar" || typeof f.floorTag !== "number") {
-    return "missing/!scar fixed tags";
+  const f = datum.fixed;
+  if (!f || typeof f.timestamp !== "number" || typeof f.floorTag !== "number") {
+    return "missing fixed tags";
   }
-  const openKeys = scar.open ? Object.keys(scar.open) : [];
-  if (!scar.open || typeof scar.open.domain !== "string" || scar.open.domain.length === 0) {
+  const openKeys = datum.open ? Object.keys(datum.open) : [];
+  if (!datum.open || typeof datum.open.domain !== "string" || datum.open.domain.length === 0) {
     return "missing mandatory open tag `domain`";
   }
   if (openKeys.length < 3) return "fewer than three open tags";
@@ -85,6 +100,7 @@ export function checkConformance(
   facts: ObservableFacts = {},
 ): ConformanceReport {
   const records = events.all();
+  const scars = records.filter((r): r is EventRecord => r.kind === "scar");
   const results: CriterionResult[] = [];
 
   // C1 — Invariants (§5): no `=` emitted; four fixed tags present. Channel
@@ -92,7 +108,7 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "1", title: "Invariants", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const badFixed = records.find((r) => !r.scar?.fixed || Object.keys(r.scar.fixed).length !== 4);
+    const badFixed = records.find((r) => !datumOf(r)?.fixed || Object.keys(datumOf(r).fixed).length !== 4);
     results.push({
       id: "1",
       title: "Invariants",
@@ -131,11 +147,11 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "3", title: "Loop", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const incomplete = records.find((r) => !coversAllLayers(r.scar.trace));
-    const flowRecorded = records.every((r) => typeof r.scar.open.flow === "string");
+    const incomplete = records.find((r) => !coversAllLayers(datumOf(r).trace));
+    const flowRecorded = records.every((r) => typeof datumOf(r).open.flow === "string");
     const flowInconsistent = records.find((r) => {
-      const flow = r.scar.open.flow;
-      const mark = r.scar.fixed.cycleMark;
+      const flow = datumOf(r).open.flow;
+      const mark = datumOf(r).fixed.cycleMark;
       if (flow === undefined || mark === null) return false;
       return mark === 0 ? flow !== "single-threaded" : flow !== "multi-stream";
     });
@@ -146,8 +162,8 @@ export function checkConformance(
       detail: incomplete
         ? "a scar's layer_trace does not cover T1–T8"
         : flowInconsistent
-          ? `a scar's recorded flow mode contradicts its cycle-mark (cycle ${flowInconsistent.scar.fixed.cycleMark}: ${flowInconsistent.scar.open.flow})`
-          : `every scar carries a floor-tag and a T1→T8 layer_trace; ${
+          ? `a record's recorded flow mode contradicts its cycle-mark (cycle ${datumOf(flowInconsistent).fixed.cycleMark}: ${datumOf(flowInconsistent).open.flow})`
+          : `every record carries a floor-tag and a T1→T8 layer_trace; ${
               flowRecorded
                 ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
                 : "flow mode not recorded in these traces"
@@ -159,7 +175,7 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "4", title: "Self", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const marks = records.map((r) => r.scar.fixed.cycleMark ?? -1);
+    const marks = records.map((r) => datumOf(r).fixed.cycleMark ?? -1);
     const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!);
     results.push({
       id: "4",
@@ -175,7 +191,7 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "5", title: "Resistance", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const sources = new Set(records.map((r) => r.event.source_id));
+    const sources = new Set(scars.map((r) => r.event.source_id));
     const modeBEvidence = sources.size >= 2;
     // Reflection status is read from the declared decision, not a caller flag.
     const reflection = REFLECTION_MECHANISM !== "DEFERRED";
@@ -202,13 +218,32 @@ export function checkConformance(
         break;
       }
     }
+    // §13.6: every cycle leaves an activity record — coverage must be
+    // contiguous from cycle 0 to the highest cycle seen.
+    const activityCycles = new Set(
+      records.filter((r) => r.kind === "activity").map((r) => r.activity.cycle),
+    );
+    let coverageGap: number | null = null;
+    if (activityCycles.size === 0) {
+      coverageGap = 0;
+    } else {
+      const max = Math.max(...activityCycles);
+      for (let c = 0; c <= max; c++) {
+        if (!activityCycles.has(c)) {
+          coverageGap = c;
+          break;
+        }
+      }
+    }
     results.push({
       id: "6",
       title: "Store",
-      verdict: firstProblem ? "fail" : "pass",
+      verdict: firstProblem || coverageGap !== null ? "fail" : "pass",
       detail: firstProblem
         ? `a record failed: ${firstProblem}`
-        : "every scar carries the ResistEvent, four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
+        : coverageGap !== null
+          ? `activity-record coverage gap: no activity record for cycle ${coverageGap}`
+          : "scars carry the ResistEvent and every cycle left an activity record; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
     });
   }
 
@@ -218,7 +253,7 @@ export function checkConformance(
   // → pass; enough evidence + collapsed → fail (diversity loss established);
   // not enough evidence to establish diversity → partial (never pass).
   {
-    const window = records.slice(-CONFORMANCE_DIVERSITY_WINDOW);
+    const window = scars.slice(-CONFORMANCE_DIVERSITY_WINDOW);
     if (window.length < CONFORMANCE_DIVERSITY_WINDOW) {
       results.push({
         id: "7",

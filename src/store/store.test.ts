@@ -169,7 +169,7 @@ function sampleRecord(source_id = "s1"): EventRecord {
 test("an appended [event] record cannot be altered (deep-frozen)", () => {
   const log = createEventLog();
   log.append(sampleRecord());
-  const rec = log.all()[0]!;
+  const rec = log.all()[0]! as EventRecord;
   assert.throws(() => {
     // @ts-expect-error — intentionally attempting to mutate a frozen record
     rec.event.received = "snow";
@@ -184,13 +184,13 @@ test("an appended [event] record cannot be altered (deep-frozen)", () => {
     // @ts-expect-error — intentional
     rec.scar.fixed.floorTag = 1;
   }, TypeError);
-  assert.equal(log.all()[0]!.event.received, "rain");
+  assert.equal((log.all()[0]! as EventRecord).event.received, "rain");
 });
 
 test("[event] inherits the scar's tags (≥7: 4 fixed + ≥3 open + trace)", () => {
   const log = createEventLog();
   log.append(sampleRecord());
-  const rec = log.all()[0]!;
+  const rec = log.all()[0]! as EventRecord;
   // four fixed tags, provenance is scar
   assert.equal(rec.scar.fixed.provenance, "scar");
   assert.equal(Object.keys(rec.scar.fixed).length, 4);

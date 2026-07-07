@@ -17,7 +17,7 @@
  * COMMIT_CADENCE) and is NOT provided by the sink.
  */
 
-import type { EventRecord } from "./resist-event.js";
+import type { EventRecord, LogRecord } from "./resist-event.js";
 import type { EventSink } from "./event-sink.js";
 import { INDEX_KEYS } from "./decisions.js";
 
@@ -38,13 +38,13 @@ export function deepFreeze<T>(value: T): T {
  * `INDEX_KEYS` (DECIDE@IMPL tag F) drive the lookups.
  */
 export interface EventLog {
-  /** Append a record; it is deep-frozen and becomes read-only forever. */
-  append(record: EventRecord): void;
+  /** Append a record (scar or activity); it is deep-frozen and read-only forever. */
+  append(record: LogRecord): void;
   /** All records, oldest first, each frozen. */
-  all(): readonly EventRecord[];
+  all(): readonly LogRecord[];
   /** Number of records (the commit counter reads this). */
   size(): number;
-  /** Lookup by an indexed key (source_id or provenance). */
+  /** Scar lookup by resistance source (activity records carry no source_id). */
   bySourceId(source_id: string): readonly EventRecord[];
 }
 
@@ -54,26 +54,28 @@ export interface EventLog {
  * EVENT_DURABILITY in decisions.ts). Without a sink the log is in-memory only.
  */
 export function createEventLog(sink?: EventSink): EventLog {
-  const records: EventRecord[] = [];
+  const records: LogRecord[] = [];
   const bySource = new Map<string, EventRecord[]>();
 
   return {
-    append(record: EventRecord): void {
+    append(record: LogRecord): void {
       const frozen = deepFreeze(record);
       records.push(frozen);
-      // Maintain the source_id index (INDEX_KEYS, decisions.ts).
+      // Maintain the source_id index over scars (INDEX_KEYS, decisions.ts).
       void INDEX_KEYS;
-      const key = frozen.event.source_id;
-      const bucket = bySource.get(key);
-      if (bucket) {
-        bucket.push(frozen);
-      } else {
-        bySource.set(key, [frozen]);
+      if (frozen.kind === "scar") {
+        const key = frozen.event.source_id;
+        const bucket = bySource.get(key);
+        if (bucket) {
+          bucket.push(frozen);
+        } else {
+          bySource.set(key, [frozen]);
+        }
       }
       // Mirror to the durable sink, if one is wired (append-only, write-once).
       sink?.write(frozen);
     },
-    all(): readonly EventRecord[] {
+    all(): readonly LogRecord[] {
       return records;
     },
     size(): number {

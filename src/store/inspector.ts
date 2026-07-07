@@ -47,12 +47,13 @@ export function inspectData(store: DataStore): string {
   return [`[data] — ${entries.length} item(s)`, ...lines].join("\n");
 }
 
-/** Render the `[event]` log: one line per record, with its derived name. */
+/** Render the `[event]` log: one line per record (scar or activity). */
 export function inspectEventLog(log: EventLog): string {
   const records = log.all();
-  const lines = records.map(
-    (r, i) =>
-      `  #${i}  ${eventDisplayName(r)}  ${preview(r.event.expected)}→${preview(r.event.received)}  trace=${tracePath(r.scar.trace)}`,
+  const lines = records.map((r, i) =>
+    r.kind === "scar"
+      ? `  #${i}  ${eventDisplayName(r)}  ${preview(r.event.expected)}→${preview(r.event.received)}  trace=${tracePath(r.scar.trace)}`
+      : `  #${i}  ${displayName(r.datum)}_[activity]  cycle=${r.activity.cycle} flow=${r.activity.flow} observed=${r.activity.observed.join(",") || "-"} scars=${r.activity.scars}`,
   );
   return [`[event-log] — ${records.length} record(s)`, ...lines].join("\n");
 }
