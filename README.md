@@ -19,7 +19,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **144 tests, 0 failures.**
+All six build stages are implemented and green: **159 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**. Every partial is honest and derived, not attested:
 
@@ -137,13 +137,14 @@ For a **durable** audit trail that survives the process, back the `[event]` log
 with an append-only JSONL file sink:
 
 ```ts
-import { createJsonlFileSink, createEventLog, readJsonlSink } from "dil-core";
+import { createJsonlFileSink, createEventLog, readJsonlSink, verifyJsonlSink } from "dil-core";
 
-const sink = createJsonlFileSink("./memory/event-log.jsonl"); // append-only, fsync'd
+const sink = createJsonlFileSink("./memory/event-log.jsonl"); // append-only, fsync'd, hash-chained
 const events = createEventLog(sink);   // every appended record is mirrored to disk
 // … run the daemon …
 sink.close();
 const durable = readJsonlSink("./memory/event-log.jsonl"); // records survive, tags in fixed order
+const audit = verifyJsonlSink("./memory/event-log.jsonl"); // { ok, count, head } — any tampered line breaks it
 ```
 
 `inspectEventLog` renders each scar by its *derived* name — tags are stored as
@@ -165,7 +166,9 @@ Two store kinds (protocol §9):
 
 Every datum carries, in fixed order, four tags that are never stripped or reordered — **timestamp, cycle-mark, provenance (`prior`→`running`→`scar`), floor-tag** — plus **at least three open tags** (one being `domain`, for audit-by-class) and a **`layer_trace`** (the full path). The floor-tag is a single updatable slot ("where is it now"); the `layer_trace` is the accumulated path ("where has it been"). An `[event]` record **inherits** the scar datum's tags.
 
-**Durability.** By default the `[event]` log is in-memory: append-only with read-only records *within the process*, but it does not survive the process on its own. For a durable audit trail, wire an append-only **JSONL file sink** (`createJsonlFileSink`) into `createEventLog`; each record is mirrored to disk and fsynced, one immutable line per record, with tags serialized in the fixed order. The sink opens the file in append mode only — it can never rewrite or truncate, and its surface has no update/delete method. This provides **durability**, not tamper-evidence: a party with write access to the file could append forged lines. Detecting that (content-addressed / hash-chained markers) is deliberately deferred — see below.
+**Durability & tamper-evidence.** By default the `[event]` log is in-memory: append-only with read-only records *within the process*, but it does not survive the process on its own. For a durable audit trail, wire an append-only **JSONL file sink** (`createJsonlFileSink`) into `createEventLog`; each record is mirrored to disk and fsynced, one immutable line per record, with tags serialized in the fixed order. The sink opens the file in append mode only — it can never rewrite or truncate, and its surface has no update/delete method.
+
+Each persisted line is also **hash-chained** (sha256 over `seq + prev + record`): `verifyJsonlSink(path)` detects any altered, removed, inserted, or reordered line, and the chain resumes across restarts. Honest limit: detection is relative to a **trusted head** — a party with full write access could rewrite the whole chain consistently, so a deployment anchors the sink's `head()` outside its own write reach (publish it to the user, an external log); that anchoring is deployment-open. This is tamper-evidence of the *log*; the §9 full-system commit/snapshot remains deferred — see below.
 
 ---
 
@@ -174,7 +177,7 @@ Every datum carries, in fixed order, four tags that are never stripped or reorde
 The protocol leaves constants open on purpose; a conforming implementation must **fill each for its environment and declare the choice** — never invent one silently. This implementation's choices are declared in code:
 
 - Precondition ([`src/precondition/decisions.ts`](src/precondition/decisions.ts)) — the gate is declaration-based by design (requisition: the host declares, DIL threads through), but where a condition is mechanically probeable *before* the loop runs the gate probes it and grades the verdict `probed` vs `declared`: E3/P(b) via a store marker round-trip, E4 via a trace marker read-back — evidence beats claim (a failing probe fails a true declaration). E1, E2, P(a), P(c) stay declaration-based with the reasons stated (e.g. E2: idle is the default of an informational setting, so a silent probe window proves nothing).
-- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total).
+- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open).
 - Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor.
 - Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum; reflection (tag E) = event-coordinate reading over the `[event]` log, entering through a declared T3 channel (reader identity deployment-open).
 
@@ -188,7 +191,7 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 ### Deferred (unbuilt core work — marked, not faked)
 
-- **Tamper-evidence** (§9) — the JSONL file sink gives durability (records survive the process, append-only, no update/delete surface) but **not** tamper-evidence. Content-addressed / hash-chained commit markers, which would let an auditor detect a forged or reordered line, are deferred. Do not read "durable" as "tamper-proof".
+- **Full-system commit / snapshot / recovery** (§9) — the protocol's commit snapshots the *entire* system (loop configuration, layer state, field parameters) into a content-addressed marker, with full-system recovery. Layer state is not yet serializable, so this cannot be built without faking it. The `[event]` log's own tamper-evidence (hash chain + `verifyJsonlSink`) shipped separately and does not pretend to be this.
 - **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
 
 ### Deployment-open by design (no core work owed — each deployment declares its own)
@@ -196,6 +199,7 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 - **Mode-B liveness** (tag D) — the Mode-B seam is the `HostSource` the daemon requisitions, and one channel carries any number of Others (an Other is a positional status, not a kind — there is no per-Other source file to write). Which live Other a deployment plugs in (a user, another agent, an external data feed, a mix) is *deliberately* open per §12. The repo ships only a scripted **test fixture**, so out-of-the-box runs get fixed, replayable resistance — deceleration-grade (§8.3) — not the real braking of an Other that updates. Plugging a live Other is deployment wiring, not a core change.
 - **The reflection reader** (tag E) — the read-collision-into-coordinates *mechanism* is wired (`runtime/reflection.ts`); *who* reads (a user, another agent, a critic service that may itself consult external data) is each deployment's declaration.
 - **The open-tag registry** beyond `domain` (tag F) — which descriptive keys exist and what each means is industry-specific; the core fixes only the discipline (consistency, no verdicts, ≥3 tags incl. `domain`).
+- **Chain-head anchoring** — publishing the sink's `head()` outside the deployment's own write reach (to the user, an external log) is what turns the hash chain's tamper-evidence into total-rewrite detection; where to anchor is each deployment's declaration.
 
 ---
 
