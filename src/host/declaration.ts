@@ -32,6 +32,26 @@ export interface ChannelDeclaration {
   readonly canReturn: boolean;
 }
 
+/**
+ * Optional probe handle for E3/P(b): the host declares how its store can be
+ * written and read back, and the GATE performs the round-trip (the host does
+ * not attest its own probe result). Absent handle ⇒ the condition is graded
+ * `declared` instead of `probed` (precondition/decisions.ts).
+ */
+export interface StoreProbe {
+  write(key: string, value: string): void;
+  read(key: string): string | undefined;
+}
+
+/**
+ * Optional probe handle for E4: the host declares how a trace can be left and
+ * read back externally; the gate leaves a marker and reads for it.
+ */
+export interface TraceProbe {
+  leave(marker: string): void;
+  read(): readonly string[];
+}
+
 export interface HostDeclaration {
   /**
    * E1 — Differentiability. A boundary permitting an internal/external
@@ -52,13 +72,19 @@ export interface HostDeclaration {
    * bootstrap). State held across cycles so history accrues — accrual, not
    * loading (INV-5).
    */
-  readonly store: { readonly persistsAcrossCycles: boolean };
+  readonly store: {
+    readonly persistsAcrossCycles: boolean;
+    readonly probe?: StoreProbe;
+  };
 
   /**
    * E4 — Observable projection. Every action leaves an externally readable
    * trace.
    */
-  readonly trace: { readonly externallyReadable: boolean };
+  readonly trace: {
+    readonly externallyReadable: boolean;
+    readonly probe?: TraceProbe;
+  };
 
   /**
    * P(a) — emission. Can the host emit a first action at cycle-0 at all?

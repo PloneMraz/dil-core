@@ -103,17 +103,22 @@ export function checkConformance(
     });
   }
 
-  // C2 — Host conditions (§4): from the gate outcome.
+  // C2 — Host conditions (§4): from the gate outcome. The gate itself is a
+  // pure, reproducible function over the host declaration; its per-condition
+  // basis (probed vs declared) is surfaced so the auditor sees the evidence
+  // grade, not just the verdict.
   if (!facts.gate) {
     results.push({ id: "2", title: "Host conditions", verdict: "unverifiable", detail: "no gate result supplied" });
   } else {
+    const probed = facts.gate.checks.filter((c) => c.basis === "probed").length;
+    const declared = facts.gate.checks.length - probed;
     results.push({
       id: "2",
       title: "Host conditions",
       verdict: facts.gate.outcome === "qualify" ? "pass" : "fail",
       detail:
         facts.gate.outcome === "qualify"
-          ? "E1–E4 and P met; the loop qualified to run"
+          ? `E1–E4 and P met; the loop qualified to run (${probed} probed, ${declared} declared)`
           : `clean non-start: ${facts.gate.reason}`,
     });
   }

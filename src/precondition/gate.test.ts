@@ -135,3 +135,92 @@ test("gate evaluates all conditions and reports every failure", () => {
   // and the full check list is still complete (no short-circuit)
   assert.equal(result.checks.length, 7);
 });
+
+// ── Probes (option-1 hardening): evidence beats claim ──────────────────────
+
+/** A working Map-backed store probe. */
+function workingStoreProbe() {
+  const m = new Map<string, string>();
+  return { write: (k: string, v: string) => void m.set(k, v), read: (k: string) => m.get(k) };
+}
+
+/** A working array-backed trace probe. */
+function workingTraceProbe() {
+  const lines: string[] = [];
+  return { leave: (marker: string) => void lines.push(marker), read: () => lines };
+}
+
+test("without probe handles every condition is graded `declared`", () => {
+  const result = checkPrecondition(validHost());
+  assert.ok(result.checks.every((c) => c.basis === "declared"));
+});
+
+test("a working store probe grades E3 and P_b `probed` (round-trip held)", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    store: { persistsAcrossCycles: true, probe: workingStoreProbe() },
+  };
+  const result = checkPrecondition(host);
+  assert.equal(result.outcome, "qualify");
+  const byId = Object.fromEntries(result.checks.map((c) => [c.id, c]));
+  assert.equal(byId.E3!.basis, "probed");
+  assert.equal(byId.P_b!.basis, "probed"); // P(b) inherits E3's evidence
+});
+
+test("evidence beats claim: a failing store probe fails E3 and P_b despite a true declaration", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    store: {
+      persistsAcrossCycles: true, // the claim
+      probe: { write: () => {}, read: () => undefined }, // the evidence: holds nothing
+    },
+  };
+  const failed = expectNonStart(checkPrecondition(host));
+  assert.ok(failed.includes("E3"));
+  assert.ok(failed.includes("P_b"));
+});
+
+test("a throwing store probe refutes the declaration (E3 fails)", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    store: {
+      persistsAcrossCycles: true,
+      probe: { write: () => { throw new Error("disk gone"); }, read: () => undefined },
+    },
+  };
+  const failed = expectNonStart(checkPrecondition(host));
+  assert.ok(failed.includes("E3"));
+});
+
+test("a working trace probe grades E4 `probed`", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    trace: { externallyReadable: true, probe: workingTraceProbe() },
+  };
+  const result = checkPrecondition(host);
+  assert.equal(result.outcome, "qualify");
+  assert.equal(result.checks.find((c) => c.id === "E4")!.basis, "probed");
+});
+
+test("a trace probe whose marker cannot be read back fails E4", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    trace: {
+      externallyReadable: true,
+      probe: { leave: () => {}, read: () => [] }, // swallows the marker
+    },
+  };
+  const failed = expectNonStart(checkPrecondition(host));
+  assert.ok(failed.includes("E4"));
+});
+
+test("a negative declaration fails even when a working probe is attached", () => {
+  const host: HostDeclaration = {
+    ...validHost(),
+    store: { persistsAcrossCycles: false, probe: workingStoreProbe() },
+  };
+  const failed = expectNonStart(checkPrecondition(host));
+  // the host's own admission about across-cycle behaviour is not overruled
+  assert.ok(failed.includes("E3"));
+  assert.ok(failed.includes("P_b"));
+});

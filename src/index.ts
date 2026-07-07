@@ -13,14 +13,24 @@
 export type {
   HostDeclaration,
   ChannelDeclaration,
+  StoreProbe,
+  TraceProbe,
 } from "./host/declaration.js";
 
 export {
   checkPrecondition,
   type ConditionId,
+  type ConditionBasis,
   type ConditionResult,
   type GateResult,
 } from "./precondition/gate.js";
+
+export {
+  PROBEABLE_CONDITIONS,
+  E3_PROBE_DESIGN,
+  E4_PROBE_DESIGN,
+  PROBE_NONCE_PREFIX,
+} from "./precondition/decisions.js";
 
 export * from "./invariants/index.js";
 
