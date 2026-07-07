@@ -93,6 +93,22 @@ export const EXPECTATION_UPDATE_LAW =
  * (e.g. moving mode) is a later tuning, declared if adopted.
  */
 
+/** DECIDE@IMPL — the multi-stream activation schedule (protocol §6, cycle-1+). */
+export const MULTI_STREAM_SCHEDULE =
+  "one topological activation pass per cycle over the fixed T1..T8 dependency DAG; consumption via the meaning-channel (publish/read, INV-3-guarded); cycle-0 runs a direct hand-off pipeline" as const;
+/**
+ * Rationale: multi-stream is a FLOW-TOPOLOGY property, not OS concurrency —
+ * the loop advances in cycle-time, not wall-clock (INV-1 note), so no thread
+ * parallelism is claimed or needed. What changes at cycle-1 is the mechanism:
+ * consumption, not dispatch — every layer is an active site reading its
+ * declared dependency set from the shared meaning-channel, a published datum
+ * is consumable by several higher layers at once (T5's one output is read by
+ * both T6 and T7), and no dependency is driver-smuggled (T6 reads T2's output
+ * itself). The switch at the 0→1 boundary follows §7/§13.3: the self
+ * crystallizes at T2 of cycle-0, and multi-stream flow presupposes it. Each
+ * cycle's mode is recorded as the open tag `flow`, so it is trace-visible.
+ */
+
 /** DECIDE@IMPL tag C — the kind of out-of-loop anchor for Mode-A (protocol §8.3, §12). */
 export const APPRAISAL_ANCHOR_KIND = "static" as const;
 /** Identifier of the appraisal's criteria source — external to the agent's edited state (INV-8). */

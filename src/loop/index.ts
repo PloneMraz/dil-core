@@ -17,6 +17,7 @@ export {
   APPRAISAL_ANCHOR_ID,
   GLOB_MOD_REPRESENTATION,
   GLOB_MOD_UPDATE_LAW,
+  MULTI_STREAM_SCHEDULE,
 } from "./decisions.js";
 
 export * from "./layers/index.js";
@@ -28,9 +29,12 @@ export {
   type Cycle,
   type CycleDeps,
   type CycleResult,
+  type FlowMode,
   type HostCycleInput,
   type Layers,
 } from "./cycle.js";
+
+export { MultiStreamError } from "./gathers.js";
 
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 

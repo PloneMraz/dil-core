@@ -41,7 +41,10 @@ export function createT6(): LayerSpec<T6Input, T6Output> {
 
   return {
     index: 6,
-    consumes: [5],
+    // T6 consumes T5's results AND T2's agency tags (the env-pushed evidence);
+    // under multi-stream it reads both from the meaning-channel itself, rather
+    // than having the T2 digest smuggled in by the driver.
+    consumes: [2, 5],
     process(input): T6Output {
       const others = input.results.map((result): OtherModel => {
         const id = result.entity_id;

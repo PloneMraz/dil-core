@@ -123,18 +123,35 @@ export function checkConformance(
     });
   }
 
-  // C3 — Loop (§6): every datum carries a floor-tag and traversed T1→T8.
+  // C3 — Loop (§6): every datum carries a floor-tag and traversed T1→T8, and
+  // the recorded flow mode is consistent — cycle-0 single-threaded, cycle-1+
+  // multi-stream (§13.3). The `flow` open tag is the system's own mechanical
+  // record (like provenance); the flow STRUCTURE itself is verified
+  // structurally (tests), like channel separation in criterion 1.
   if (records.length === 0) {
     results.push({ id: "3", title: "Loop", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
     const incomplete = records.find((r) => !coversAllLayers(r.scar.trace));
+    const flowRecorded = records.every((r) => typeof r.scar.open.flow === "string");
+    const flowInconsistent = records.find((r) => {
+      const flow = r.scar.open.flow;
+      const mark = r.scar.fixed.cycleMark;
+      if (flow === undefined || mark === null) return false;
+      return mark === 0 ? flow !== "single-threaded" : flow !== "multi-stream";
+    });
     results.push({
       id: "3",
       title: "Loop",
-      verdict: incomplete ? "fail" : "pass",
+      verdict: incomplete || flowInconsistent ? "fail" : "pass",
       detail: incomplete
         ? "a scar's layer_trace does not cover T1–T8"
-        : "every scar carries a floor-tag and a T1→T8 layer_trace (cycle-0 single-threaded)",
+        : flowInconsistent
+          ? `a scar's recorded flow mode contradicts its cycle-mark (cycle ${flowInconsistent.scar.fixed.cycleMark}: ${flowInconsistent.scar.open.flow})`
+          : `every scar carries a floor-tag and a T1→T8 layer_trace; ${
+              flowRecorded
+                ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
+                : "flow mode not recorded in these traces"
+            }`,
     });
   }
 

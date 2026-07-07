@@ -19,7 +19,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **159 tests, 0 failures.**
+All six build stages are implemented and green: **167 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**. Every partial is honest and derived, not attested:
 
@@ -58,7 +58,7 @@ Built inside-out, the causal order fixed in the protocol (Invariants → Loop �
 | 1 | **Precondition gate** | [`src/precondition`](src/precondition) | a non-qualifying host declaration → clean non-start |
 | 2 | **Invariants** | [`src/invariants`](src/invariants) | a step violating any INV is blocked (the loop halts) |
 | 3 | **Experience store** | [`src/store`](src/store) | data in/out correctly tagged; no `[event]` record can be altered or removed |
-| 4 | **The loop T1–T8** | [`src/loop`](src/loop) | a datum traverses T1→T8 leaving a floor-tag at each layer; cycle-0 single-threaded |
+| 4 | **The loop T1–T8** | [`src/loop`](src/loop) | a datum traverses T1→T8 leaving a floor-tag at each layer; cycle-0 single-threaded, cycle-1+ multi-stream (consumption via the meaning-channel) |
 | 5 | **Continuous run** | [`src/runtime`](src/runtime) | the loop runs as a long-lived daemon with state accruing across cycles |
 | 6 | **Conformance checker** | [`src/conformance`](src/conformance) | a real per-criterion pass/fail table (§13) on the running system |
 
@@ -178,7 +178,7 @@ The protocol leaves constants open on purpose; a conforming implementation must 
 
 - Precondition ([`src/precondition/decisions.ts`](src/precondition/decisions.ts)) — the gate is declaration-based by design (requisition: the host declares, DIL threads through), but where a condition is mechanically probeable *before* the loop runs the gate probes it and grades the verdict `probed` vs `declared`: E3/P(b) via a store marker round-trip, E4 via a trace marker read-back — evidence beats claim (a failing probe fails a true declaration). E1, E2, P(a), P(c) stay declaration-based with the reasons stated (e.g. E2: idle is the default of an informational setting, so a silent probe window proves nothing).
 - Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open).
-- Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor.
+- Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor; multi-stream schedule = one topological activation pass via the meaning-channel (flow topology, cycle-time — no OS concurrency claimed).
 - Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum; reflection (tag E) = event-coordinate reading over the `[event]` log, entering through a declared T3 channel (reader identity deployment-open).
 
 Numeric thresholds are declared **tunable starting values, not derived constants** — stated honestly, not dressed up as fundamental.
@@ -192,7 +192,6 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 ### Deferred (unbuilt core work — marked, not faked)
 
 - **Full-system commit / snapshot / recovery** (§9) — the protocol's commit snapshots the *entire* system (loop configuration, layer state, field parameters) into a content-addressed marker, with full-system recovery. Layer state is not yet serializable, so this cannot be built without faking it. The `[event]` log's own tamper-evidence (hash chain + `verifyJsonlSink`) shipped separately and does not pretend to be this.
-- **Multi-stream** (cycle-1+) — the driver is currently single-threaded.
 
 ### Deployment-open by design (no core work owed — each deployment declares its own)
 
