@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — docs: layout — one parent root `store/{memory,event-log,commits}`
+**Commit:** `dcd471e`
+
+Wrapped the three persistence directories under one parent named after the ring itself (§3: the two *store* kinds): `store/memory/` (nơi duy nhất rollback ghi đè), `store/event-log/`, `store/commits/`. Một footprint duy nhất; ranh giới rollback không đổi.
+
+---
+
 ### — docs: layout — event-log/ and commits/ beside memory/, not inside
 **Commit:** `de3e312`
 
