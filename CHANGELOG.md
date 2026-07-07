@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — feat: activity records + daily/size-segmented [event] sink (§9 amendment)
+**Commits:** `a1e72fb` (protocol + code), `31cf6dc` (README)
+
+Protocol §9 amended by the author: ResistEvent = atomic unit of **experience**; the log's audit role (E4) now records one **activity record** per cycle (emitted action, observed entities, flow mode; embeds the cycle datum) — *trace, not experience*: no layer learns from it, quiet stretches stay auditable. §13.6 adds contiguous activity coverage; the checker verifies both record kinds and derives resistance/diversity from scars only. The sink becomes a directory of daily segments `event-log-yyyymmdd.jsonl` with declared `MAX_SEGMENT_BYTES = 64 MiB` (`-002` overflow; records never split; the chain continues across segments/restarts). Log-length policy declared: **no maximum** — no record removed, no segment pruned, snapshots never license truncation, append failure halts the loop; archival deployment-open. 171 tests; conformance numbers unchanged (4/3/0 thin, 6/1/0 diverse).
+
+---
+
 ### — feat: multi-stream flow — consumption via the meaning-channel (cycle-1+)
 **Commit:** `8047324`
 
