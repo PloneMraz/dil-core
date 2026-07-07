@@ -21,9 +21,22 @@ export const STORE_REPRESENTATION = "in-memory" as const;
  * file) is a host-declared concern layered on later; E3 persistence is a host
  * faculty, not the store module's responsibility.
  *
- * Planned file-backed layout (when STORE_REPRESENTATION becomes file-based):
- * a `memory/` directory with two sub-locations — `memory/data/` for `[data]`
- * content and `memory/event-log/` for `[event]` records. The store-kind is then
+ * File-backed layout (DECIDE@IMPL tag F — the directory boundary IS the
+ * rollback boundary):
+ *
+ *   <deployment root>/
+ *     memory/      — [data] and restorable working state: the ONLY location a
+ *                    recovery/rollback rewrites (mutable by design)
+ *     event-log/   — [event] segments: append-only, records read-only forever;
+ *                    NEVER rolled back — it keeps recording through a rollback
+ *     commits/     — content-addressed markers: append-only; a rollback ADDS a
+ *                    fork marker, it never deletes one
+ *
+ * `event-log/` and `commits/` sit BESIDE memory/, not inside it: they are
+ * outside the loop's mutable reach, which is what makes them trustworthy as
+ * evidence about it. (The protocol's "the [event] log is the agent's memory"
+ * names its experiential ROLE — what the self accrues from — not this folder;
+ * the folder named memory/ holds the mutable working state only.) Store-kind is
  * carried by *location*, not by a name prefix; an item's human-readable name is
  * the derived projection of its tags (display-name.ts), not a place tags live.
  */

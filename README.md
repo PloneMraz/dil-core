@@ -139,12 +139,14 @@ with an append-only JSONL file sink:
 ```ts
 import { createJsonlFileSink, createEventLog, readJsonlSink, verifyJsonlSink } from "dil-core";
 
-const sink = createJsonlFileSink("./memory/event-log"); // a DIRECTORY of daily segments, append-only, fsync'd, hash-chained
+const sink = createJsonlFileSink("./event-log"); // a DIRECTORY of daily segments, append-only, fsync'd, hash-chained
+// layout: memory/ holds only what rollback may rewrite; event-log/ and commits/
+// sit BESIDE it — outside the loop's mutable reach, never rolled back.
 const events = createEventLog(sink);   // every appended record is mirrored to disk
 // … run the daemon …
 sink.close();
-const durable = readJsonlSink("./memory/event-log"); // records survive, tags in fixed order
-const audit = verifyJsonlSink("./memory/event-log"); // { ok, count, head } — one chain across all segments
+const durable = readJsonlSink("./event-log"); // records survive, tags in fixed order
+const audit = verifyJsonlSink("./event-log"); // { ok, count, head } — one chain across all segments
 ```
 
 `inspectEventLog` renders each scar by its *derived* name — tags are stored as

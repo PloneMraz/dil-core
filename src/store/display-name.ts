@@ -9,7 +9,7 @@
  * tags are never flattened into lossy positions.
  *
  * The store-kind prefix (`[data]`/`[event]`) is intentionally omitted: kind is
- * carried by storage *location* (the planned `memory/data` vs `memory/event-log`
+ * carried by storage *location* (the `memory/` vs `event-log/` vs `commits/`
  * layout, decisions.ts), not by the name.
  *
  * Example:
