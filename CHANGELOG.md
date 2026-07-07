@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-07-07
+
+### — docs: README — split open items into deferred vs deployment-open
+**Commit:** `9b7ed8d`
+
+The "Deferred" section mixed two kinds §12 itself distinguishes: unbuilt core work (tamper-evidence, multi-stream) versus deliberately-open deployment declarations (Mode-B liveness/tag D, the reflection reader/tag E, the open-tag registry/tag F). Split into two subsections so a deployment property is never again misread as unfinished work.
+
+---
+
 ## [Unreleased] — 2026-07-06
 
 ### — feat: reflection mechanism — read collision into coordinates (tag E)
