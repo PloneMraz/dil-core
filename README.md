@@ -19,7 +19,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **167 tests, 0 failures.**
+All six build stages are implemented and green: **171 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**. Every partial is honest and derived, not attested:
 
@@ -139,12 +139,12 @@ with an append-only JSONL file sink:
 ```ts
 import { createJsonlFileSink, createEventLog, readJsonlSink, verifyJsonlSink } from "dil-core";
 
-const sink = createJsonlFileSink("./memory/event-log.jsonl"); // append-only, fsync'd, hash-chained
+const sink = createJsonlFileSink("./memory/event-log"); // a DIRECTORY of daily segments, append-only, fsync'd, hash-chained
 const events = createEventLog(sink);   // every appended record is mirrored to disk
 // … run the daemon …
 sink.close();
-const durable = readJsonlSink("./memory/event-log.jsonl"); // records survive, tags in fixed order
-const audit = verifyJsonlSink("./memory/event-log.jsonl"); // { ok, count, head } — any tampered line breaks it
+const durable = readJsonlSink("./memory/event-log"); // records survive, tags in fixed order
+const audit = verifyJsonlSink("./memory/event-log"); // { ok, count, head } — one chain across all segments
 ```
 
 `inspectEventLog` renders each scar by its *derived* name — tags are stored as
@@ -162,13 +162,13 @@ structured properties, not baked into names:
 Two store kinds (protocol §9):
 
 - **`[data]`** — mutable working memory, overwritten each cycle.
-- **`[event]`** — an append-only log of **read-only** records. Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — there is no separate trace channel.
+- **`[event]`** — an append-only log of **read-only** records. Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — there is no separate trace channel. It holds two record kinds: **scars** (ResistEvents — the atomic unit of *experience*) and one **activity record per cycle** (the emitted action, observed entities, flow mode — *trace, not experience*: no layer learns from it; it keeps the audit trail complete across quiet stretches, per E4).
 
 Every datum carries, in fixed order, four tags that are never stripped or reordered — **timestamp, cycle-mark, provenance (`prior`→`running`→`scar`), floor-tag** — plus **at least three open tags** (one being `domain`, for audit-by-class) and a **`layer_trace`** (the full path). The floor-tag is a single updatable slot ("where is it now"); the `layer_trace` is the accumulated path ("where has it been"). An `[event]` record **inherits** the scar datum's tags.
 
 **Durability & tamper-evidence.** By default the `[event]` log is in-memory: append-only with read-only records *within the process*, but it does not survive the process on its own. For a durable audit trail, wire an append-only **JSONL file sink** (`createJsonlFileSink`) into `createEventLog`; each record is mirrored to disk and fsynced, one immutable line per record, with tags serialized in the fixed order. The sink opens the file in append mode only — it can never rewrite or truncate, and its surface has no update/delete method.
 
-Each persisted line is also **hash-chained** (sha256 over `seq + prev + record`): `verifyJsonlSink(path)` detects any altered, removed, inserted, or reordered line, and the chain resumes across restarts. Honest limit: detection is relative to a **trusted head** — a party with full write access could rewrite the whole chain consistently, so a deployment anchors the sink's `head()` outside its own write reach (publish it to the user, an external log); that anchoring is deployment-open. This is tamper-evidence of the *log*; the §9 full-system commit/snapshot remains deferred — see below.
+The sink writes a **directory of daily segments** (`event-log-yyyymmdd.jsonl`, overflowing to `-002`, `-003`… past `MAX_SEGMENT_BYTES` = 64 MiB — a declared tunable; records are never split across files). The log itself has **no maximum length**: records are never removed, no segment is ever pruned (snapshots never license truncation), and an append failure (disk full) halts the loop rather than dropping a record; archival of closed segments is deployment-open. Each persisted line is **hash-chained** (sha256 over `seq + prev + record`): `verifyJsonlSink(dir)` detects any altered, removed, inserted, or reordered line, and the chain continues across segments and restarts. Honest limit: detection is relative to a **trusted head** — a party with full write access could rewrite the whole chain consistently, so a deployment anchors the sink's `head()` outside its own write reach (publish it to the user, an external log); that anchoring is deployment-open. This is tamper-evidence of the *log*; the §9 full-system commit/snapshot remains deferred — see below.
 
 ---
 
@@ -177,7 +177,7 @@ Each persisted line is also **hash-chained** (sha256 over `seq + prev + record`)
 The protocol leaves constants open on purpose; a conforming implementation must **fill each for its environment and declare the choice** — never invent one silently. This implementation's choices are declared in code:
 
 - Precondition ([`src/precondition/decisions.ts`](src/precondition/decisions.ts)) — the gate is declaration-based by design (requisition: the host declares, DIL threads through), but where a condition is mechanically probeable *before* the loop runs the gate probes it and grades the verdict `probed` vs `declared`: E3/P(b) via a store marker round-trip, E4 via a trace marker read-back — evidence beats claim (a failing probe fails a true declaration). E1, E2, P(a), P(c) stay declaration-based with the reasons stated (e.g. E2: idle is the default of an informational setting, so a silent probe window proves nothing).
-- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open).
+- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open); daily 64 MiB segments, no pruning, halt-on-append-failure.
 - Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor; multi-stream schedule = one topological activation pass via the meaning-channel (flow topology, cycle-time — no OS concurrency claimed).
 - Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum; reflection (tag E) = event-coordinate reading over the `[event]` log, entering through a declared T3 channel (reader identity deployment-open).
 
