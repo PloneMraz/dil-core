@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — feat: tamper-evidence — sha256 hash chain over the [event] sink
+**Commits:** `aa158e4` (chain + sink), `dbe4cb8` (README)
+
+Each persisted JSONL line is chained (`seq` + `prev` + sha256 hash over the fixed-order record); `verifyJsonlSink` detects any altered, removed, inserted, or reordered line at the break point; the chain resumes across restarts, refuses to open on a corrupt tail, and exposes `head()` for external anchoring. Honest scope declared (`EVENT_TAMPER_EVIDENCE`): detection is relative to a trusted head — anchoring is deployment-open; in-process tampering out of scope; NOT the §9 full-system commit/snapshot, which stays DEFERRED (layer state not yet serializable). node:crypto only, zero new dependencies. 8 new tests (159 total), verified on real bytes (one-byte tamper → `content break` at line 0).
+
+---
+
 ### — feat: precondition gate probes E3/E4 — evidence-graded verdicts
 **Commit:** `eeff8e7`
 
