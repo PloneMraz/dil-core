@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-07
 
+### — feat: multi-stream flow — consumption via the meaning-channel (cycle-1+)
+**Commit:** `8047324`
+
+Protocol §6's multi-stream implemented as a flow-topology property (cycle-time, no OS concurrency claimed). Cycle-0 stays a direct hand-off pipeline; from cycle-1 every layer publishes on the meaning-channel and each consumer **reads** its declared dependency set (consumption, not dispatch; INV-3 guarded per read). Fan-out real (T5's one output read by both T6 and T7); T6 declares `consumes [2,5]` and reads T2 itself, fixing the driver-smuggled `envPushed`; unpublished dependency → `MultiStreamError`. Mode recorded as the `flow` open tag; §13.3 verifies it against the cycle-mark and fails on contradiction. `MULTI_STREAM_SCHEDULE` declared. 8 new tests (167 total). Deferred list is now a single item: §9 full-system commit/snapshot/recovery.
+
+---
+
 ### — feat: tamper-evidence — sha256 hash chain over the [event] sink
 **Commits:** `aa158e4` (chain + sink), `dbe4cb8` (README)
 
