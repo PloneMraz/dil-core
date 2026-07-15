@@ -9,7 +9,14 @@
       "Bash(pnpm test *)",
       "Bash(pnpm add *)",
       "Bash(node --test \"dist/**/*.test.js\")",
-      "Bash(grep -n 'admitHostData\\({ payload: \"p\", admittingLayer: 1 }, 0\\)' src/store/store.test.ts)"
+      "Bash(grep -n 'admitHostData\\({ payload: \"p\", admittingLayer: 1 }, 0\\)' src/store/store.test.ts)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm build *)",
+      "Bash(rm -f scripts/tmp-sink-demo.mjs scripts/tmp-event-log.jsonl)",
+      "Bash(rmdir scripts *)",
+      "Bash(python -)",
+      "Bash(node --test dist/runtime/commit.test.js)",
+      "Bash(git commit --amend -m ' *)"
     ]
   }
 }
