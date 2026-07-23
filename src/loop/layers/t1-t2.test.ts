@@ -53,7 +53,6 @@ const env: ActivityEnvironment = {
   content: { present: true, count: 1, sources: ["x"] },
   ref_frame: { boundLayer: 1, ref: "activity-environment" },
   t: 1,
-  layer_trace: [1],
 };
 
 function t2Input(action: unknown, changes: { id: string; value: unknown }[]): T2Input {

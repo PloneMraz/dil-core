@@ -20,7 +20,6 @@
  */
 
 import type { LayerIndex } from "../invariants/types.js";
-import type { LayerTrace } from "../store/tags.js";
 
 // Re-export the borrowed shapes so the loop has one import surface.
 export type { LayerIndex, AgencyTag } from "../invariants/types.js";
@@ -48,13 +47,15 @@ export interface Signal {
 
 /**
  * Information = content referred to a frame. `ref_frame` is non-null by type
- * (INV-4). `layer_trace` is the store's audit path (the layers it has passed).
+ * (INV-4). The path a datum has travelled is NOT carried here: v0.3.2 §6.1 drops
+ * `layer_trace` from `InfoUnit` — it duplicated, in a mutable running type, the
+ * same path the append-only `[event]` log already records, and no layer read it.
+ * The path is read from `[event]`, never from a running-type field.
  */
 export interface InfoUnit {
   readonly content: unknown;
   readonly ref_frame: RefFrame;
   readonly t: number;
-  readonly layer_trace: LayerTrace;
 }
 
 /**

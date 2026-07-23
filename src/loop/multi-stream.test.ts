@@ -99,7 +99,7 @@ test("behaviour is unchanged across the switch: a multi-stream collision still s
 // ── Consumption, not dispatch ───────────────────────────────────────────────
 
 function unit(value: unknown): InfoUnit {
-  return { content: { value }, ref_frame: { boundLayer: 5, ref: "x" }, t: 1, layer_trace: [5] };
+  return { content: { value }, ref_frame: { boundLayer: 5, ref: "x" }, t: 1 };
 }
 
 test("fan-out is real: T6 and T7 both read T5's single published output", () => {

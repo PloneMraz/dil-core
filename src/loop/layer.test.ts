@@ -72,7 +72,7 @@ test("validateLayerSpec accepts consuming lower-or-equal layers", () => {
 test("runLayer halts (INV-4) if an emitted InfoUnit has a null ref_frame", () => {
   // A corrupted unit crossing the boundary — type-illegal, simulated for the
   // runtime guard (defense in depth).
-  const badUnit = { content: 1, ref_frame: null, t: 1, layer_trace: [1] } as unknown as InfoUnit;
+  const badUnit = { content: 1, ref_frame: null, t: 1 } as unknown as InfoUnit;
   const spec: LayerSpec<unknown, InfoUnit> = {
     index: 1,
     consumes: [],
@@ -88,7 +88,6 @@ test("runLayer passes a well-formed InfoUnit (INV-4 satisfied)", () => {
     content: 1,
     ref_frame: { boundLayer: 1, ref: "root" },
     t: 1,
-    layer_trace: [1],
   };
   const spec: LayerSpec<unknown, InfoUnit> = {
     index: 1,

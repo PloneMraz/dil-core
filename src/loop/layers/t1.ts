@@ -33,7 +33,6 @@ export function createT1(): LayerSpec<readonly Signal[], ActivityEnvironment> {
         },
         ref_frame: { ...ROOT_FRAME },
         t: latestT(signals),
-        layer_trace: [1],
       };
     },
     // INV-4: the ActivityEnvironment is an InfoUnit leaving the layer.

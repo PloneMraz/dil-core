@@ -21,7 +21,7 @@ const open = { domain: "test", format: "json", platform: "cli" };
 const datum = () => admitHostData({ payload: 1, admittingLayer: 1, open }, 0);
 
 function infoUnit(value: unknown, t = 1): InfoUnit {
-  return { content: { value }, ref_frame: { boundLayer: 3, ref: "x" }, t, layer_trace: [3] };
+  return { content: { value }, ref_frame: { boundLayer: 3, ref: "x" }, t };
 }
 
 // ── T3 ─────────────────────────────────────────────────────────────────────

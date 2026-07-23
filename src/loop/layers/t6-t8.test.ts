@@ -23,7 +23,7 @@ const open = { domain: "test", format: "json", platform: "cli" };
 const datum = () => admitHostData({ payload: 1, admittingLayer: 1, open }, 0);
 
 function unit(value: unknown): InfoUnit {
-  return { content: { value }, ref_frame: { boundLayer: 5, ref: "x" }, t: 1, layer_trace: [5] };
+  return { content: { value }, ref_frame: { boundLayer: 5, ref: "x" }, t: 1 };
 }
 function result(entity_id: string, delta: 0 | 1): T5Result {
   const predErr: PredErr = { observed: unit("v"), predicted: unit("v"), delta, signed: "+" };

@@ -46,7 +46,6 @@ export function createT3(
           content: { infoType, channel: signal.source_id, value },
           ref_frame: { boundLayer: 3, ref: `channel:${signal.source_id}` },
           t: signal.t,
-          layer_trace: [3],
         };
       });
       return { units };
