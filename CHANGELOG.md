@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: SQLite-backed [data] store (Bước 1.5b)
+**Commit:** `e2facea`
+
+`[data]` (present khả biến, ghi-đè mỗi cycle) có biểu diễn bền trên chất nền: một bảng SQLite dưới `store/memory/` qua **`node:sqlite`** (SQLite dựng sẵn trong Node — đồng bộ khớp interface `DataStore`, zero external dep, không biên dịch native). Một hàng/key, `TaggedDatum` là JSON; upsert giữ rowid ổn định nên `entries()` giữ thứ tự chèn qua các lần cập nhật. `createSqliteDataStore` đứng sau interface `DataStore`; Map in-memory (`createDataStore`) hạ cấp thành fixture test. Khai vào `STORE_REPRESENTATION` (tag F): store-of-record trên chất nền, RAM chỉ cache; deployment có thể đổi engine (vd `better-sqlite3`) sau cùng interface. 4 test mới (186 tổng), tsc sạch.
+
+---
+
 ### — feat: substrate claim + DIL-CLAIM (Bước 1.5a)
 **Commit:** `ebab045`
 
