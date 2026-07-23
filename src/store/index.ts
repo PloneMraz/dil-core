@@ -97,3 +97,14 @@ export {
   type CommitStore,
   type CommitMarker,
 } from "./commit-store.js";
+
+export {
+  DIL_CLAIM,
+  fsSubstrate,
+  layoutFor,
+  claimSubstrate,
+  SubstrateClaimError,
+  type DilClaim,
+  type StoreLayout,
+  type Substrate,
+} from "./substrate.js";

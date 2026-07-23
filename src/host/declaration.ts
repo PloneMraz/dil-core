@@ -75,6 +75,14 @@ export interface HostDeclaration {
   readonly store: {
     readonly persistsAcrossCycles: boolean;
     readonly probe?: StoreProbe;
+    /**
+     * The host's *raw durable substrate* location — a directory/partition on its
+     * native storage that DIL requisitions and imposes its store law on (layout,
+     * DIL-CLAIM, [data]/[event]/commits). This is NOT a store abstraction DIL
+     * conforms to; it is raw physical memory DIL rules. Absent ⇒ DIL runs on an
+     * in-memory fixture (test / throwaway minimal host), never a real deployment.
+     */
+    readonly root?: string;
   };
 
   /**
