@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-23
 
+### — feat: drop layer_trace from InfoUnit (v0.3.2 §6.1, MUST)
+**Commit:** `2742c71`
+
+Bước 1/7 của migrate v0.3.2. Gỡ trường `layer_trace` khỏi type `InfoUnit` ([loop/types.ts](src/loop/types.ts)) và các literal ở T1/T3 — đây là một MUST của §6.1: trường này lặp lại (trong một type running khả biến) đúng path mà `[event]` đã ghi, và **không layer nào đọc**. Chỉ chạm `InfoUnit`; `TaggedDatum.trace` (được đọc thật) sẽ chuyển sang `[event]` ở Bước 2. Cập nhật các construction `InfoUnit` trong test loop. `tsc` sạch, 177/177 test xanh.
+
+---
+
 ### — docs: align CONTEXT with v0.3.2, flag code deltas in README, add parent spec
 **Commit:** `015a9af`
 
