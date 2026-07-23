@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-07-24
+
+### — feat: substrate claim + DIL-CLAIM (Bước 1.5a)
+**Commit:** `ebab045`
+
+Bước 1.5 sub-step (a) của migrate v0.3.2 — nền của nguyên tắc sovereign trong code: host chỉ cung cấp **chất nền lưu trữ thô** (thư mục/phân vùng), DIL **trưng dụng** và áp luật store của mình lên. Thêm `store/substrate.ts`: layout chuẩn `store/{memory,event-log,commits}` và **DIL-CLAIM** (DIL đóng dấu chất nền theo phiên bản luật protocol/tagSchema/layout). `claimSubstrate()` dựng layout + ghi claim khi mới; khi resume thì verify claim khớp và **từ chối** claim lạ/không tương thích/hỏng. Ops vật lý sau seam `Substrate` tiêm được (mặc định `node:fs`). `HostDeclaration.store` thêm `root?` (địa chỉ chất nền; vắng = fixture in-memory). **Chưa** đổi backing `[data]`/`[event]` — non-breaking. 5 test mới (182 tổng), tsc sạch. Chọn `node:sqlite` (dựng sẵn Node 24, đồng bộ, zero external dep) cho `[data]` ở sub-step (b).
+
+---
+
 ## [Unreleased] — 2026-07-23
 
 ### — feat: drop layer_trace from InfoUnit (v0.3.2 §6.1, MUST)
