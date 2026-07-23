@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-07-23
+
+### — docs: point docs to protocol v0.3.2, remove v0.2
+**Commit:** `7c1dbf3`
+
+Con trỏ "the law" trong AGENTS.md, CONTEXT.md và README.md đổi từ `DIL-protocol-v0.2.md` sang `DIL-protocol-v0.3.2.md`; bản v0.2 đã xoá. Docs giờ trỏ đúng protocol quy phạm hiện hành. Đây mới là cập nhật con trỏ tài liệu — **code chưa** được đối chiếu với các thay đổi quy phạm của v0.3.2 (gỡ `layer_trace` khỏi `InfoUnit`, hai trạng thái provenance `simulated`/`projected` + đồ thị lifecycle, §6.4 Emission + type `Directive` + `issuing_layer`, Mode-B "return-not-write", tag H).
+
+---
+
 ## [Unreleased] — 2026-07-07
 
 ### — fix: §13.4 detail is fork-aware
