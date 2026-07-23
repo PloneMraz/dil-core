@@ -3,7 +3,7 @@
 Guidelines for AI coding agents working in this repository.
 
 > Read this **with** two documents, not instead of them:
-> - `DIL-protocol-v0.2.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
+> - `DIL-protocol-v0.3.2.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
 > - `CONTEXT.md` — how to approach turning that law into running code.
 >
 > This file is neither. It is the **operating rules for an agent writing the code**: what to build, in what order, and the mistakes that look natural but break DIL. It does not re-explain the concepts; it points at them.

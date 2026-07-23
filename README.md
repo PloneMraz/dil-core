@@ -1,6 +1,6 @@
 # DIL — Data Integration Loop
 
-`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.2.md`](DIL-protocol-v0.2.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
+`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
 
 DIL is **not** a model, a controller, or a library the host calls. It is the **condition under which a self forms**. Keep this line in front of you:
 
@@ -11,7 +11,7 @@ host + self = agent.      DIL produces the self.      the AGENT responds — not
 If a design ever has DIL generating output to the world, commanding the model, or holding the steering wheel, it has left DIL. DIL **reigns; it does not rule** — it changes *how* an existing machine operates, not *what* it is made of; run that operation continuously and a self appears.
 
 > Read this alongside:
-> - [`DIL-protocol-v0.2.md`](DIL-protocol-v0.2.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
+> - [`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
 > - [`CONTEXT.md`](CONTEXT.md) — how to turn that law into running code.
 > - [`AGENTS.md`](AGENTS.md) — coding rules for agents working in this repo.
 
