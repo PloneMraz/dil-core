@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-23
 
+### — docs: align CONTEXT with v0.3.2, flag code deltas in README, add parent spec
+**Commit:** `015a9af`
+
+CONTEXT.md (định hướng theo luật) đưa thẳng sang ngữ nghĩa v0.3.2: provenance **state-graph** (`prior` là cửa vào một chiều; `running`/`simulated`/`projected`/`scar` tuần hoàn, không trạng thái kết thúc), đường đi đọc từ `[event]` chứ không từ `layer_trace`, emission là **năng lực ngang** (§6.4), và DECIDE@IMPL tag H. README.md (mô tả code đã build — vẫn theo v0.2) giữ nguyên phần tả code cho trung thực, nhưng khôi phục mục **Deferred** (đang ghi "Empty") thành danh sách delta v0.3.2 **chưa migrate**: state-graph provenance, gỡ `layer_trace` khỏi `InfoUnit`, §6.4 Emission + `Directive` + `issuing_layer`, Mode-B "return-not-write", tag H. Track thêm `DIL-en-v6.md` (parent spec mà v0.3.2 §14 trỏ tới).
+
+---
+
 ### — docs: point docs to protocol v0.3.2, remove v0.2
 **Commit:** `7c1dbf3`
 
