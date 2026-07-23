@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: durable [event] log, disk = source of truth (Bước 1.5c)
+**Commit:** `ac33e1b`
+
+Nguồn-sự-thật của `[event]` chuyển sang chất nền. Thêm `deserializeEventRecord` (đảo ngược của `serializeEventRecord`, **không mất thông tin**) + `readLogRecords(dir)`; `createDurableEventLog(dir)` append vào sink JSONL hash-chain và **đọc (`all`/`bySourceId`) từ đĩa**, RAM chỉ giữ **counter đơn điệu + chain head** — RAM không còn phình vô hạn ("phình vô hạn" fix), và auditor tin log bền được neo chứ không tin RAM. Reopen thì resume counter + chain từ chất nền. Đường per-cycle chỉ `append` + `size()` (O(1)); `all()` là đọc audit-time. `createEventLog` in-memory giữ làm fixture test. 4 test mới (190 tổng), tsc sạch. Sửa kiểu `floorTag` trong `SerializedEventRecord` (`LayerIndex`).
+
+---
+
 ### — feat: SQLite-backed [data] store (Bước 1.5b)
 **Commit:** `e2facea`
 
