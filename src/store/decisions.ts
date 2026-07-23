@@ -13,13 +13,19 @@
  */
 
 /** DECIDE@IMPL tag F — store representation. */
-export const STORE_REPRESENTATION = "in-memory" as const;
+export const STORE_REPRESENTATION =
+  "[data] = SQLite (node:sqlite) under store/memory/; [event] = append-only hash-chained JSONL under store/event-log/; RAM holds only bounded caches, never the store of record" as const;
 /**
- * Rationale: the store is built before the loop (build order step 3) and the
- * first run targets a minimal host. `[event]` is an append-only array of
- * deeply-frozen records; `[data]` is a mutable map. Durable backing (SQLite/
- * file) is a host-declared concern layered on later; E3 persistence is a host
- * faculty, not the store module's responsibility.
+ * Rationale (declared choice, not invented): the store-of-record lives on the
+ * host's *requisitioned substrate* (CONTEXT §5), never in RAM. `[data]` (mutable
+ * present) is a SQLite table via `node:sqlite` — SQLite built into Node, so it is
+ * synchronous (matching the DataStore interface) and needs no external dependency
+ * or native build (sqlite-data-store.ts). `[event]` (append-only) stays JSONL +
+ * sha256 hash chain, the tamper-evident audit artifact (event-sink.ts). RAM is a
+ * bounded working cache only. The in-memory Map (`createDataStore`) and array
+ * `[event]` log are demoted to TEST FIXTURES. A different host may back the
+ * substrate differently (via the Substrate seam, substrate.ts) or choose another
+ * durable engine (e.g. better-sqlite3) behind the same DataStore interface.
  *
  * File-backed layout (DECIDE@IMPL tag F — the directory boundary IS the
  * rollback boundary). One parent root, `store/`, named after the ring itself

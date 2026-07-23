@@ -93,6 +93,11 @@ export {
 } from "./data-store.js";
 
 export {
+  createSqliteDataStore,
+  type SqliteDataStore,
+} from "./sqlite-data-store.js";
+
+export {
   createDirCommitStore,
   type CommitStore,
   type CommitMarker,
