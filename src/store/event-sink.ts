@@ -26,6 +26,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { LogRecord, ResistEvent, ActivityEvent, ContextAnchor } from "./resist-event.js";
 import type { LayerTrace, OpenTags, Provenance, TaggedDatum } from "./tags.js";
+import type { LayerIndex } from "../invariants/types.js";
 import { MAX_SEGMENT_BYTES } from "./decisions.js";
 import {
   CHAIN_GENESIS,
@@ -46,7 +47,7 @@ export interface SerializedEventRecord {
   readonly timestamp: number;
   readonly cycleMark: number | null;
   readonly provenance: Provenance;
-  readonly floorTag: number;
+  readonly floorTag: LayerIndex;
   readonly open: OpenTags;
   readonly layer_trace: LayerTrace;
   readonly payload: unknown;
@@ -222,6 +223,35 @@ export function readChainedLines(dir: string): ChainedEventLine[] {
 /** All serialized records (chain envelope unwrapped), tags in fixed order. */
 export function readJsonlSink(dir: string): SerializedEventRecord[] {
   return readChainedLines(dir).map((line) => line.record);
+}
+
+/**
+ * Reconstruct a LogRecord from its serialized form — the faithful inverse of
+ * `serializeEventRecord` (serialization is lossless: the flattened tags + payload
+ * + kind-specific body + anchor rebuild the record exactly). This is how an
+ * auditor (and a durable, disk-source-of-truth [event] log) reads records back
+ * from the substrate.
+ */
+export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
+  const datum: TaggedDatum = {
+    payload: rec.payload,
+    fixed: {
+      timestamp: rec.timestamp,
+      cycleMark: rec.cycleMark,
+      provenance: rec.provenance,
+      floorTag: rec.floorTag,
+    },
+    open: rec.open,
+    trace: rec.layer_trace,
+  };
+  return rec.kind === "scar"
+    ? { kind: "scar", event: rec.event!, scar: datum, anchor: rec.anchor }
+    : { kind: "activity", activity: rec.activity!, datum, anchor: rec.anchor };
+}
+
+/** All LogRecords across the directory's segments, read from the substrate. */
+export function readLogRecords(dir: string): LogRecord[] {
+  return readJsonlSink(dir).map(deserializeEventRecord);
 }
 
 /**

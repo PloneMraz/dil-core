@@ -18,7 +18,8 @@
  */
 
 import type { EventRecord, LogRecord } from "./resist-event.js";
-import type { EventSink } from "./event-sink.js";
+import type { EventSink, JsonlSinkOptions } from "./event-sink.js";
+import { createJsonlFileSink, readLogRecords } from "./event-sink.js";
 import { INDEX_KEYS } from "./decisions.js";
 
 /** Recursively freeze an object so no nested field can be altered. */
@@ -84,5 +85,55 @@ export function createEventLog(sink?: EventSink): EventLog {
     bySourceId(source_id: string): readonly EventRecord[] {
       return bySource.get(source_id) ?? [];
     },
+  };
+}
+
+/** A durable [event] log whose source of truth is the substrate (disk). */
+export interface DurableEventLog extends EventLog {
+  /** The current tamper-evidence chain head (for external anchoring). */
+  head(): string;
+  /** Close the underlying file handle. */
+  close(): void;
+}
+
+/**
+ * Create a durable [event] log over a substrate directory (`store/event-log/`).
+ *
+ * The SOURCE OF TRUTH is the disk: every record is appended to the append-only,
+ * hash-chained JSONL sink, and reads (`all`, `bySourceId`) come back FROM the
+ * substrate. RAM holds only a monotonic counter and the chain head — never the
+ * record history, so it cannot grow without bound (the "phình vô hạn" fix). An
+ * auditor trusts the durable, anchored log, not a process's RAM.
+ *
+ * Reads deserialize the whole live log, so they are an audit-time operation (the
+ * per-cycle path only `append`s and reads `size()`); a tiering deployment keeps
+ * only recent segments hot and archives older ones (never deleting — §9).
+ */
+export function createDurableEventLog(
+  dir: string,
+  opts?: JsonlSinkOptions,
+): DurableEventLog {
+  const sink = createJsonlFileSink(dir, opts);
+  // Resume the counter from whatever the substrate already holds.
+  let count = readLogRecords(dir).length;
+
+  return {
+    append(record: LogRecord): void {
+      sink.write(deepFreeze(record));
+      count += 1;
+    },
+    all(): readonly LogRecord[] {
+      return readLogRecords(dir);
+    },
+    size(): number {
+      return count;
+    },
+    bySourceId(source_id: string): readonly EventRecord[] {
+      return readLogRecords(dir).filter(
+        (r): r is EventRecord => r.kind === "scar" && r.event.source_id === source_id,
+      );
+    },
+    head: () => sink.head(),
+    close: () => sink.close(),
   };
 }

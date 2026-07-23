@@ -55,12 +55,20 @@ export {
   type HostDatum,
 } from "./tagging-gate.js";
 
-export { createEventLog, deepFreeze, type EventLog } from "./event-log.js";
+export {
+  createEventLog,
+  createDurableEventLog,
+  deepFreeze,
+  type EventLog,
+  type DurableEventLog,
+} from "./event-log.js";
 
 export {
   createJsonlFileSink,
   serializeEventRecord,
+  deserializeEventRecord,
   readJsonlSink,
+  readLogRecords,
   readChainedLines,
   verifyJsonlSink,
   listSegments,
