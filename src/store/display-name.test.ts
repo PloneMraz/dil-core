@@ -25,7 +25,7 @@ test("displayName renders fixed layer then keyed open tags, domain first", () =>
   d = stampLayer(d, 6);
   assert.equal(
     displayName(d),
-    "[20260630]_[c2]_[running]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]",
+    "[20260630]_[00:00:00]_[c2]_[running]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]",
   );
 });
 
@@ -69,6 +69,6 @@ test("eventDisplayName uses the scar's tags plus the mismatch kind", () => {
   );
   assert.equal(
     eventDisplayName(rec),
-    "[20260630]_[c2]_[scar]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]_[value-mismatch]",
+    "[20260630]_[00:00:00]_[c2]_[scar]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]_[value-mismatch]",
   );
 });

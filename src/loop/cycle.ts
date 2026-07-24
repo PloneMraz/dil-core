@@ -74,6 +74,13 @@ export interface CycleDeps {
   readonly events: EventLog;
   /** The host's bootstrap first emission for cycle-0 (P(a)). */
   readonly initialEmission: Emission;
+  /**
+   * The host's server clock — epoch milliseconds (requisition; the wall-clock
+   * where the host operates). Stamps `[event]` timestamps so an auditor can
+   * compare and sync a datum's diary. Defaults to `Date.now()` for the minimal
+   * host. The `cycleMark` (which cycle) is recorded separately from this.
+   */
+  readonly now?: () => number;
   /** RECOVERY-ONLY: resume the driver from a §9 snapshot instead of cycle-0. */
   readonly resume?: DriverState;
 }
@@ -129,14 +136,17 @@ interface LayerPass {
 export function createCycle(deps: CycleDeps): Cycle {
   const { layers, glob, data, events } = deps;
   const channel = createMeaningChannel();
+  const now = deps.now ?? ((): number => Date.now());
   let cycle = deps.resume?.cycle ?? 0;
   let lastEmission = deps.resume?.lastEmission ?? deps.initialEmission;
+  /** Wall-clock (host server clock, epoch-ms) of the cycle currently running. */
+  let cycleT = 0;
 
   /** The id the cycle datum takes in `[data]`; also its key in the `[event]` path. */
   const datumId = (): string => `cycle-${cycle}`;
   /** Log one `layer-exit` line as the cycle datum leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
-    events.append(recordLayerExit(datumId(), cycle, layer, cycle));
+    events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
   }
 
   /** Cycle-0: direct hand-off — one thread of flow, the driver dispatches. */
@@ -250,6 +260,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     run(host): CycleResult {
       const field = glob.current();
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";
+      cycleT = now(); // the host server clock at this cycle (epoch-ms), for [event] timestamps
 
       // The cycle datum, threaded T1→T8 so it accrues a floor-tag at each
       // layer; the flow mode rides along as an open tag (trace-visible, §13.3).
@@ -260,12 +271,12 @@ export function createCycle(deps: CycleDeps): Cycle {
             admittingLayer: 1,
             open: { domain: "cycle", phase: "loop", source: "driver", flow },
           },
-          cycle,
+          cycleT, // timestamp = wall-clock; the cycle number is the separate cycle-mark
         ),
         cycle,
       );
       // prior → running: the admitted host datum has run this cycle (a lean line).
-      events.append(recordProvenance(datumId(), cycle, "prior", "running", cycle));
+      events.append(recordProvenance(datumId(), cycle, "prior", "running", cycleT));
 
       const pass =
         flow === "single-threaded"
@@ -307,7 +318,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       if (collisions.length > 0) {
         const scarDatum = toScar(datum, true);
         // running → scar: the cycle datum collided and held (a lean line).
-        events.append(recordProvenance(datumId(), cycle, "running", "scar", cycle));
+        events.append(recordProvenance(datumId(), cycle, "running", "scar", cycleT));
         for (const { source_id, e } of collisions) {
           events.append(
             recordScar(
@@ -317,7 +328,7 @@ export function createCycle(deps: CycleDeps): Cycle {
                 expected: e.predicted.content,
                 received: e.observed?.content ?? null,
                 mismatch_kind: e.observed === null ? "absence" : "value-mismatch",
-                t: cycle,
+                t: cycleT,
               },
               anchor,
             ),
@@ -341,7 +352,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             emitted: response.action,
             observed: pass.t5.results.map((r) => r.entity_id),
             scars,
-            t: cycle,
+            t: cycleT,
           },
           anchor,
         ),

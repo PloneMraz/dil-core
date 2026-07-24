@@ -13,7 +13,7 @@
  * layout, decisions.ts), not by the name.
  *
  * Example:
- *   [20260630]_[c2]_[running]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]
+ *   [20260630]_[10:00:00]_[c2]_[running]_[T6]_[domain:financial]_[currency:VND]_[object:revenue]
  */
 
 import type { TaggedDatum } from "./tags.js";
@@ -26,6 +26,15 @@ function yyyymmdd(ts: number): string {
   const m = String(d.getUTCMonth() + 1).padStart(2, "0");
   const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}${m}${day}`;
+}
+
+/** Format an epoch-millisecond timestamp as HH:mm:ss in UTC (deterministic). */
+function hhmmss(ts: number): string {
+  const d = new Date(ts);
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  const m = String(d.getUTCMinutes()).padStart(2, "0");
+  const s = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
 }
 
 /** Open-tag entries with `domain` first, then the rest sorted by key. */
@@ -47,6 +56,7 @@ export function displayName(datum: TaggedDatum): string {
   const { timestamp, cycleMark, provenance, floorTag } = datum.fixed;
   const parts = [
     `[${yyyymmdd(timestamp)}]`,
+    `[${hhmmss(timestamp)}]`,
     `[c${cycleMark ?? "-"}]`,
     `[${provenance}]`,
     `[T${floorTag}]`,

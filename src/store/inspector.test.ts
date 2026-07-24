@@ -34,7 +34,7 @@ test("inspectData renders a header count and one line per datum", () => {
   store.put("b", admitHostData({ payload: "beta", admittingLayer: 1, open }, TS));
   const out = inspectData(store);
   assert.ok(out.startsWith("[data] — 2 item(s)"));
-  assert.ok(out.includes("  a  [20260630]_[c-]_[prior]_[T1]_[domain:weather]"));
+  assert.ok(out.includes("  a  [20260630]_[00:00:00]_[c-]_[prior]_[T1]_[domain:weather]"));
   assert.ok(out.includes("payload=alpha"));
   assert.ok(out.includes("payload=beta"));
 });

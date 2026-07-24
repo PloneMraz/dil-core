@@ -15,6 +15,13 @@ import type { DataStore } from "./data-store.js";
 import type { EventLog } from "./event-log.js";
 import { displayName, eventDisplayName } from "./display-name.js";
 
+/** Render an epoch-ms timestamp as HH:mm:ss UTC (the wall-clock of the event). */
+function clock(ts: number): string {
+  const d = new Date(ts);
+  const p = (n: number): string => String(n).padStart(2, "0");
+  return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+}
+
 /** A short, safe one-line preview of an arbitrary payload value. */
 function preview(value: unknown, max = 40): string {
   let s: string;
@@ -51,9 +58,9 @@ export function inspectEventLog(log: EventLog): string {
       case "cycle-seal":
         return `  #${i}  ${displayName(r.datum)}_[cycle-seal]  cycle=${r.activity.cycle} flow=${r.activity.flow} observed=${r.activity.observed.join(",") || "-"} scars=${r.activity.scars}`;
       case "layer-exit":
-        return `  #${i}  [layer-exit] ${r.datumId} @T${r.layer} (c${r.cycleMark})`;
+        return `  #${i}  [layer-exit] ${r.datumId} @T${r.layer} (c${r.cycleMark}) ${clock(r.t)}`;
       case "provenance":
-        return `  #${i}  [provenance] ${r.datumId} ${r.from}→${r.to} (c${r.cycleMark})`;
+        return `  #${i}  [provenance] ${r.datumId} ${r.from}→${r.to} (c${r.cycleMark}) ${clock(r.t)}`;
     }
   });
   return [`[event-log] — ${records.length} record(s)`, ...lines].join("\n");

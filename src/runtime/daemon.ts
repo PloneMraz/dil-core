@@ -52,6 +52,8 @@ export interface DaemonDeps {
   readonly glob: GlobMod;
   /** The host's bootstrap first emission for cycle-0 (P(a)). */
   readonly initialEmission: Emission;
+  /** The host's server clock (epoch-ms) for [event] timestamps; default Date.now(). */
+  readonly now?: () => number;
   /**
    * In-memory [data] fixture, used ONLY when the host declares no substrate
    * (`host.store.root` absent — test / throwaway). With a substrate, DIL builds
@@ -216,6 +218,7 @@ export function createDaemon(deps: DaemonDeps): Daemon {
         data,
         events,
         initialEmission: deps.initialEmission,
+        ...(deps.now ? { now: deps.now } : {}),
         resume,
       });
       running = true;
