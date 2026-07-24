@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: provenance state graph — 5 states, 11 edges, §13.6 edge check (Bước 3)
+**Commit:** `7798535`
+
+v0.3.2 §9: provenance là **đồ thị có hướng**, không phải chuỗi. Thêm `simulated`/`projected` vào type `Provenance` và **tập 11 cạnh** (`PROVENANCE_EDGES`) làm nguồn sự thật, kèm `isProvenanceEdge`/`assertProvenanceEdge`. `prior` là **cửa vào một chiều** (không cạnh nào trỏ tới); `running/simulated/projected/scar` tuần hoàn không có trạng thái kết thúc. `toRunning`/`toScar` validate qua tập cạnh (`toScar` đến được từ `running` HOẶC `projected`; đều đòi collision). Checker §13.6 đọc các dòng `provenance` trong `[event]`, **fail** nếu có bước không phải cạnh, hoặc một datum vào `prior` quá một lần. **Phạm vi: đây là *luật*** — `simulated`/`projected` chưa được *đi tới*; loop chạy vẫn `prior→running→scar` (tập con hợp lệ), exercise forward-state là Bước 6. E2E vẫn 6 pass / 1 partial / 0 fail. 4 test mới (202 tổng), tsc sạch.
+
+---
+
 ### — fix: [event] timestamp is the host wall-clock, separate from cycle
 **Commit:** `575258b`
 
