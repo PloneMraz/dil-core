@@ -23,6 +23,12 @@ export {
 export { createDaemon, type Daemon, type DaemonDeps } from "./daemon.js";
 
 export {
+  requisition,
+  RequisitionError,
+  type Requisitioned,
+} from "./requisition.js";
+
+export {
   collisionCoordinates,
   formReading,
   reflectionSignal,

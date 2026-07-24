@@ -52,6 +52,33 @@ export interface TraceProbe {
   read(): readonly string[];
 }
 
+/**
+ * One item of the host's pre-existing content, offered for admission at startup.
+ * DIL does NOT import host content wholesale: on startup it scans this and forces
+ * every item through the tagging-gate — vetted and stamped provenance `prior` —
+ * before anything enters the store (§9, no side door). The host supplies the raw
+ * `payload` and its *descriptive* open tags (which MUST satisfy the gate: include
+ * `domain`, ≥3 tags, no verdict); DIL owns the stamping.
+ */
+export interface PreexistingItem {
+  /** A stable id/key this item takes in `[data]`. */
+  readonly id: string;
+  readonly payload: unknown;
+  /** Descriptive open tags (must satisfy the tagging-gate: `domain`, ≥3, no verdict). */
+  readonly open: Readonly<Record<string, string>>;
+  /** The admitting layer (default 1, T1 ingestion). */
+  readonly admittingLayer?: number;
+}
+
+/**
+ * The host's pre-existing memory, declared so DIL can scan it at startup. DIL
+ * reads the host's declaration of *where* its content is; it does not assume the
+ * host's storage format. Every scanned item is vetted + stamped `prior`.
+ */
+export interface PreexistingMemory {
+  scan(): Iterable<PreexistingItem>;
+}
+
 export interface HostDeclaration {
   /**
    * E1 — Differentiability. A boundary permitting an internal/external
@@ -83,6 +110,12 @@ export interface HostDeclaration {
      * in-memory fixture (test / throwaway minimal host), never a real deployment.
      */
     readonly root?: string;
+    /**
+     * The host's pre-existing content, scanned at startup and admitted through
+     * the tagging-gate as `prior` (no side door). Absent ⇒ nothing pre-exists to
+     * admit (a fresh minimal host).
+     */
+    readonly preexisting?: PreexistingMemory;
   };
 
   /**
