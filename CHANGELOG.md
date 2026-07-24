@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — fix: [event] timestamp is the host wall-clock, separate from cycle
+**Commit:** `575258b`
+
+Driver tối thiểu trước đây stamp `timestamp` bằng **số cycle** — trùng `cycleMark` và vô dụng cho audit. Giờ tách hai: `cycleMark` giữ số cycle, `timestamp` là **đồng hồ server của host** (epoch-ms) lúc ghi event, để auditor **so sánh và đồng bộ** diễn biến của datum liên-event, liên-host. Thêm seam `now()` trên `CycleDeps`/`DaemonDeps` (requisition đồng hồ host; mặc định `Date.now()`). `cycle.ts` stamp mọi dòng `[event]` (layer-exit/provenance/scar/cycle-seal + timestamp lúc admit) bằng một lần đọc wall-clock/cycle. Lưu epoch-ms (chính xác, sắp xếp được, không lệ thuộc múi giờ để sync liên-host); `displayName` render `[yyyyMMdd]_[hh:mm:ss]` UTC, inspector hiện `HH:mm:ss` trên dòng lean. 198 test, tsc sạch.
+
+---
+
 ### — feat: [event] as the datum's activity journal; path read from it (Bước 2, §9)
 **Commit:** `d117f6d`
 
