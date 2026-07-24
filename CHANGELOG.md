@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: §6.4 Emission — Directive, issuing_layer, no-arbiter (Bước 4)
+**Commit:** `e9e59f4`
+
+Emission = link 5 như một **năng lực ngang**. Thêm type **`Directive`** (§6.1: `committed_action`, `register` luôn ↔ không bao giờ `=` — INV-2, `issuing_layer`, `built_from`) và dòng **`activityKind:"emission"`** (`recordEmission`) khớp nhật ký Bước 2 — mỗi emission là một dòng `[event]` mang layer phát. `cycle.ts` mô hình **một emission thật/cycle** (response từ appraisal, phát ở cuối meaning-channel → issuing layer T8) qua helper **`emit()`** mà bất kỳ layer nào **có thể** gọi; **không arbiter** nội bộ — xung đột va chạm thành ResistEvent. **Phạm vi trung thực** (theo tác giả): emission *thật* chỉ có với host thật; probe/query/test theo layer là năng lực kiến trúc đỡ, không phải hành vi bịa khi không region nào nhận. §13.3 giờ verify mỗi emission mang register ↔ + issuing layer 1–8 + báo no-arbiter; serialize/deserialize + inspector xử lý form emission. E2E: 12 emission/12 cycle, vẫn 6 pass / 1 partial / 0 fail. 3 test mới (205 tổng), tsc sạch.
+
+---
+
 ### — feat: provenance state graph — 5 states, 11 edges, §13.6 edge check (Bước 3)
 **Commit:** `7798535`
 
