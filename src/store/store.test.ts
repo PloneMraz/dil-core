@@ -20,7 +20,11 @@ import {
   toRunning,
   toScar,
   LifecycleError,
+  PROVENANCE_EDGES,
+  isProvenanceEdge,
+  assertProvenanceEdge,
 } from "./data-store.js";
+import type { Provenance } from "./tags.js";
 import {
   recordScar,
   EventRecordError,
@@ -267,4 +271,32 @@ test("[data] is mutable and clearable each cycle", () => {
   assert.ok(data.has("k"));
   data.clear();
   assert.equal(data.size(), 0);
+});
+
+// ── Provenance state graph (§9): 11 edges, prior one-way ───────────────────
+
+test("every one of the 11 §9 edges is accepted; prior is a one-way entry", () => {
+  const states: Provenance[] = ["prior", "running", "simulated", "projected", "scar"];
+  // exactly the 11 declared edges are legal; every other ordered pair is not
+  const legal = new Set(PROVENANCE_EDGES.map(([f, t]) => `${f}->${t}`));
+  assert.equal(PROVENANCE_EDGES.length, 11);
+  for (const f of states) {
+    for (const t of states) {
+      assert.equal(isProvenanceEdge(f, t), legal.has(`${f}->${t}`), `${f}->${t}`);
+    }
+  }
+  // prior is a one-way entry: no edge returns to it
+  for (const f of states) assert.equal(isProvenanceEdge(f, "prior"), false, `${f}->prior`);
+  // and prior only exits to running
+  for (const t of states) {
+    assert.equal(isProvenanceEdge("prior", t), t === "running", `prior->${t}`);
+  }
+});
+
+test("assertProvenanceEdge throws LifecycleError on a non-edge", () => {
+  assertProvenanceEdge("running", "scar"); // legal, no throw
+  assertProvenanceEdge("scar", "running"); // legal (a scar is not a resting place)
+  assert.throws(() => assertProvenanceEdge("prior", "scar"), LifecycleError);
+  assert.throws(() => assertProvenanceEdge("simulated", "scar"), LifecycleError);
+  assert.throws(() => assertProvenanceEdge("scar", "prior"), LifecycleError);
 });

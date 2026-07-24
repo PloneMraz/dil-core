@@ -21,8 +21,10 @@ import type {
   LogRecord,
   CycleSealActivity,
   LayerExitActivity,
+  ProvenanceActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
+import { isProvenanceEdge } from "../store/data-store.js";
 import type { GateResult } from "../precondition/gate.js";
 import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
 import {
@@ -121,6 +123,9 @@ export function checkConformance(
   );
   const cycleSeals = records.filter(
     (r): r is CycleSealActivity => r.kind === "activity" && r.activityKind === "cycle-seal",
+  );
+  const provenanceLines = records.filter(
+    (r): r is ProvenanceActivity => r.kind === "activity" && r.activityKind === "provenance",
   );
   const results: CriterionResult[] = [];
 
@@ -264,15 +269,28 @@ export function checkConformance(
         }
       }
     }
+    // §13.6: provenance moves only along the edges of the §9 graph (so nothing
+    // ever returns to `prior` — no edge targets it), and `prior` is entered once
+    // (a datum has at most one prior→running).
+    const badEdge = provenanceLines.find((r) => !isProvenanceEdge(r.from, r.to));
+    const priorEntries = new Map<string, number>();
+    for (const r of provenanceLines) {
+      if (r.from === "prior") priorEntries.set(r.datumId, (priorEntries.get(r.datumId) ?? 0) + 1);
+    }
+    const doubleEntry = [...priorEntries.entries()].find(([, n]) => n > 1);
     results.push({
       id: "6",
       title: "Store",
-      verdict: firstProblem || coverageGap !== null ? "fail" : "pass",
+      verdict: firstProblem || coverageGap !== null || badEdge || doubleEntry ? "fail" : "pass",
       detail: firstProblem
         ? `a record failed: ${firstProblem}`
         : coverageGap !== null
           ? `activity-record coverage gap: no activity record for cycle ${coverageGap}`
-          : "scars carry the ResistEvent and every cycle left an activity record; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
+          : badEdge
+            ? `illegal provenance move in the trace: ${badEdge.from} → ${badEdge.to} (${badEdge.datumId})`
+            : doubleEntry
+              ? `datum ${doubleEntry[0]} entered \`prior\` more than once; prior is a one-way entry (§9)`
+              : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior entered once); all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
     });
   }
 

@@ -104,6 +104,9 @@ export {
   stampLayer,
   toRunning,
   toScar,
+  PROVENANCE_EDGES,
+  isProvenanceEdge,
+  assertProvenanceEdge,
   createDataStore,
   type DataStore,
 } from "./data-store.js";

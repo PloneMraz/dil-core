@@ -16,7 +16,7 @@
  * cycle-mark/provenance advanced — never stripped, reordered, or dropped.
  */
 
-import type { TaggedDatum } from "./tags.js";
+import type { TaggedDatum, Provenance } from "./tags.js";
 import type { LayerIndex } from "../invariants/types.js";
 
 /**
@@ -48,38 +48,72 @@ export class LifecycleError extends Error {
 }
 
 /**
- * prior → running. The datum acquires a cycle-mark (it has run). Throws if the
- * datum is not currently `prior`.
+ * The provenance state graph (§9): the legal moves. `prior` is a one-way entry
+ * (no edge returns to it); `running`, `simulated`, `projected`, `scar` circulate
+ * with no terminal state — a datum is never a conclusion at rest. The forward
+ * states (`simulated`/`projected`) are only *visited* once forward-building lands
+ * (Bước 6); the graph is the law from here on, and every provenance move — at
+ * runtime and in the `[event]` trace — is checked against it.
+ */
+export const PROVENANCE_EDGES: readonly (readonly [Provenance, Provenance])[] = [
+  ["prior", "running"], // host data admitted and run
+  ["running", "simulated"], // taken up into building a situation
+  ["simulated", "projected"], // a situation yields the outcome cast from it
+  ["simulated", "running"], // built, but no emission followed; back to use
+  ["projected", "simulated"], // the cast outcome does not fit; build again
+  ["projected", "scar"], // the emission was made, the region returned, it held
+  ["running", "scar"], // collided with directly, without a prior cast
+  ["projected", "running"], // an outcome that produced no scar; back to use
+  ["scar", "running"], // a scar returns to the store as data in use
+  ["scar", "projected"], // a scar enriches an outcome already cast
+  ["scar", "simulated"], // a scar re-enters the building of a situation
+];
+
+const EDGE_SET = new Set(PROVENANCE_EDGES.map(([f, t]) => `${f}->${t}`));
+
+/** Whether a provenance move is a legal edge of the §9 graph. */
+export function isProvenanceEdge(from: Provenance, to: Provenance): boolean {
+  return EDGE_SET.has(`${from}->${to}`);
+}
+
+/** Assert a provenance move is a legal edge; throw LifecycleError otherwise. */
+export function assertProvenanceEdge(from: Provenance, to: Provenance): void {
+  if (!isProvenanceEdge(from, to)) {
+    throw new LifecycleError(`${from} → ${to} is not an edge of the §9 provenance graph`);
+  }
+}
+
+/**
+ * → running. A legal move to `running` (from `prior` on first run, or a re-entry
+ * from `simulated`/`projected`/`scar` once circulation lands, Bước 6). The
+ * cycle-mark is set once, when the datum first runs (§9): null → cycle; a datum
+ * that has already run keeps its mark on re-entry.
  */
 export function toRunning<T>(
   datum: TaggedDatum<T>,
   cycle: number,
 ): TaggedDatum<T> {
-  if (datum.fixed.provenance !== "prior") {
-    throw new LifecycleError(
-      `to running requires provenance "prior", got "${datum.fixed.provenance}"`,
-    );
-  }
+  assertProvenanceEdge(datum.fixed.provenance, "running");
   return {
     ...datum,
-    fixed: { ...datum.fixed, cycleMark: cycle, provenance: "running" },
+    fixed: {
+      ...datum.fixed,
+      cycleMark: datum.fixed.cycleMark ?? cycle,
+      provenance: "running",
+    },
   };
 }
 
 /**
- * running → scar. Reachable ONLY from `running`, and ONLY on collision-and-hold
- * (a held resistance-stamp). Throws otherwise — a `prior` cannot jump to `scar`,
- * and a running datum that never held a collision is not a scar.
+ * → scar. Reachable from `running` or `projected` (both valid edges), and ONLY on
+ * collision-and-hold (a held resistance-stamp). Throws otherwise — a `prior`
+ * cannot jump to `scar`, and a datum that never held a collision is not a scar.
  */
 export function toScar<T>(
   datum: TaggedDatum<T>,
   heldResistance: boolean,
 ): TaggedDatum<T> {
-  if (datum.fixed.provenance !== "running") {
-    throw new LifecycleError(
-      `to scar requires provenance "running", got "${datum.fixed.provenance}"`,
-    );
-  }
+  assertProvenanceEdge(datum.fixed.provenance, "scar");
   if (!heldResistance) {
     throw new LifecycleError(
       "to scar requires a held collision (resistance-stamp); running alone does not produce a scar",

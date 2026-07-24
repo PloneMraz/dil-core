@@ -24,6 +24,7 @@ import { createT7 } from "../loop/layers/t7.js";
 import { createT8 } from "../loop/layers/t8.js";
 import { createDataStore } from "../store/data-store.js";
 import { createEventLog } from "../store/event-log.js";
+import { recordProvenance } from "../store/resist-event.js";
 import type { HostDeclaration } from "../host/declaration.js";
 import type { HostCycleInput } from "../loop/cycle.js";
 import type { EventLog } from "../store/event-log.js";
@@ -84,6 +85,27 @@ test("Store (§13.6) passes: every scar is well-formed with domain + anchor", ()
   const report = checkConformance(events, { gate });
   const store = report.results.find((r) => r.id === "6")!;
   assert.equal(store.verdict, "pass");
+});
+
+test("Store (§13.6) fails on an illegal provenance move in the trace", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  // inject a move that is not an edge of the §9 graph (prior → scar)
+  events.append(recordProvenance("cycle-0", 0, "prior", "scar", 1));
+  const store = checkConformance(events, { gate }).results.find((r) => r.id === "6")!;
+  assert.equal(store.verdict, "fail");
+  assert.ok(store.detail.includes("illegal provenance move"));
+});
+
+test("Store (§13.6) fails if a datum enters `prior` more than once", () => {
+  const { events, gate } = runDaemon([{ signals: [sig("weather", "sun")], changes: [] }]);
+  // a second prior→running for the same datum: entered twice (prior is one-way)
+  events.append(recordProvenance("cycle-0", 0, "prior", "running", 1));
+  const store = checkConformance(events, { gate }).results.find((r) => r.id === "6")!;
+  assert.equal(store.verdict, "fail");
+  assert.ok(store.detail.includes("one-way entry"));
 });
 
 test("Loop (§13.3) passes: every scar shows a T1→T8 traversal", () => {
