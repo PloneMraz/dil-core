@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: [event] as the datum's activity journal; path read from it (Bước 2, §9)
+**Commit:** `d117f6d`
+
+§9 "mịn" (tác giả chốt): mỗi biến động của datum là **một dòng `[event]`**, ghi khi xảy ra — "nó chỉ là log". Vì §9 nói *"an activity record is trace, not experience"*, đỉnh chỉ hai kind: `scar` (kinh nghiệm — self học **chỉ** từ đây) vs `activity` (ô trace); transition là một `activityKind` dưới `activity`, không phải kind thứ ba: `cycle-seal` (record niêm phong cycle + datum + anchor), `layer-exit` (nhẹ: datumId + layer), `provenance` (nhẹ: datumId + from→to). **Bỏ `TaggedDatum.trace` + type `LayerTrace`** (tag chỉ đặt tên hiện tại — §9); `stampLayer` chỉ cập nhật floor-tag. Path đọc từ các dòng `layer-exit` trong `[event]`, keyed theo `datumId` (= khoá `[data]`; dọn đường Bước 6 đếm vòng). `cycle.ts` ghi `prior→running` + 8 layer-exit + `running→scar` khi xảy ra; §13.3 tái dựng T1→T8 từ đó, không từ tag. Serialize/deserialize thành union theo `form`; inspector render từng kind. E2E: run bền 12 cycle giờ ghi **152 dòng `[event]`** (trước 33), conformance vẫn 6 pass / 1 partial / 0 fail đọc từ đĩa. 198 test, tsc sạch.
+
+---
+
 ### — feat: wire requisition into daemon.start() — durable daemon (Bước 1.5d2)
 **Commit:** `15bdbb7`
 
