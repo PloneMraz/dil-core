@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: Mode-B return-not-write — read-only [event] view, §13.5 (Bước 5)
+**Commit:** `c78116f`
+
+§8.4 "Mode-B returns; it does not write." Biến thành đảm bảo **ở mức type**: tách `ReadableEventLog` (`all`/`size`/`bySourceId`, **không `append`**) khỏi `EventLog`, và reflection reader giờ nhận `ReadableEventLog` — bên thứ ba đọc log để dựng reading nhưng type không cho ghi. `HostSource` vốn không có store handle (chỉ `next`/`deliver`, kênh E2), nên nguồn Mode-B **cấu trúc-không-thể** chạm `[data]`/`[event]`. §13.5 giờ báo cả hai vế mới: Mode-B không ghi store (structural, như channel separation) + returns **được đăng ký** chứ không để trôi (scar hoặc entity quan sát trong trace — loop chạy mà không đăng ký gì sẽ tụt partial = pure Mode-A). E2E không đổi (6 pass / 1 partial / 0 fail). 3 test mới (208 tổng), tsc sạch.
+
+---
+
 ### — feat: §6.4 Emission — Directive, issuing_layer, no-arbiter (Bước 4)
 **Commit:** `e9e59f4`
 
