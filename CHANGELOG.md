@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: wire requisition into daemon.start() — durable daemon (Bước 1.5d2)
+**Commit:** `15bdbb7`
+
+`daemon.start()` giờ áp luật store lên host khi khởi động: sau khi gate qualify, nếu `host.store.root` có → **requisition** chất nền (claim + `[data]`/`[event]`/`commits` bền + rà-soát bộ nhớ host thành `prior`), rồi dựng cycle trên các store bền đó; không có chất nền → lùi về store in-memory tiêm vào (test/throwaway). Dời việc dựng store/cycle/recovery vào `start()`. `DaemonDeps.data/events` thành tuỳ chọn; `Daemon` thêm `requisitionReport()` (admitted/rejected) và `close()` (giải phóng handle chất nền). Đường test cũ (root vắng = fixture) không đổi. 2 test daemon-bền mới chứng minh: admit `prior` khi khởi động, `[event]` xuống đĩa + chain verify, log resume và tiếp tục lớn qua restart (INV-5, không roll back). **Bước 1.5 khép** — verify E2E: daemon bền chạy 12 cycle, auditor độc lập đọc `[event]` từ đĩa chấm 6 pass / 1 partial / 0 fail. 197 test, tsc sạch.
+
+---
+
 ### — feat: requisition orchestration + scan/admit-as-prior (Bước 1.5d1)
 **Commit:** `09af31e`
 
