@@ -34,19 +34,28 @@ export function deepFreeze<T>(value: T): T {
 }
 
 /**
- * The append-only [event] log. Deliberately exposes only `append`, reads, and
- * indexed lookups — there is no method to alter or remove a record. Internally
- * `INDEX_KEYS` (DECIDE@IMPL tag F) drive the lookups.
+ * A READ-ONLY view of the [event] log — reads and indexed lookups only, no
+ * `append`. A Mode-B source and the reflection reader take THIS view, so
+ * "Mode-B returns; it does not write" (§8.4) is a type-level guarantee: they can
+ * read the log to form a reading, but the type gives them no way to write it.
  */
-export interface EventLog {
-  /** Append a record (scar or activity); it is deep-frozen and read-only forever. */
-  append(record: LogRecord): void;
+export interface ReadableEventLog {
   /** All records, oldest first, each frozen. */
   all(): readonly LogRecord[];
   /** Number of records (the commit counter reads this). */
   size(): number;
   /** Scar lookup by resistance source (activity records carry no source_id). */
   bySourceId(source_id: string): readonly EventRecord[];
+}
+
+/**
+ * The append-only [event] log. Deliberately exposes only `append`, reads, and
+ * indexed lookups — there is no method to alter or remove a record. Internally
+ * `INDEX_KEYS` (DECIDE@IMPL tag F) drive the lookups.
+ */
+export interface EventLog extends ReadableEventLog {
+  /** Append a record (scar or activity); it is deep-frozen and read-only forever. */
+  append(record: LogRecord): void;
 }
 
 /**

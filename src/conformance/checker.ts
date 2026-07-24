@@ -244,13 +244,25 @@ export function checkConformance(
     const modeBEvidence = sources.size >= 2;
     // Reflection status is read from the declared decision, not a caller flag.
     const reflection = REFLECTION_MECHANISM !== "DEFERRED";
+    // §8.4 "Mode-B returns; it does not write": the source and the reflection
+    // reader hold only a read-only [event] view (ReadableEventLog) and the
+    // HostSource has no store handle — a structural, type-level guarantee (like
+    // channel separation), not read from traces. Its returns must be REGISTERED
+    // rather than left to pass (pure Mode-A): a registered return is a scar or an
+    // observed entity in the trace.
+    const returnsRegistered =
+      scars.length > 0 || cycleSeals.some((s) => s.activity.observed.length > 0);
     results.push({
       id: "5",
       title: "Resistance",
-      verdict: modeBEvidence && reflection ? "pass" : "partial",
+      verdict: modeBEvidence && reflection && returnsRegistered ? "pass" : "partial",
       detail:
         `${sources.size} distinct resistance source(s) in traces` +
         (modeBEvidence ? " (Mode-A not pure)" : " (limited diversity)") +
+        (returnsRegistered
+          ? "; returns registered (not left to pass)"
+          : "; returns not registered — the loop may be letting returns pass (pure Mode-A)") +
+        "; Mode-B writes to no store (structural: read-only view, no store handle)" +
         (reflection ? "; reflection wired" : "; reflection is DEFERRED (§8.4, tag E)"),
     });
   }

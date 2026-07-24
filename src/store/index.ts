@@ -70,6 +70,7 @@ export {
   createDurableEventLog,
   deepFreeze,
   type EventLog,
+  type ReadableEventLog,
   type DurableEventLog,
 } from "./event-log.js";
 

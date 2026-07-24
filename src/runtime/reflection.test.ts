@@ -32,7 +32,7 @@ import { createT6 } from "../loop/layers/t6.js";
 import { createT7 } from "../loop/layers/t7.js";
 import { createT8 } from "../loop/layers/t8.js";
 import { createDataStore } from "../store/data-store.js";
-import { createEventLog } from "../store/event-log.js";
+import { createEventLog, type ReadableEventLog } from "../store/event-log.js";
 import { admitHostData } from "../store/tagging-gate.js";
 import type { HostDeclaration } from "../host/declaration.js";
 import type { HostCycleInput } from "../loop/cycle.js";
@@ -158,6 +158,28 @@ function envUnit() {
     layer_trace: [1 as const],
   };
 }
+
+test("Mode-B returns, it does not write: the reflection reader holds a read-only view (§8.4)", () => {
+  const { events } = daemonWithScar();
+  const before = events.size();
+  const coords = collisionCoordinates(events); // reading the log
+  formReading(events, coords[0]!.index, "reader-1", "note"); // still only reading
+  assert.equal(events.size(), before); // reading never appended a record
+
+  // type-level guarantee: the read-only view exposes no way to write the log
+  const ro: ReadableEventLog = events;
+  // @ts-expect-error — append is not on ReadableEventLog
+  ro.append;
+});
+
+test("a Mode-B source (HostSource) has no store handle — it cannot write [data] or [event]", () => {
+  const src = scriptedSource([]);
+  const keys = Object.keys(src);
+  for (const forbidden of ["append", "put", "write", "store", "data", "events"]) {
+    assert.equal(keys.includes(forbidden), false, `HostSource must not expose ${forbidden}`);
+  }
+  assert.ok(keys.includes("next") && keys.includes("deliver")); // only the E2 channel
+});
 
 test("the SAME running daemon ingests a reflection about its own scar without halting", () => {
   const events = createEventLog();

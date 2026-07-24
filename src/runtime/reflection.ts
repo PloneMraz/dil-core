@@ -22,7 +22,7 @@
  * consult external data such as the web) stays deployment-open, like tag D.
  */
 
-import type { EventLog } from "../store/event-log.js";
+import type { ReadableEventLog } from "../store/event-log.js";
 import type { MismatchKind } from "../store/resist-event.js";
 import type { Signal } from "../loop/types.js";
 import type { ChannelTransducer } from "../loop/layers/t3.js";
@@ -50,7 +50,7 @@ export interface CollisionCoordinate {
  * Mechanically extract the coordinates of every recorded collision, for a
  * reader to browse and address. Read-only; carries no judgment.
  */
-export function collisionCoordinates(log: EventLog): CollisionCoordinate[] {
+export function collisionCoordinates(log: ReadableEventLog): CollisionCoordinate[] {
   // Coordinates address SCARS (collisions); the index stays the record's
   // absolute position in the log, so a coordinate is a stable address.
   return log.all().flatMap((rec, index) =>
@@ -80,7 +80,7 @@ export interface ReflectionReading {
  * exists: a reflection MUST reference a real recorded collision.
  */
 export function formReading(
-  log: EventLog,
+  log: ReadableEventLog,
   index: number,
   reader_id: string,
   reading: unknown,

@@ -173,6 +173,17 @@ test("Resistance (§13.5) passes with diverse sources now that reflection (tag E
   assert.ok(c5.detail.includes("reflection wired"));
 });
 
+test("Resistance (§13.5) reports Mode-B writes to no store and returns registered (§8.4)", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "rain")], changes: [] },
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("market", "down")], changes: [] },
+  ]);
+  const c5 = checkConformance(events, { gate }).results.find((r) => r.id === "5")!;
+  assert.ok(c5.detail.includes("writes to no store"));
+  assert.ok(c5.detail.includes("returns registered"));
+});
+
 test("Resistance (§13.5) stays partial when resistance sources lack diversity", () => {
   const { events, gate } = runDaemon([
     { signals: [sig("weather", "sun")], changes: [] },
