@@ -25,7 +25,7 @@
 
 import { admitHostData } from "../store/tagging-gate.js";
 import { toRunning, toScar } from "../store/data-store.js";
-import { recordScar, recordActivity } from "../store/resist-event.js";
+import { recordScar, recordActivity, recordLayerExit, recordProvenance } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
@@ -45,7 +45,7 @@ import {
   gatherT8,
 } from "./gathers.js";
 import type { GlobMod } from "./glob-mod.js";
-import type { Appraisal, Signal, PredErr, ModField } from "./types.js";
+import type { Appraisal, Signal, PredErr, ModField, LayerIndex } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
 import type { T3Input, T3Output } from "./layers/t3.js";
@@ -132,6 +132,13 @@ export function createCycle(deps: CycleDeps): Cycle {
   let cycle = deps.resume?.cycle ?? 0;
   let lastEmission = deps.resume?.lastEmission ?? deps.initialEmission;
 
+  /** The id the cycle datum takes in `[data]`; also its key in the `[event]` path. */
+  const datumId = (): string => `cycle-${cycle}`;
+  /** Log one `layer-exit` line as the cycle datum leaves a layer (§9: path in [event]). */
+  function logExit(layer: LayerIndex): void {
+    events.append(recordLayerExit(datumId(), cycle, layer, cycle));
+  }
+
   /** Cycle-0: direct hand-off — one thread of flow, the driver dispatches. */
   function passSingleThreaded(
     host: HostCycleInput,
@@ -141,6 +148,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     let datum = datum0;
     const t1 = runLayer(layers.t1, host.signals, field, datum);
     datum = t1.datum;
+    logExit(1);
     const t2 = runLayer(
       layers.t2,
       { env: t1.output, emitted: lastEmission, changes: host.changes },
@@ -148,17 +156,22 @@ export function createCycle(deps: CycleDeps): Cycle {
       datum,
     );
     datum = t2.datum;
+    logExit(2);
     const envPushed = new Set(
       t2.output.tagged.filter((t) => t.agency === "ENV_PUSHED").map((t) => t.change.id),
     );
     const t3 = runLayer(layers.t3, { signals: host.signals }, field, datum);
     datum = t3.datum;
+    logExit(3);
     const t4 = runLayer(layers.t4, { units: t3.output.units }, field, datum);
     datum = t4.datum;
+    logExit(4);
     const t5 = runLayer(layers.t5, { bound: t4.output.bound }, field, datum);
     datum = t5.datum;
+    logExit(5);
     const t6 = runLayer(layers.t6, { results: t5.output.results, envPushed }, field, datum);
     datum = t6.datum;
+    logExit(6);
     const t7 = runLayer(
       layers.t7,
       {
@@ -172,6 +185,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       datum,
     );
     datum = t7.datum;
+    logExit(7);
     const t8 = runLayer(
       layers.t8,
       { others: t6.output.others, interactions: host.interactions },
@@ -179,6 +193,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       datum,
     );
     datum = t8.datum;
+    logExit(8);
     return { datum, t5: t5.output, t7: t7.output };
   }
 
@@ -195,28 +210,36 @@ export function createCycle(deps: CycleDeps): Cycle {
     channel.clear();
     const t1 = runLayer(layers.t1, host.signals, field, datum);
     datum = t1.datum;
+    logExit(1);
     channel.publish(1, t1.output);
     const t2 = runLayer(layers.t2, gatherT2(channel, host, lastEmission), field, datum);
     datum = t2.datum;
+    logExit(2);
     channel.publish(2, t2.output);
     const t3 = runLayer(layers.t3, gatherT3(host), field, datum);
     datum = t3.datum;
+    logExit(3);
     channel.publish(3, t3.output);
     const t4 = runLayer(layers.t4, gatherT4(channel), field, datum);
     datum = t4.datum;
+    logExit(4);
     channel.publish(4, t4.output);
     const t5 = runLayer(layers.t5, gatherT5(channel), field, datum);
     datum = t5.datum;
+    logExit(5);
     channel.publish(5, t5.output);
     // Fan-out: T6 and T7 both read T5's one published output; T6 also reads T2.
     const t6 = runLayer(layers.t6, gatherT6(channel), field, datum);
     datum = t6.datum;
+    logExit(6);
     channel.publish(6, t6.output);
     const t7 = runLayer(layers.t7, gatherT7(channel), field, datum);
     datum = t7.datum;
+    logExit(7);
     channel.publish(7, t7.output);
     const t8 = runLayer(layers.t8, gatherT8(channel, host), field, datum);
     datum = t8.datum;
+    logExit(8);
     channel.publish(8, t8.output);
     return { datum, t5: t5.output, t7: t7.output };
   }
@@ -241,6 +264,8 @@ export function createCycle(deps: CycleDeps): Cycle {
         ),
         cycle,
       );
+      // prior → running: the admitted host datum has run this cycle (a lean line).
+      events.append(recordProvenance(datumId(), cycle, "prior", "running", cycle));
 
       const pass =
         flow === "single-threaded"
@@ -281,6 +306,8 @@ export function createCycle(deps: CycleDeps): Cycle {
       const collisionSources = new Set<string>();
       if (collisions.length > 0) {
         const scarDatum = toScar(datum, true);
+        // running → scar: the cycle datum collided and held (a lean line).
+        events.append(recordProvenance(datumId(), cycle, "running", "scar", cycle));
         for (const { source_id, e } of collisions) {
           events.append(
             recordScar(
@@ -306,6 +333,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // trail complete across quiet stretches (E4) — one record per cycle.
       events.append(
         recordActivity(
+          datumId(),
           datum,
           {
             cycle,

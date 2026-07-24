@@ -38,6 +38,7 @@ function scarRec(cycle: number, source_id: string) {
 }
 function activityRec(cycle: number) {
   return recordActivity(
+    `cycle-${cycle}`,
     ran(cycle),
     { cycle, flow: "single-threaded", emitted: { kind: "respond" }, observed: ["e"], scars: 1, t: cycle },
     { ...anchor, cycle },

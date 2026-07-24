@@ -58,7 +58,5 @@ export function admitHostData<T>(
       floorTag: datum.admittingLayer,
     },
     open,
-    // The layer_trace begins at the admitting layer; later layers append (§6.1).
-    trace: [datum.admittingLayer],
   };
 }

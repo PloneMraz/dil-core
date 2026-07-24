@@ -16,7 +16,7 @@ import {
   toScar,
 } from "./data-store.js";
 import { createEventLog } from "./event-log.js";
-import { recordScar, type ContextAnchor } from "./resist-event.js";
+import { recordScar, recordLayerExit, recordProvenance, type ContextAnchor } from "./resist-event.js";
 import { inspectData, inspectEventLog } from "./inspector.js";
 import { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
 
@@ -39,13 +39,15 @@ test("inspectData renders a header count and one line per datum", () => {
   assert.ok(out.includes("payload=beta"));
 });
 
-test("inspectData shows the layer_trace as a path", () => {
+test("inspectData shows the present floor-tag and carries no path", () => {
   const store = createDataStore();
   let d = admitHostData({ payload: 1, admittingLayer: 1, open }, TS);
   d = stampLayer(d, 5);
   d = stampLayer(d, 7);
   store.put("x", d);
-  assert.ok(inspectData(store).includes("trace=1>5>7"));
+  const out = inspectData(store);
+  assert.ok(out.includes("[T7]")); // floor-tag names the present layer only
+  assert.equal(out.includes("trace="), false); // the path lives in [event], not here
 });
 
 test("inspectEventLog renders records with their derived names", () => {
@@ -66,7 +68,15 @@ test("inspectEventLog renders records with their derived names", () => {
   assert.ok(out.includes("#0"));
   assert.ok(out.includes("[scar]_[T7]_[domain:weather]"));
   assert.ok(out.includes("sun→rain"));
-  assert.ok(out.includes("trace=1>7"));
+});
+
+test("inspectEventLog renders lean layer-exit and provenance lines", () => {
+  const log = createEventLog();
+  log.append(recordLayerExit("cycle-0", 0, 5, 0));
+  log.append(recordProvenance("cycle-0", 0, "running", "scar", 0));
+  const out = inspectEventLog(log);
+  assert.ok(out.includes("[layer-exit] cycle-0 @T5"));
+  assert.ok(out.includes("[provenance] cycle-0 running→scar"));
 });
 
 test("inspecting does not mutate the store", () => {

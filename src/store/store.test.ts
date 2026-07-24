@@ -109,31 +109,23 @@ test("a compliant open-tag set is accepted", () => {
   assert.equal(d.open.platform, "cli");
 });
 
-// ── floor-tag (updatable slot) and layer_trace (audit path) ────────────────
+// ── floor-tag (present-only slot; the path lives in [event], not the datum) ──
 
-test("admission starts the layer_trace at the admitting layer", () => {
+test("admission stamps the floor-tag to the admitting layer, carrying no path", () => {
   const d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
   assert.equal(d.fixed.floorTag, 1);
-  assert.deepEqual(d.trace, [1]);
+  // §9: a tag names the present; it carries no log — the path is read from [event]
+  assert.equal("trace" in d, false);
 });
 
-test("stampLayer overwrites the floor-tag to the current layer", () => {
+test("stampLayer overwrites the floor-tag to the current layer (no accumulation)", () => {
   let d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
   d = stampLayer(d, 2);
   d = stampLayer(d, 5);
-  // floor-tag answers "where is it now" — always the latest layer
+  // floor-tag answers "where is it now" — always the latest layer; it never
+  // accumulates a path (that is the [event] log's job, §9)
   assert.equal(d.fixed.floorTag, 5);
-});
-
-test("layer_trace accumulates the full path while floor-tag tracks the head", () => {
-  let d = admitHostData({ payload: "x", admittingLayer: 1, open: openOK }, 0);
-  for (const layer of [2, 3, 4] as const) {
-    d = stampLayer(d, layer);
-  }
-  // trace answers "where has it been" — the full ordered path
-  assert.deepEqual(d.trace, [1, 2, 3, 4]);
-  // and its tail equals the floor-tag
-  assert.equal(d.trace[d.trace.length - 1], d.fixed.floorTag);
+  assert.equal("trace" in d, false);
 });
 
 // ── [event] immutability ──────────────────────────────────────────────────
@@ -197,8 +189,8 @@ test("[event] inherits the scar's tags (≥7: 4 fixed + ≥3 open + trace)", () 
   // ≥3 open tags including the mandatory domain (audit-by-class)
   assert.ok(Object.keys(rec.scar.open).length >= 3);
   assert.equal(rec.scar.open.domain, "weather");
-  // the layer_trace came along for audit
-  assert.deepEqual(rec.scar.trace, [1, 7]);
+  // the datum carries no path — that lives in the [event] layer-exit lines (§9)
+  assert.equal("trace" in rec.scar, false);
 });
 
 test("a non-scar datum cannot be recorded to [event]", () => {
@@ -237,6 +229,7 @@ test("each [event] anchors the full field-state of its cycle", () => {
   const log = createEventLog();
   log.append(sampleRecord());
   const rec = log.all()[0]!;
+  if (!("anchor" in rec)) throw new Error("expected a datum-bearing record");
   assert.equal(rec.anchor.depth, "full-field-state");
   assert.equal(rec.anchor.cycle, 2);
   assert.deepEqual(rec.anchor.fieldState, { gain: 0.5, bias: 0.1 });

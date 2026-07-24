@@ -60,21 +60,18 @@ export interface FixedTags {
 export type OpenTags = Readonly<Record<string, string>>;
 
 /**
- * The path a datum has travelled: the ordered layers it has passed, appended to
- * at each layer (protocol §6.1 `layer_trace`, §9). This is NOT one of the four
- * fixed tags and is NOT the floor-tag. The floor-tag answers "where is it now"
- * (a single updatable slot); the trace answers "where has it been" (the full
- * ordered path), and is read for audit.
+ * A tagged datum: payload + the fixed four + open tags.
+ *
+ * The path a datum has travelled is NOT carried here (v0.3.2 §9): a tag names the
+ * present only (floor-tag = "where is it now"); the full path — every layer it
+ * exited, every provenance move — is recorded line-by-line in the `[event]` log
+ * as it occurs, and read from there, never from a tag. A tag is updated; the log
+ * is appended to.
  */
-export type LayerTrace = readonly LayerIndex[];
-
-/** A tagged datum: payload + the fixed four + open tags + the layer_trace. */
 export interface TaggedDatum<T = unknown> {
   readonly payload: T;
   readonly fixed: FixedTags;
   readonly open: OpenTags;
-  /** The audit path (layer_trace); see LayerTrace. */
-  readonly trace: LayerTrace;
 }
 
 /** Open-tag keys that name a verdict are forbidden (protocol §9). */

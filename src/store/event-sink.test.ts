@@ -19,6 +19,7 @@ import {
   readJsonlSink,
   listSegments,
   serializeEventRecord,
+  deserializeEventRecord,
   verifyJsonlSink,
 } from "./event-sink.js";
 import { createEventLog } from "./event-log.js";
@@ -27,6 +28,7 @@ import { toRunning, toScar, stampLayer } from "./data-store.js";
 import {
   recordScar,
   recordActivity,
+  recordLayerExit,
   type EventRecord,
   type ActivityRecord,
   type ContextAnchor,
@@ -55,6 +57,7 @@ function makeActivity(cycle = 2): ActivityRecord {
   d = toRunning(d, cycle);
   d = stampLayer(d, 8);
   return recordActivity(
+    `cycle-${cycle}`,
     d,
     { cycle, flow: "multi-stream", emitted: "respond", observed: ["weather"], scars: 0, t: cycle },
     anchor,
@@ -80,7 +83,10 @@ test("records survive a sink reopen (durability across the process)", () => {
 
     const back = readJsonlSink(dir);
     assert.equal(back.length, 3);
-    assert.deepEqual(back.map((r) => r.event!.source_id), ["a", "b", "c"]);
+    assert.deepEqual(
+      back.map((r) => (r.form === "scar" ? r.event!.source_id : "?")),
+      ["a", "b", "c"],
+    );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -105,22 +111,20 @@ test("a scar record round-trips with tags intact and in fixed order", () => {
   const rec = makeRecord("s");
   const serialized = serializeEventRecord(rec);
   assert.deepEqual(Object.keys(serialized), [
-    "kind",
+    "form",
     "timestamp",
     "cycleMark",
     "provenance",
     "floorTag",
     "open",
-    "layer_trace",
     "payload",
     "event",
     "anchor",
   ]);
-  assert.equal(serialized.kind, "scar");
+  if (serialized.form !== "scar") throw new Error("expected a scar form");
   assert.equal(serialized.provenance, "scar");
   assert.equal(serialized.floorTag, 7);
   assert.equal(serialized.open.domain, "weather");
-  assert.deepEqual(serialized.layer_trace, [1, 7]);
 
   const dir = tmpDir();
   try {
@@ -129,29 +133,29 @@ test("a scar record round-trips with tags intact and in fixed order", () => {
     sink.close();
     const [back] = readJsonlSink(dir);
     assert.deepEqual(Object.keys(back!), Object.keys(serialized));
+    if (back!.form !== "scar") throw new Error("expected a scar form");
     assert.equal(back!.open.domain, "weather");
-    assert.deepEqual(back!.layer_trace, [1, 7]);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("an activity record round-trips with the same fixed-order tag set", () => {
+test("a cycle-seal activity round-trips with the same fixed-order tag set", () => {
   const rec = makeActivity(4);
   const serialized = serializeEventRecord(rec);
   assert.deepEqual(Object.keys(serialized), [
-    "kind",
+    "form",
     "timestamp",
     "cycleMark",
     "provenance",
     "floorTag",
     "open",
-    "layer_trace",
     "payload",
+    "datumId",
     "activity",
     "anchor",
   ]);
-  assert.equal(serialized.kind, "activity");
+  if (serialized.form !== "cycle-seal") throw new Error("expected a cycle-seal form");
   assert.equal(serialized.provenance, "running");
   assert.equal(serialized.activity!.cycle, 4);
 
@@ -161,11 +165,19 @@ test("an activity record round-trips with the same fixed-order tag set", () => {
     sink.write(rec);
     sink.close();
     const [back] = readJsonlSink(dir);
-    assert.equal(back!.kind, "activity");
+    if (back!.form !== "cycle-seal") throw new Error("expected a cycle-seal form");
     assert.equal(back!.activity!.flow, "multi-stream");
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("a lean layer-exit line round-trips (no datum, no anchor)", () => {
+  const rec = recordLayerExit("cycle-3", 3, 5, 3);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "layer", "t"]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
 });
 
 test("createEventLog mirrors every appended record (both kinds) to the sink", () => {
@@ -179,7 +191,7 @@ test("createEventLog mirrors every appended record (both kinds) to the sink", ()
 
     assert.equal(log.size(), 2);
     const back = readJsonlSink(dir);
-    assert.deepEqual(back.map((r) => r.kind), ["scar", "activity"]);
+    assert.deepEqual(back.map((r) => r.form), ["scar", "cycle-seal"]);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

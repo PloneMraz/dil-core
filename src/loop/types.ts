@@ -23,7 +23,6 @@ import type { LayerIndex } from "../invariants/types.js";
 
 // Re-export the borrowed shapes so the loop has one import surface.
 export type { LayerIndex, AgencyTag } from "../invariants/types.js";
-export type { LayerTrace } from "../store/tags.js";
 export type { ResistEvent, MismatchKind } from "../store/resist-event.js";
 
 /**

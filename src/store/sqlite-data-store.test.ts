@@ -32,7 +32,6 @@ test("sqlite [data]: put/get round-trips a full TaggedDatum with its tags", () =
   assert.equal(back.fixed.provenance, "running");
   assert.equal(back.fixed.cycleMark, 3);
   assert.equal(back.open.domain, "cycle");
-  assert.deepEqual(back.trace, d.trace);
   store.close();
 });
 

@@ -122,9 +122,9 @@ test("a forged appended line with a wrong prev is detected", () => {
     writeThree(dir);
     const file = onlySegment(dir);
     const forged = chainNext("f".repeat(64), 3, {
-      kind: "scar",
+      form: "scar",
       timestamp: 1, cycleMark: 2, provenance: "scar", floorTag: 7,
-      open, layer_trace: [1, 7], payload: "forged",
+      open, payload: "forged",
       event: { source_id: "x", expected: 1, received: 2, mismatch_kind: "value-mismatch", t: 9 },
       anchor,
     });

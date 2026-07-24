@@ -30,14 +30,13 @@ function stubLayer(index: LayerIndex): LayerSpec<unknown, unknown> {
   return { index, consumes: [], process: (input) => input };
 }
 
-test("a datum traverses the layers, stamping a floor-tag and trace at each", () => {
+test("a datum traverses the layers, stamping the floor-tag to the current layer", () => {
   let datum: TaggedDatum = admitHostData({ payload: "x", admittingLayer: 1, open }, 0);
   for (let i = 1 as LayerIndex; i <= 8; i = (i + 1) as LayerIndex) {
     datum = runLayer(stubLayer(i), null, field, datum).datum;
   }
-  // floor-tag tracks the last layer; the trace is the whole path
+  // the floor-tag names the present layer only; the path lives in [event] (§9)
   assert.equal(datum.fixed.floorTag, 8);
-  assert.deepEqual(datum.trace, [1, 1, 2, 3, 4, 5, 6, 7, 8]);
 });
 
 test("runLayer runs pre → process → post in order", () => {

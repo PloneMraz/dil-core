@@ -77,12 +77,21 @@ test("the flow mode is recorded as an open tag on the cycle datum (trace-visible
   assert.equal(data.get("cycle-1")!.open.flow, "multi-stream");
 });
 
-test("both modes stamp the identical T1→T8 floor-tag path (INV traversal parity)", () => {
-  const { cycle, data } = freshCycle();
+test("both modes record the identical T1→T8 layer-exit path in [event]", () => {
+  const { cycle, data, events } = freshCycle();
   cycle.run({ signals: [weather("sun")], changes: [] });
   cycle.run({ signals: [weather("sun")], changes: [] });
-  assert.deepEqual(data.get("cycle-0")!.trace, [1, 1, 2, 3, 4, 5, 6, 7, 8]);
-  assert.deepEqual(data.get("cycle-1")!.trace, [1, 1, 2, 3, 4, 5, 6, 7, 8]);
+  const pathOf = (id: string): number[] => {
+    const layers: number[] = [];
+    for (const r of events.all()) {
+      if (r.kind === "activity" && r.activityKind === "layer-exit" && r.datumId === id) {
+        layers.push(r.layer);
+      }
+    }
+    return layers;
+  };
+  assert.deepEqual(pathOf("cycle-0"), [1, 2, 3, 4, 5, 6, 7, 8]); // single-threaded
+  assert.deepEqual(pathOf("cycle-1"), [1, 2, 3, 4, 5, 6, 7, 8]); // multi-stream
   assert.equal(data.get("cycle-1")!.fixed.floorTag, 8);
 });
 

@@ -25,7 +25,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { LogRecord, ResistEvent, ActivityEvent, ContextAnchor } from "./resist-event.js";
-import type { LayerTrace, OpenTags, Provenance, TaggedDatum } from "./tags.js";
+import type { OpenTags, Provenance, TaggedDatum } from "./tags.js";
 import type { LayerIndex } from "../invariants/types.js";
 import { MAX_SEGMENT_BYTES } from "./decisions.js";
 import {
@@ -37,41 +37,89 @@ import {
 } from "./hash-chain.js";
 
 /**
- * A record serialized WITH its full tag set, in the fixed order after the kind
- * discriminator: timestamp, cycle-mark, provenance, floor-tag, open tags
- * (incl. domain), layer_trace — then the payload, the kind-specific body
- * (ResistEvent or ActivityEvent), and the context anchor.
+ * Serialized form of a datum-bearing record (`scar` or `cycle-seal`): its tag set
+ * flattened in fixed order — timestamp, cycle-mark, provenance, floor-tag, open
+ * tags (incl. domain) — then the payload, the kind-specific body (ResistEvent or
+ * ActivityEvent), and the context anchor. The path a datum travelled is NOT here
+ * (§9): it is the stream of lean `layer-exit`/`provenance` lines below.
  */
-export interface SerializedEventRecord {
-  readonly kind: "scar" | "activity";
+export interface SerializedDatumRecord {
+  readonly form: "scar" | "cycle-seal";
   readonly timestamp: number;
   readonly cycleMark: number | null;
   readonly provenance: Provenance;
   readonly floorTag: LayerIndex;
   readonly open: OpenTags;
-  readonly layer_trace: LayerTrace;
   readonly payload: unknown;
-  readonly event?: ResistEvent;
-  readonly activity?: ActivityEvent;
+  readonly datumId?: string; // cycle-seal
+  readonly event?: ResistEvent; // scar
+  readonly activity?: ActivityEvent; // cycle-seal
   readonly anchor: ContextAnchor;
 }
 
-/** Project a LogRecord into its serialized form, tags in fixed order. */
-export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
-  const datum: TaggedDatum = rec.kind === "activity" ? rec.datum : rec.scar;
+/** Serialized form of a lean `layer-exit` activity line (a datum exited a layer). */
+export interface SerializedLayerExit {
+  readonly form: "layer-exit";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly layer: LayerIndex;
+  readonly t: number;
+}
+
+/** Serialized form of a lean `provenance` activity line (a datum moved from→to). */
+export interface SerializedProvenance {
+  readonly form: "provenance";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly from: Provenance;
+  readonly to: Provenance;
+  readonly t: number;
+}
+
+/** A serialized [event] line, discriminated by `form`. */
+export type SerializedEventRecord =
+  | SerializedDatumRecord
+  | SerializedLayerExit
+  | SerializedProvenance;
+
+function datumForm(
+  form: "scar" | "cycle-seal",
+  datum: TaggedDatum,
+  extra: { event?: ResistEvent; activity?: ActivityEvent; datumId?: string; anchor: ContextAnchor },
+): SerializedDatumRecord {
   const f = datum.fixed;
   return {
-    kind: rec.kind,
+    form,
     timestamp: f.timestamp,
     cycleMark: f.cycleMark,
     provenance: f.provenance,
     floorTag: f.floorTag,
     open: datum.open,
-    layer_trace: datum.trace,
     payload: datum.payload,
-    ...(rec.kind === "scar" ? { event: rec.event } : { activity: rec.activity }),
-    anchor: rec.anchor,
+    ...(extra.datumId !== undefined ? { datumId: extra.datumId } : {}),
+    ...(extra.event !== undefined ? { event: extra.event } : {}),
+    ...(extra.activity !== undefined ? { activity: extra.activity } : {}),
+    anchor: extra.anchor,
   };
+}
+
+/** Project a LogRecord into its serialized form (tags in fixed order where present). */
+export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
+  if (rec.kind === "scar") {
+    return datumForm("scar", rec.scar, { event: rec.event, anchor: rec.anchor });
+  }
+  switch (rec.activityKind) {
+    case "cycle-seal":
+      return datumForm("cycle-seal", rec.datum, {
+        datumId: rec.datumId,
+        activity: rec.activity,
+        anchor: rec.anchor,
+      });
+    case "layer-exit":
+      return { form: "layer-exit", datumId: rec.datumId, cycleMark: rec.cycleMark, layer: rec.layer, t: rec.t };
+    case "provenance":
+      return { form: "provenance", datumId: rec.datumId, cycleMark: rec.cycleMark, from: rec.from, to: rec.to, t: rec.t };
+  }
 }
 
 /**
@@ -233,6 +281,27 @@ export function readJsonlSink(dir: string): SerializedEventRecord[] {
  * from the substrate.
  */
 export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
+  if (rec.form === "layer-exit") {
+    return {
+      kind: "activity",
+      activityKind: "layer-exit",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      layer: rec.layer,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "provenance") {
+    return {
+      kind: "activity",
+      activityKind: "provenance",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      from: rec.from,
+      to: rec.to,
+      t: rec.t,
+    };
+  }
   const datum: TaggedDatum = {
     payload: rec.payload,
     fixed: {
@@ -242,11 +311,17 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       floorTag: rec.floorTag,
     },
     open: rec.open,
-    trace: rec.layer_trace,
   };
-  return rec.kind === "scar"
+  return rec.form === "scar"
     ? { kind: "scar", event: rec.event!, scar: datum, anchor: rec.anchor }
-    : { kind: "activity", activity: rec.activity!, datum, anchor: rec.anchor };
+    : {
+        kind: "activity",
+        activityKind: "cycle-seal",
+        datumId: rec.datumId!,
+        activity: rec.activity!,
+        datum,
+        anchor: rec.anchor,
+      };
 }
 
 /** All LogRecords across the directory's segments, read from the substrate. */

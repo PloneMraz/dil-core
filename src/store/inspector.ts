@@ -13,7 +13,6 @@
 
 import type { DataStore } from "./data-store.js";
 import type { EventLog } from "./event-log.js";
-import type { LayerTrace } from "./tags.js";
 import { displayName, eventDisplayName } from "./display-name.js";
 
 /** A short, safe one-line preview of an arbitrary payload value. */
@@ -32,28 +31,30 @@ function preview(value: unknown, max = 40): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
-/** Render a layer_trace as a path, e.g. 1>5>7. */
-function tracePath(trace: LayerTrace): string {
-  return trace.join(">");
-}
-
 /** Render the `[data]` store: one line per datum, with its derived name. */
 export function inspectData(store: DataStore): string {
   const entries = store.entries();
   const lines = entries.map(
-    ([id, d]) =>
-      `  ${id}  ${displayName(d)}  trace=${tracePath(d.trace)}  payload=${preview(d.payload)}`,
+    ([id, d]) => `  ${id}  ${displayName(d)}  payload=${preview(d.payload)}`,
   );
   return [`[data] — ${entries.length} item(s)`, ...lines].join("\n");
 }
 
-/** Render the `[event]` log: one line per record (scar or activity). */
+/** Render the `[event]` log: one line per activity/scar (the datum's diary). */
 export function inspectEventLog(log: EventLog): string {
   const records = log.all();
-  const lines = records.map((r, i) =>
-    r.kind === "scar"
-      ? `  #${i}  ${eventDisplayName(r)}  ${preview(r.event.expected)}→${preview(r.event.received)}  trace=${tracePath(r.scar.trace)}`
-      : `  #${i}  ${displayName(r.datum)}_[activity]  cycle=${r.activity.cycle} flow=${r.activity.flow} observed=${r.activity.observed.join(",") || "-"} scars=${r.activity.scars}`,
-  );
+  const lines = records.map((r, i) => {
+    if (r.kind === "scar") {
+      return `  #${i}  ${eventDisplayName(r)}  ${preview(r.event.expected)}→${preview(r.event.received)}`;
+    }
+    switch (r.activityKind) {
+      case "cycle-seal":
+        return `  #${i}  ${displayName(r.datum)}_[cycle-seal]  cycle=${r.activity.cycle} flow=${r.activity.flow} observed=${r.activity.observed.join(",") || "-"} scars=${r.activity.scars}`;
+      case "layer-exit":
+        return `  #${i}  [layer-exit] ${r.datumId} @T${r.layer} (c${r.cycleMark})`;
+      case "provenance":
+        return `  #${i}  [provenance] ${r.datumId} ${r.from}→${r.to} (c${r.cycleMark})`;
+    }
+  });
   return [`[event-log] — ${records.length} record(s)`, ...lines].join("\n");
 }

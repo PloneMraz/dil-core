@@ -16,7 +16,12 @@
  */
 
 import type { EventLog } from "../store/event-log.js";
-import type { EventRecord, LogRecord } from "../store/resist-event.js";
+import type {
+  EventRecord,
+  LogRecord,
+  CycleSealActivity,
+  LayerExitActivity,
+} from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import type { GateResult } from "../precondition/gate.js";
 import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
@@ -53,45 +58,54 @@ export interface ObservableFacts {
   readonly gate?: GateResult;
 }
 
-/** The tagged datum a record embeds: the scar, or the activity's cycle datum. */
-function datumOf(rec: LogRecord): TaggedDatum {
-  return rec.kind === "activity" ? rec.datum : rec.scar;
+/** Records that embed a datum + anchor (scar or cycle-seal); lean lines do not. */
+type DatumBearing = EventRecord | CycleSealActivity;
+
+function isDatumBearing(rec: LogRecord): rec is DatumBearing {
+  return rec.kind === "scar" || rec.activityKind === "cycle-seal";
+}
+function datumOf(rec: DatumBearing): TaggedDatum {
+  return rec.kind === "scar" ? rec.scar : rec.datum;
 }
 
 function wellFormedStore(rec: LogRecord): string | null {
-  const datum = datumOf(rec);
-  const { anchor } = rec;
+  // Lean trace lines (layer-exit / provenance): only a datumId + the move.
+  if (rec.kind === "activity" && rec.activityKind !== "cycle-seal") {
+    if (typeof rec.datumId !== "string" || rec.datumId.length === 0) {
+      return "a trace line carries no datumId";
+    }
+    if (typeof rec.cycleMark !== "number") return "a trace line carries no cycle-mark";
+    return null;
+  }
+  const datum = datumOf(rec as DatumBearing);
+  const anchor = (rec as DatumBearing).anchor;
   if (rec.kind === "scar") {
     if (!rec.event || typeof rec.event.source_id !== "string" || !rec.event.mismatch_kind) {
       return "record is not a ResistEvent";
     }
     if (datum.fixed?.provenance !== "scar") return "scar record embeds a non-scar datum";
   } else {
-    if (typeof rec.activity?.cycle !== "number") return "activity record carries no cycle";
+    if (typeof (rec as CycleSealActivity).activity?.cycle !== "number") return "cycle-seal carries no cycle";
     if (datum.fixed?.provenance !== "running" && datum.fixed?.provenance !== "scar") {
-      return "activity record embeds a datum that has not run";
+      return "cycle-seal embeds a datum that has not run";
     }
   }
   const f = datum.fixed;
   if (!f || typeof f.timestamp !== "number" || typeof f.floorTag !== "number") {
     return "missing fixed tags";
   }
-  const openKeys = datum.open ? Object.keys(datum.open) : [];
   if (!datum.open || typeof datum.open.domain !== "string" || datum.open.domain.length === 0) {
     return "missing mandatory open tag `domain`";
   }
-  if (openKeys.length < 3) return "fewer than three open tags";
+  if (Object.keys(datum.open).length < 3) return "fewer than three open tags";
   if (!anchor || anchor.depth == null || typeof anchor.cycle !== "number") {
     return "missing context anchor";
   }
   return null;
 }
 
-function coversAllLayers(trace: readonly number[]): boolean {
-  const seen = new Set(trace);
-  for (let layer = 1; layer <= 8; layer++) {
-    if (!seen.has(layer)) return false;
-  }
+function coversAllLayers(layers: ReadonlySet<number>): boolean {
+  for (let layer = 1; layer <= 8; layer++) if (!layers.has(layer)) return false;
   return true;
 }
 
@@ -101,6 +115,13 @@ export function checkConformance(
 ): ConformanceReport {
   const records = events.all();
   const scars = records.filter((r): r is EventRecord => r.kind === "scar");
+  const datumBearing = records.filter(isDatumBearing);
+  const layerExits = records.filter(
+    (r): r is LayerExitActivity => r.kind === "activity" && r.activityKind === "layer-exit",
+  );
+  const cycleSeals = records.filter(
+    (r): r is CycleSealActivity => r.kind === "activity" && r.activityKind === "cycle-seal",
+  );
   const results: CriterionResult[] = [];
 
   // C1 — Invariants (§5): no `=` emitted; four fixed tags present. Channel
@@ -108,7 +129,7 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "1", title: "Invariants", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const badFixed = records.find((r) => !datumOf(r)?.fixed || Object.keys(datumOf(r).fixed).length !== 4);
+    const badFixed = datumBearing.find((r) => Object.keys(datumOf(r).fixed).length !== 4);
     results.push({
       id: "1",
       title: "Invariants",
@@ -147,9 +168,19 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "3", title: "Loop", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const incomplete = records.find((r) => !coversAllLayers(datumOf(r).trace));
-    const flowRecorded = records.every((r) => typeof datumOf(r).open.flow === "string");
-    const flowInconsistent = records.find((r) => {
+    // The path lives in [event]: gather each datum's layer-exit lines and check it
+    // traversed T1→T8 (§13.6 — read from the log, never from a tag).
+    const layersByDatum = new Map<string, Set<number>>();
+    for (const le of layerExits) {
+      const s = layersByDatum.get(le.datumId) ?? new Set<number>();
+      s.add(le.layer);
+      layersByDatum.set(le.datumId, s);
+    }
+    const incomplete = cycleSeals.find(
+      (r) => !coversAllLayers(layersByDatum.get(r.datumId) ?? new Set<number>()),
+    );
+    const flowRecorded = datumBearing.every((r) => typeof datumOf(r).open.flow === "string");
+    const flowInconsistent = datumBearing.find((r) => {
       const flow = datumOf(r).open.flow;
       const mark = datumOf(r).fixed.cycleMark;
       if (flow === undefined || mark === null) return false;
@@ -160,10 +191,10 @@ export function checkConformance(
       title: "Loop",
       verdict: incomplete || flowInconsistent ? "fail" : "pass",
       detail: incomplete
-        ? "a scar's layer_trace does not cover T1–T8"
+        ? `a cycle datum's layer-exit lines do not cover T1–T8 (${incomplete.datumId})`
         : flowInconsistent
           ? `a record's recorded flow mode contradicts its cycle-mark (cycle ${datumOf(flowInconsistent).fixed.cycleMark}: ${datumOf(flowInconsistent).open.flow})`
-          : `every record carries a floor-tag and a T1→T8 layer_trace; ${
+          : `every cycle datum's path (from [event] layer-exit lines) covers T1→T8; ${
               flowRecorded
                 ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
                 : "flow mode not recorded in these traces"
@@ -175,7 +206,7 @@ export function checkConformance(
   if (records.length === 0) {
     results.push({ id: "4", title: "Self", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
-    const marks = records.map((r) => datumOf(r).fixed.cycleMark ?? -1);
+    const marks = datumBearing.map((r) => datumOf(r).fixed.cycleMark ?? -1);
     const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!);
     results.push({
       id: "4",
@@ -220,9 +251,7 @@ export function checkConformance(
     }
     // §13.6: every cycle leaves an activity record — coverage must be
     // contiguous from cycle 0 to the highest cycle seen.
-    const activityCycles = new Set(
-      records.filter((r) => r.kind === "activity").map((r) => r.activity.cycle),
-    );
+    const activityCycles = new Set(cycleSeals.map((r) => r.activity.cycle));
     let coverageGap: number | null = null;
     if (activityCycles.size === 0) {
       coverageGap = 0;

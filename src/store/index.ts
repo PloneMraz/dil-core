@@ -29,7 +29,6 @@ export type {
   Provenance,
   FixedTags,
   OpenTags,
-  LayerTrace,
   TaggedDatum,
 } from "./tags.js";
 export {
@@ -45,9 +44,18 @@ export type {
   EventRecord,
   ActivityEvent,
   ActivityRecord,
+  CycleSealActivity,
+  LayerExitActivity,
+  ProvenanceActivity,
   LogRecord,
 } from "./resist-event.js";
-export { recordScar, recordActivity, EventRecordError } from "./resist-event.js";
+export {
+  recordScar,
+  recordActivity,
+  recordLayerExit,
+  recordProvenance,
+  EventRecordError,
+} from "./resist-event.js";
 
 export {
   TaggingGateError,

@@ -3,8 +3,8 @@
  *
  * This DISPLAYS tags as a name; it does NOT store tags in the name. The
  * authoritative tags remain the structured properties on the datum (tags.ts):
- * fixed (with the updatable floor-tag), open (≥3, keyed), and the layer_trace.
- * A name is computed from those on demand, never the source of truth — so the
+ * fixed (with the updatable floor-tag) and open (≥3, keyed). A name is computed
+ * from those on demand, never the source of truth — so the
  * mutable parts (floor-tag, provenance) never force a rename, and keyed open
  * tags are never flattened into lossy positions.
  *

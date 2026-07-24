@@ -57,12 +57,19 @@ function weather(value: unknown, t = 1): Signal {
   return { source_id: "ch", raw_payload: { entity: "weather", value }, t };
 }
 
-test("a cycle datum traverses T1→T8, stamping a floor-tag at each layer", () => {
-  const { cycle, data } = freshCycle();
+test("a cycle datum traverses T1→T8, stamping a floor-tag; the path lives in [event]", () => {
+  const { cycle, data, events } = freshCycle();
   cycle.run({ signals: [weather("sun")], changes: [] });
   const datum = data.get("cycle-0")!;
-  assert.equal(datum.fixed.floorTag, 8); // ended at T8
-  assert.deepEqual(datum.trace, [1, 1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.equal(datum.fixed.floorTag, 8); // ended at T8 (the tag names the present only)
+  // the path is read from the [event] layer-exit lines, never from a tag (§9)
+  const layers: number[] = [];
+  for (const r of events.all()) {
+    if (r.kind === "activity" && r.activityKind === "layer-exit" && r.datumId === "cycle-0") {
+      layers.push(r.layer);
+    }
+  }
+  assert.deepEqual(layers, [1, 2, 3, 4, 5, 6, 7, 8]);
 });
 
 test("cycle-0 runs and advances the cycle counter (single-threaded pass)", () => {
