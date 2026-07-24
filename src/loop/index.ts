@@ -70,4 +70,5 @@ export type {
   SocialEdge,
   ModField,
   Appraisal,
+  Directive,
 } from "./types.js";

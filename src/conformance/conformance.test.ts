@@ -117,6 +117,35 @@ test("Loop (§13.3) passes: every scar shows a T1→T8 traversal", () => {
   assert.equal(report.results.find((r) => r.id === "3")!.verdict, "pass");
 });
 
+test("Loop (§13.3) verifies emissions carry register ↔ and an issuing layer, no arbiter", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  const c3 = checkConformance(events, { gate }).results.find((r) => r.id === "3")!;
+  assert.equal(c3.verdict, "pass");
+  assert.ok(c3.detail.includes("emission"));
+  assert.ok(c3.detail.includes("no action-arbiter"));
+});
+
+test("Loop (§13.3) fails on a malformed emission (register not ↔, INV-2)", () => {
+  const { events, gate } = runDaemon([{ signals: [sig("weather", "sun")], changes: [] }]);
+  // inject an emission frozen to an identity — forbidden; register must be ↔
+  events.append({
+    kind: "activity",
+    activityKind: "emission",
+    datumId: "cycle-0",
+    cycleMark: 0,
+    issuingLayer: 8,
+    action: { kind: "respond" },
+    register: "=" as "↔",
+    t: 0,
+  });
+  const c3 = checkConformance(events, { gate }).results.find((r) => r.id === "3")!;
+  assert.equal(c3.verdict, "fail");
+  assert.ok(c3.detail.includes("malformed"));
+});
+
 test("Host conditions (§13.2) reflect the gate outcome", () => {
   const { events, gate } = runDaemon([{ signals: [sig("weather", "sun")], changes: [] }]);
   const report = checkConformance(events, { gate });

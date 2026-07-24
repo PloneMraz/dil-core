@@ -25,7 +25,13 @@
 
 import { admitHostData } from "../store/tagging-gate.js";
 import { toRunning, toScar } from "../store/data-store.js";
-import { recordScar, recordActivity, recordLayerExit, recordProvenance } from "../store/resist-event.js";
+import {
+  recordScar,
+  recordActivity,
+  recordLayerExit,
+  recordProvenance,
+  recordEmission,
+} from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
@@ -45,7 +51,7 @@ import {
   gatherT8,
 } from "./gathers.js";
 import type { GlobMod } from "./glob-mod.js";
-import type { Appraisal, Signal, PredErr, ModField, LayerIndex } from "./types.js";
+import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
 import type { T3Input, T3Output } from "./layers/t3.js";
@@ -147,6 +153,18 @@ export function createCycle(deps: CycleDeps): Cycle {
   /** Log one `layer-exit` line as the cycle datum leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
     events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
+  }
+  /**
+   * Emission — link 5 as a lateral capability (§6.4). Any layer MAY invoke it to
+   * push a committed action to the region; it records exactly one emission line
+   * naming the issuing layer (register ↔, never =). There is NO internal arbiter:
+   * a conflict among emissions is collided against the region, not adjudicated.
+   * Returns the action so a caller can also feed it forward. (With a real host,
+   * layers call this; the minimal host exercises it once per cycle — the response.)
+   */
+  function emit(issuingLayer: LayerIndex, action: unknown): unknown {
+    events.append(recordEmission(datumId(), cycle, issuingLayer, action, cycleT));
+    return action;
   }
 
   /** Cycle-0: direct hand-off — one thread of flow, the driver dispatches. */
@@ -296,8 +314,17 @@ export function createCycle(deps: CycleDeps): Cycle {
         editedState: EDITED_STATE_ID,
       });
 
-      // ── Respond → feedback (INV-1): the response is the next emission ──
-      const response: Emission = { action: { kind: "respond", cycle, valence: appraisal.valence } };
+      // ── Respond (link 5, §6.4): the cycle's committed action, register ↔ ──
+      // The one real emission per cycle under the minimal host; issued at the
+      // close of the meaning-channel after appraisal, so its issuing layer is T8.
+      const directive: Directive = {
+        committed_action: { kind: "respond", cycle, valence: appraisal.valence },
+        register: "↔",
+        issuing_layer: 8,
+        built_from: [appraisal],
+        t: cycleT,
+      };
+      const response: Emission = { action: directive.committed_action };
 
       // ── Collisions that hold → scars in [event] ──
       // Each collision is sourced: a value-mismatch by the entity that resisted,
@@ -338,6 +365,10 @@ export function createCycle(deps: CycleDeps): Cycle {
         }
         datum = scarDatum;
       }
+
+      // ── Emit the cycle's committed action (link 5, §6.4) ──
+      // Records one emission line naming the issuing layer (T8); register ↔.
+      emit(directive.issuing_layer, directive.committed_action);
 
       // ── Activity record: the cycle's trace, sealing the cycle (§9) ──
       // Trace, not experience: no layer learns from it. It keeps the audit

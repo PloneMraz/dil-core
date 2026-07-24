@@ -47,6 +47,7 @@ export type {
   CycleSealActivity,
   LayerExitActivity,
   ProvenanceActivity,
+  EmissionActivity,
   LogRecord,
 } from "./resist-event.js";
 export {
@@ -54,6 +55,7 @@ export {
   recordActivity,
   recordLayerExit,
   recordProvenance,
+  recordEmission,
   EventRecordError,
 } from "./resist-event.js";
 

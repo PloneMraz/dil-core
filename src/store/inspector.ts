@@ -61,6 +61,8 @@ export function inspectEventLog(log: EventLog): string {
         return `  #${i}  [layer-exit] ${r.datumId} @T${r.layer} (c${r.cycleMark}) ${clock(r.t)}`;
       case "provenance":
         return `  #${i}  [provenance] ${r.datumId} ${r.from}→${r.to} (c${r.cycleMark}) ${clock(r.t)}`;
+      case "emission":
+        return `  #${i}  [emission] ${r.datumId} @T${r.issuingLayer} ${r.register} ${preview(r.action)} (c${r.cycleMark}) ${clock(r.t)}`;
     }
   });
   return [`[event-log] — ${records.length} record(s)`, ...lines].join("\n");

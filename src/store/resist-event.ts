@@ -123,7 +123,31 @@ export interface ProvenanceActivity {
   readonly t: number;
 }
 
-export type ActivityRecord = CycleSealActivity | LayerExitActivity | ProvenanceActivity;
+/**
+ * An emission — link 5 as a lateral capability (§6.4). A datum's committed action
+ * pushed to the region, naming the layer that issued it. Trace, not experience;
+ * register is always `↔` (never `=`, INV-2). Its correctness is judged only by
+ * the next cycle's return, never by the emitting layer (no arbiter).
+ */
+export interface EmissionActivity {
+  readonly kind: "activity";
+  readonly activityKind: "emission";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  /** The layer that issued this emission (§6.4, §9). */
+  readonly issuingLayer: LayerIndex;
+  /** The committed action pushed to the region. */
+  readonly action: unknown;
+  /** Always `↔` — a live, revisable correlation; never `=` (INV-2). */
+  readonly register: "↔";
+  readonly t: number;
+}
+
+export type ActivityRecord =
+  | CycleSealActivity
+  | LayerExitActivity
+  | ProvenanceActivity
+  | EmissionActivity;
 
 /** What the [event] log holds: scars (experience) and activity records (trace). */
 export type LogRecord = EventRecord | ActivityRecord;
@@ -165,6 +189,26 @@ export function recordProvenance(
   t: number,
 ): ProvenanceActivity {
   return { kind: "activity", activityKind: "provenance", datumId, cycleMark, from, to, t };
+}
+
+/** Note an emission — a layer's committed action pushed to the region (§6.4). */
+export function recordEmission(
+  datumId: string,
+  cycleMark: number,
+  issuingLayer: LayerIndex,
+  action: unknown,
+  t: number,
+): EmissionActivity {
+  return {
+    kind: "activity",
+    activityKind: "emission",
+    datumId,
+    cycleMark,
+    issuingLayer,
+    action,
+    register: "↔",
+    t,
+  };
 }
 
 export class EventRecordError extends Error {

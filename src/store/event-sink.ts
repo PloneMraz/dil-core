@@ -76,11 +76,23 @@ export interface SerializedProvenance {
   readonly t: number;
 }
 
+/** Serialized form of a lean `emission` activity line (§6.4; register always ↔). */
+export interface SerializedEmission {
+  readonly form: "emission";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly issuingLayer: LayerIndex;
+  readonly action: unknown;
+  readonly register: "↔";
+  readonly t: number;
+}
+
 /** A serialized [event] line, discriminated by `form`. */
 export type SerializedEventRecord =
   | SerializedDatumRecord
   | SerializedLayerExit
-  | SerializedProvenance;
+  | SerializedProvenance
+  | SerializedEmission;
 
 function datumForm(
   form: "scar" | "cycle-seal",
@@ -119,6 +131,16 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
       return { form: "layer-exit", datumId: rec.datumId, cycleMark: rec.cycleMark, layer: rec.layer, t: rec.t };
     case "provenance":
       return { form: "provenance", datumId: rec.datumId, cycleMark: rec.cycleMark, from: rec.from, to: rec.to, t: rec.t };
+    case "emission":
+      return {
+        form: "emission",
+        datumId: rec.datumId,
+        cycleMark: rec.cycleMark,
+        issuingLayer: rec.issuingLayer,
+        action: rec.action,
+        register: rec.register,
+        t: rec.t,
+      };
   }
 }
 
@@ -299,6 +321,18 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       cycleMark: rec.cycleMark,
       from: rec.from,
       to: rec.to,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "emission") {
+    return {
+      kind: "activity",
+      activityKind: "emission",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      issuingLayer: rec.issuingLayer,
+      action: rec.action,
+      register: rec.register,
       t: rec.t,
     };
   }

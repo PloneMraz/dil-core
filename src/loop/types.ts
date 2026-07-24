@@ -128,3 +128,31 @@ export interface Appraisal {
   readonly valence: number;
   readonly goal_relevance: number;
 }
+
+/**
+ * An emitted action — link 5 as a lateral capability (§6.4). Emission belongs to
+ * no single layer; any layer MAY invoke it when its work requires pushing to the
+ * region. Whatever layer issues it, an emission carries register `↔` (a revisable
+ * best-current-guess read against the next cycle's consequence), NEVER `=`
+ * (INV-2): committing to an action is not promoting a correlation to an identity.
+ * Its correctness is never scored by the emitting layer — only the next cycle's
+ * return judges it (no internal action-arbiter, §6.4).
+ *
+ * NOTE (honest scope): a *real* emission — a layer genuinely pushing an action to
+ * a live region and reading its return — only occurs with a real host. Under the
+ * minimal scripted host the loop still issues one real committed action per cycle
+ * (the appraisal-driven response), delivered to the test fixture; per-layer
+ * probes/queries/tests are a capability the architecture affords, not behaviour to
+ * fabricate when no real region receives them.
+ */
+export interface Directive {
+  /** The committed action pushed to the region. */
+  readonly committed_action: unknown;
+  /** Always `↔` — a live, revisable correlation; never `=` (INV-2). */
+  readonly register: "↔";
+  /** The layer that issued this emission. */
+  readonly issuing_layer: LayerIndex;
+  /** The appraisal(s) this action was built from. */
+  readonly built_from: readonly Appraisal[];
+  readonly t: number;
+}

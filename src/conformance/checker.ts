@@ -22,6 +22,7 @@ import type {
   CycleSealActivity,
   LayerExitActivity,
   ProvenanceActivity,
+  EmissionActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
@@ -127,6 +128,9 @@ export function checkConformance(
   const provenanceLines = records.filter(
     (r): r is ProvenanceActivity => r.kind === "activity" && r.activityKind === "provenance",
   );
+  const emissions = records.filter(
+    (r): r is EmissionActivity => r.kind === "activity" && r.activityKind === "emission",
+  );
   const results: CriterionResult[] = [];
 
   // C1 — Invariants (§5): no `=` emitted; four fixed tags present. Channel
@@ -191,19 +195,28 @@ export function checkConformance(
       if (flow === undefined || mark === null) return false;
       return mark === 0 ? flow !== "single-threaded" : flow !== "multi-stream";
     });
+    // §13.3 (link 5, §6.4): every emission carries register ↔ and names a valid
+    // issuing layer (1–8). No internal action-arbiter exists — a conflict among
+    // emissions is collided as a ResistEvent, not adjudicated (verified
+    // structurally, like channel separation).
+    const badEmission = emissions.find(
+      (e) => e.register !== "↔" || !(e.issuingLayer >= 1 && e.issuingLayer <= 8),
+    );
     results.push({
       id: "3",
       title: "Loop",
-      verdict: incomplete || flowInconsistent ? "fail" : "pass",
+      verdict: incomplete || flowInconsistent || badEmission ? "fail" : "pass",
       detail: incomplete
         ? `a cycle datum's layer-exit lines do not cover T1–T8 (${incomplete.datumId})`
         : flowInconsistent
           ? `a record's recorded flow mode contradicts its cycle-mark (cycle ${datumOf(flowInconsistent).fixed.cycleMark}: ${datumOf(flowInconsistent).open.flow})`
-          : `every cycle datum's path (from [event] layer-exit lines) covers T1→T8; ${
-              flowRecorded
-                ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
-                : "flow mode not recorded in these traces"
-            }`,
+          : badEmission
+            ? `an emission is malformed (register ${badEmission.register}, issuing layer ${badEmission.issuingLayer}) — must be ↔ from a layer 1–8`
+            : `every cycle datum's path (from [event] layer-exit lines) covers T1→T8; ${emissions.length} emission(s), each register ↔ naming an issuing layer, no action-arbiter; ${
+                flowRecorded
+                  ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
+                  : "flow mode not recorded in these traces"
+              }`,
     });
   }
 

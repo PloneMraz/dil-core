@@ -29,6 +29,7 @@ import {
   recordScar,
   recordActivity,
   recordLayerExit,
+  recordEmission,
   type EventRecord,
   type ActivityRecord,
   type ContextAnchor,
@@ -176,6 +177,23 @@ test("a lean layer-exit line round-trips (no datum, no anchor)", () => {
   const rec = recordLayerExit("cycle-3", 3, 5, 3);
   const serialized = serializeEventRecord(rec);
   assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "layer", "t"]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
+});
+
+test("an emission line round-trips with register ↔ and its issuing layer (§6.4)", () => {
+  const rec = recordEmission("cycle-2", 2, 8, { kind: "respond", cycle: 2 }, 2);
+  assert.equal(rec.register, "↔");
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), [
+    "form",
+    "datumId",
+    "cycleMark",
+    "issuingLayer",
+    "action",
+    "register",
+    "t",
+  ]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });
