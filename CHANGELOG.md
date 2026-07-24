@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: requisition orchestration + scan/admit-as-prior (Bước 1.5d1)
+**Commit:** `09af31e`
+
+Thủ tục áp-luật-khi-khởi-động, dạng hàm độc lập: `requisition(host)` claim chất nền (DIL-CLAIM), bind các store bền DIL cai trị (`[data]` SQLite dưới `memory/`, `[event]` JSONL bền dưới `event-log/`, commit DAG dưới `commits/`), rồi **rà soát bộ nhớ có sẵn của host** và ép mọi item qua tagging-gate — kiểm duyệt + đóng dấu `prior` — trước khi vào `[data]`. Không gì vào mà chưa tag (không cửa hông); item không tag hợp lệ được thì bị từ chối + báo cáo, không tuồn lén. `HostDeclaration.store` thêm seam `preexisting` (host khai *chỗ* nội dung; DIL sở hữu việc đóng dấu). Additive — daemon vẫn dùng store in-memory tiêm vào; nối `requisition` vào `daemon.start()` là sub-step kế. 5 test mới (195 tổng), tsc sạch.
+
+---
+
 ### — feat: durable [event] log, disk = source of truth (Bước 1.5c)
 **Commit:** `ac33e1b`
 
