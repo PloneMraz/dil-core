@@ -87,12 +87,21 @@ export interface SerializedEmission {
   readonly t: number;
 }
 
+/** Serialized form of a lean `crystallization` activity line (§7; the one self/env distinction). */
+export interface SerializedCrystallization {
+  readonly form: "crystallization";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly t: number;
+}
+
 /** A serialized [event] line, discriminated by `form`. */
 export type SerializedEventRecord =
   | SerializedDatumRecord
   | SerializedLayerExit
   | SerializedProvenance
-  | SerializedEmission;
+  | SerializedEmission
+  | SerializedCrystallization;
 
 function datumForm(
   form: "scar" | "cycle-seal",
@@ -141,6 +150,8 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
         register: rec.register,
         t: rec.t,
       };
+    case "crystallization":
+      return { form: "crystallization", datumId: rec.datumId, cycleMark: rec.cycleMark, t: rec.t };
   }
 }
 
@@ -333,6 +344,15 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       issuingLayer: rec.issuingLayer,
       action: rec.action,
       register: rec.register,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "crystallization") {
+    return {
+      kind: "activity",
+      activityKind: "crystallization",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
       t: rec.t,
     };
   }

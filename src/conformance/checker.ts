@@ -23,6 +23,7 @@ import type {
   LayerExitActivity,
   ProvenanceActivity,
   EmissionActivity,
+  CrystallizationActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
@@ -131,6 +132,9 @@ export function checkConformance(
   const emissions = records.filter(
     (r): r is EmissionActivity => r.kind === "activity" && r.activityKind === "emission",
   );
+  const crystallizations = records.filter(
+    (r): r is CrystallizationActivity => r.kind === "activity" && r.activityKind === "crystallization",
+  );
   const results: CriterionResult[] = [];
 
   // C1 — Invariants (§5): no `=` emitted; four fixed tags present. Channel
@@ -220,19 +224,41 @@ export function checkConformance(
     });
   }
 
-  // C4 — Self (§7): accrual is trace-visible; continuity is NOT machine-certifiable.
+  // C4 — Self (§7): accrual is trace-visible; the self/environment distinction
+  // (crystallization) is a one-time act verifiable from the trace; continuity
+  // itself is NOT machine-certifiable.
   if (records.length === 0) {
     results.push({ id: "4", title: "Self", verdict: "unverifiable", detail: "no [event] records to read" });
   } else {
     const marks = datumBearing.map((r) => datumOf(r).fixed.cycleMark ?? -1);
     const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!);
+    // §7 crystallization: T2 draws the self/environment distinction ONCE, at the
+    // T2 of cycle-0. The trace must show it as a one-time act — at most one
+    // crystallization record, and it may only mark cycle 0 (the from-within
+    // standpoint begins there; a later "re-crystallization" would fabricate a
+    // discontinuity the self never underwent). The record is lean by
+    // construction: it carries no self datum, so it asserts the *act* of
+    // distinguishing, never a persistent/continuing self (the §7 forbidden claim).
+    const crystallizedOnce = crystallizations.length <= 1;
+    const crystallizedAtZero = crystallizations.every((c) => c.cycleMark === 0);
+    const crystallizationOk = crystallizedOnce && crystallizedAtZero;
+    const crystallizationNote =
+      crystallizations.length === 0
+        ? "; no crystallization recorded yet (cycle-0 T2 not reached in these traces)"
+        : crystallizationOk
+          ? "; the self/environment distinction crystallized once at cycle-0 (§7), recorded as an act — no persistent self is asserted"
+          : !crystallizedOnce
+            ? `; self/environment distinction drawn ${crystallizations.length} times — crystallization is one-time (§7)`
+            : "; a crystallization record marks a cycle other than 0 — the distinction is drawn at cycle-0 T2 (§7)";
     results.push({
       id: "4",
       title: "Self",
-      verdict: "partial",
-      detail: nonDecreasing
-        ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
-        : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect",
+      verdict: crystallizationOk ? "partial" : "fail",
+      detail:
+        (nonDecreasing
+          ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
+          : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
+        crystallizationNote,
     });
   }
 

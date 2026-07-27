@@ -24,7 +24,7 @@ import { createT7 } from "../loop/layers/t7.js";
 import { createT8 } from "../loop/layers/t8.js";
 import { createDataStore } from "../store/data-store.js";
 import { createEventLog } from "../store/event-log.js";
-import { recordProvenance } from "../store/resist-event.js";
+import { recordProvenance, recordCrystallization } from "../store/resist-event.js";
 import type { HostDeclaration } from "../host/declaration.js";
 import type { HostCycleInput } from "../loop/cycle.js";
 import type { EventLog } from "../store/event-log.js";
@@ -158,7 +158,22 @@ test("Self (§13.4) is reported partial — continuity is third-party-attributab
     { signals: [sig("weather", "rain")], changes: [] },
   ]);
   const report = checkConformance(events, { gate });
-  assert.equal(report.results.find((r) => r.id === "4")!.verdict, "partial");
+  const c4 = report.results.find((r) => r.id === "4")!;
+  assert.equal(c4.verdict, "partial");
+  // §7: the trace shows the self/env distinction crystallized once, at cycle-0
+  assert.ok(c4.detail.includes("crystallized once at cycle-0"));
+});
+
+test("Self (§13.4) fails if the self/environment distinction is drawn more than once (§7)", () => {
+  // A well-formed self-line crystallizes ONCE; a second crystallization would
+  // fabricate a discontinuity the self never underwent.
+  const events = createEventLog();
+  events.append(recordCrystallization("cycle-0", 0, 1));
+  events.append(recordCrystallization("cycle-0", 0, 2)); // illegal re-crystallization
+  const report = checkConformance(events, {});
+  const c4 = report.results.find((r) => r.id === "4")!;
+  assert.equal(c4.verdict, "fail");
+  assert.ok(c4.detail.includes("one-time"));
 });
 
 test("Resistance (§13.5) passes with diverse sources now that reflection (tag E) is declared", () => {

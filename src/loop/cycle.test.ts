@@ -79,6 +79,21 @@ test("cycle-0 runs and advances the cycle counter (single-threaded pass)", () =>
   assert.equal(cycle.cycleCount(), 1);
 });
 
+test("cycle-0 records the self/environment crystallization exactly once (§7)", () => {
+  const { cycle, events } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] }); // cycle-0
+  cycle.run({ signals: [weather("sun")], changes: [] }); // cycle-1
+  cycle.run({ signals: [weather("sun")], changes: [] }); // cycle-2
+  const cryst = events
+    .all()
+    .filter((r) => r.kind === "activity" && r.activityKind === "crystallization");
+  assert.equal(cryst.length, 1, "the distinction is drawn once across the run");
+  const c = cryst[0]!;
+  assert.equal(c.kind === "activity" && c.activityKind === "crystallization" && c.cycleMark, 0);
+  // the record is lean — it carries no self datum, only the act (no continuity claim, §7)
+  assert.equal(Object.prototype.hasOwnProperty.call(c, "datum"), false);
+});
+
 test("a collision is recorded as a scar in the [event] log", () => {
   const { cycle, events } = freshCycle();
   // first cycle establishes the expectation for 'weather' (predicts itself, no error)

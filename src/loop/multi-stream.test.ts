@@ -113,7 +113,7 @@ function unit(value: unknown): InfoUnit {
 
 test("fan-out is real: T6 and T7 both read T5's single published output", () => {
   const ch = createMeaningChannel();
-  const t2out: T2Output = { tagged: [{ change: { id: "e", value: 1 }, agency: "ENV_PUSHED" }] };
+  const t2out: T2Output = { tagged: [{ change: { id: "e", value: 1 }, agency: "ENV_PUSHED" }], crystallized: false };
   const t5out: T5Output = {
     results: [{
       entity_id: "e",
@@ -134,7 +134,7 @@ test("fan-out is real: T6 and T7 both read T5's single published output", () => 
 
 test("consuming an unpublished dependency is refused (no silent empty input)", () => {
   const ch = createMeaningChannel();
-  ch.publish(2, { tagged: [] } as T2Output); // T2 published, T5 did not
+  ch.publish(2, { tagged: [], crystallized: false } as T2Output); // T2 published, T5 did not
   assert.throws(() => gatherT6(ch), MultiStreamError);
 });
 

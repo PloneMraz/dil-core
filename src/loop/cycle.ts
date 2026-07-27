@@ -31,6 +31,7 @@ import {
   recordLayerExit,
   recordProvenance,
   recordEmission,
+  recordCrystallization,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
@@ -137,6 +138,8 @@ interface LayerPass {
   readonly datum: TaggedDatum;
   readonly t5: T5Output;
   readonly t7: T7Output;
+  /** T2 first drew the self/environment distinction this pass (§7 crystallization). */
+  readonly crystallized: boolean;
 }
 
 export function createCycle(deps: CycleDeps): Cycle {
@@ -222,7 +225,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     );
     datum = t8.datum;
     logExit(8);
-    return { datum, t5: t5.output, t7: t7.output };
+    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized };
   }
 
   /**
@@ -269,7 +272,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t8.datum;
     logExit(8);
     channel.publish(8, t8.output);
-    return { datum, t5: t5.output, t7: t7.output };
+    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized };
   }
 
   return {
@@ -301,6 +304,15 @@ export function createCycle(deps: CycleDeps): Cycle {
           ? passSingleThreaded(host, field, admitted)
           : passMultiStream(host, field, admitted);
       let datum = pass.datum;
+
+      // ── §7 crystallization: T2 drew the self/environment distinction ──
+      // The one-time act where the from-within standpoint begins (T2 of cycle-0).
+      // Recorded as a lean trace line — the ACT of distinguishing self from
+      // environment, never a persistent/continuing self (the §7 forbidden claim).
+      // A resumed line has already crystallized; T2 does not re-signal.
+      if (pass.crystallized) {
+        events.append(recordCrystallization(datumId(), cycle, cycleT));
+      }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──
       // The datum takes the running→simulated→projected road WHEN the store

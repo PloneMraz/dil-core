@@ -30,6 +30,7 @@ import {
   recordActivity,
   recordLayerExit,
   recordEmission,
+  recordCrystallization,
   type EventRecord,
   type ActivityRecord,
   type ContextAnchor,
@@ -194,6 +195,14 @@ test("an emission line round-trips with register ↔ and its issuing layer (§6.
     "register",
     "t",
   ]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
+});
+
+test("a crystallization line round-trips (§7: lean, no datum, no anchor)", () => {
+  const rec = recordCrystallization("cycle-0", 0, 1);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "t"]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });

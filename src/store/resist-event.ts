@@ -143,11 +143,29 @@ export interface EmissionActivity {
   readonly t: number;
 }
 
+/**
+ * Crystallization — the ONE-TIME event where T2 first draws the self/environment
+ * distinction (§7: "the self crystallizes at that T2 [of cycle-0]"). It records
+ * the *act* of distinguishing self from environment — a trace a third party reads
+ * (E4) — NOT the self and NOT its persistence: recording a stable/continuing self
+ * would be the internal continuity claim §7 forbids. A fresh (non-recovered)
+ * self-line crystallizes exactly once; recovery resumes a line, it does not
+ * re-crystallize.
+ */
+export interface CrystallizationActivity {
+  readonly kind: "activity";
+  readonly activityKind: "crystallization";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly t: number;
+}
+
 export type ActivityRecord =
   | CycleSealActivity
   | LayerExitActivity
   | ProvenanceActivity
-  | EmissionActivity;
+  | EmissionActivity
+  | CrystallizationActivity;
 
 /** What the [event] log holds: scars (experience) and activity records (trace). */
 export type LogRecord = EventRecord | ActivityRecord;
@@ -189,6 +207,18 @@ export function recordProvenance(
   t: number,
 ): ProvenanceActivity {
   return { kind: "activity", activityKind: "provenance", datumId, cycleMark, from, to, t };
+}
+
+/**
+ * Note a crystallization — T2 first drawing the self/environment distinction (§7).
+ * The act of distinguishing, recorded as a trace; never the self's persistence.
+ */
+export function recordCrystallization(
+  datumId: string,
+  cycleMark: number,
+  t: number,
+): CrystallizationActivity {
+  return { kind: "activity", activityKind: "crystallization", datumId, cycleMark, t };
 }
 
 /** Note an emission — a layer's committed action pushed to the region (§6.4). */

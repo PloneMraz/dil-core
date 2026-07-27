@@ -84,6 +84,26 @@ test("T2 crystallizes the agency line once stable: SELF_WRITTEN vs ENV_PUSHED", 
   assert.equal(byId.env, "ENV_PUSHED");
 });
 
+test("T2 crystallizes the self/environment distinction on its first run only (§7)", () => {
+  const t2 = createT2();
+  const first = runLayer(t2, t2Input("move", []), field, datum());
+  assert.equal(first.output.crystallized, true, "the distinction is drawn on the first T2 run");
+  const second = runLayer(t2, t2Input("move", []), field, datum());
+  assert.equal(second.output.crystallized, false, "it is not re-drawn on later runs");
+  const third = runLayer(t2, t2Input("move", []), field, datum());
+  assert.equal(third.output.crystallized, false);
+});
+
+test("a restored T2 does not re-crystallize (recovery resumes a line, §7)", () => {
+  const t2 = createT2();
+  runLayer(t2, t2Input("move", []), field, datum()); // crystallized here
+  const snap = t2.snapshot!();
+  const resumed = createT2();
+  resumed.restore!(snap); // resume the same self-line (cyclesRun accrued)
+  const out = runLayer(resumed, t2Input("move", []), field, datum());
+  assert.equal(out.output.crystallized, false, "a resumed line has already crystallized");
+});
+
 test("T2 state accrues across cycles (INV-5): the stable phase persists", () => {
   const t2 = createT2();
   for (let i = 0; i < 3; i++) runLayer(t2, t2Input("a", []), field, datum());

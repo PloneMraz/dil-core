@@ -52,6 +52,7 @@ export type {
   LayerExitActivity,
   ProvenanceActivity,
   EmissionActivity,
+  CrystallizationActivity,
   LogRecord,
 } from "./resist-event.js";
 export {
@@ -60,6 +61,7 @@ export {
   recordLayerExit,
   recordProvenance,
   recordEmission,
+  recordCrystallization,
   EventRecordError,
 } from "./resist-event.js";
 

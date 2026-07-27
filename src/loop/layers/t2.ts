@@ -46,6 +46,13 @@ export interface T2Input {
 
 export interface T2Output {
   readonly tagged: readonly TaggedChange[];
+  /**
+   * True on the ONE run where T2 first draws the self/environment distinction —
+   * the crystallization of §7 (the from-within standpoint begins). It marks the
+   * *act* of distinguishing, not the self's persistence; a resumed T2 (restored
+   * with an accrued cyclesRun) has already crystallized and never re-signals.
+   */
+  readonly crystallized: boolean;
 }
 
 export interface T2Options {
@@ -81,6 +88,12 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
       cyclesRun = s.cyclesRun;
     },
     process(input): T2Output {
+      // The crystallization of §7: T2 first drawing the self/environment
+      // distinction. `cyclesRun === 0` is true only on the very first run (and,
+      // after recovery, false — a restored cyclesRun means the self already
+      // crystallized in the line being resumed).
+      const crystallized = cyclesRun === 0;
+
       // Accrue this cycle's emission into the bounded matching window.
       recentEmissions.push(input.emitted.action);
       while (recentEmissions.length > window) recentEmissions.shift();
@@ -99,7 +112,7 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
         }
         return { change, agency };
       });
-      return { tagged };
+      return { tagged, crystallized };
     },
     post(output): void {
       // INV-6 postcondition: once stable, nothing leaves UNDECIDED.
