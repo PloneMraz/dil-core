@@ -19,6 +19,8 @@ import {
   stampLayer,
   toRunning,
   toScar,
+  toSimulated,
+  toProjected,
   LifecycleError,
   PROVENANCE_EDGES,
   isProvenanceEdge,
@@ -299,4 +301,25 @@ test("assertProvenanceEdge throws LifecycleError on a non-edge", () => {
   assert.throws(() => assertProvenanceEdge("prior", "scar"), LifecycleError);
   assert.throws(() => assertProvenanceEdge("simulated", "scar"), LifecycleError);
   assert.throws(() => assertProvenanceEdge("scar", "prior"), LifecycleError);
+});
+
+test("toSimulated / toProjected move along the forward-building edges", () => {
+  const running = toRunning(admitHostData({ payload: 1, admittingLayer: 1, open: openOK }, 0), 3);
+  const sim = toSimulated(running); // running → simulated
+  assert.equal(sim.fixed.provenance, "simulated");
+  const proj = toProjected(sim); // simulated → projected
+  assert.equal(proj.fixed.provenance, "projected");
+  // and back into use, or held on collision (both legal from projected)
+  assert.equal(toRunning(proj, 3).fixed.provenance, "running"); // projected → running
+  assert.equal(toScar(proj, true).fixed.provenance, "scar"); // projected → scar
+  // a scar re-enters the building of a situation (scar not a resting place)
+  assert.equal(toSimulated(toScar(proj, true)).fixed.provenance, "simulated");
+});
+
+test("forward-building on-ramps reject illegal from-states", () => {
+  const prior = admitHostData({ payload: 1, admittingLayer: 1, open: openOK }, 0);
+  assert.throws(() => toSimulated(prior), LifecycleError); // prior → simulated is not an edge
+  assert.throws(() => toProjected(prior), LifecycleError); // prior → projected is not an edge
+  const running = toRunning(prior, 1);
+  assert.throws(() => toProjected(running), LifecycleError); // running → projected is not an edge
 });

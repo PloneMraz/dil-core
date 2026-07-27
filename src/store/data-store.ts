@@ -125,6 +125,27 @@ export function toScar<T>(
   };
 }
 
+/**
+ * → simulated (§6.2, forward-building): the datum is taken up into the building of
+ * a situation. A legal move from `running`, `projected`, or `scar`. This is an
+ * on-ramp of the graph — WHEN it fires is a condition of the running situation
+ * (Bước 6), not a scheduled step.
+ */
+export function toSimulated<T>(datum: TaggedDatum<T>): TaggedDatum<T> {
+  assertProvenanceEdge(datum.fixed.provenance, "simulated");
+  return { ...datum, fixed: { ...datum.fixed, provenance: "simulated" } };
+}
+
+/**
+ * → projected (§6.2): an outcome is cast from a built situation. A legal move from
+ * `simulated` or `scar` (a scar enriching an outcome already cast). Not yet
+ * collided — verdict-free.
+ */
+export function toProjected<T>(datum: TaggedDatum<T>): TaggedDatum<T> {
+  assertProvenanceEdge(datum.fixed.provenance, "projected");
+  return { ...datum, fixed: { ...datum.fixed, provenance: "projected" } };
+}
+
 /** The mutable [data] store: overwritten each cycle, keyed by datum id. */
 export interface DataStore {
   put(id: string, datum: TaggedDatum): void;

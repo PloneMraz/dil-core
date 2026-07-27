@@ -186,3 +186,34 @@ export const MIN_SNAPSHOTS_RETAINED = 9;
  */
 export const COMMIT_CADENCE =
   "every COMMIT_EVERY scars, at a cycle boundary; manual commit() and a fork marker at recovery" as const;
+
+/**
+ * DECIDE@IMPL tag H — the building of situations in `simulated` (§6.2, §9).
+ *
+ * The protocol fixes only that selection among situations is a comparison of FIT
+ * against the store, never a scored standard (INV-8). It leaves open how many
+ * situations are built per cycle and what "fit" concretely measures.
+ */
+
+/** How many situations the loop builds from the store per cycle when it forward-builds. */
+export const H_COUNT = 3;
+/**
+ * Rationale (tunable, NOT derived): a small fixed starting value — enough for a
+ * fit-comparison to have alternatives to weigh, not a derived optimum. The loop
+ * builds situations only where there is store material to build from; H_COUNT is
+ * a ceiling, not a quota (fewer are built when the store affords fewer).
+ */
+
+export const FIT_MEASURE =
+  "consistency with [data]: a situation fits better when the store more strongly supports its cast outcome (accumulated recurrence/confidence for that entity)" as const;
+/**
+ * Rationale + INV-8 boundary: fit is measured AGAINST the store's own [data] (the
+ * yardstick), never a foreign standard and never a good/bad verdict — it is
+ * consistency, not scoring-for-truth. It selects WHICH situation carries, blended
+ * and re-weighted each cycle like GLOB-MOD contributions (INV-7), never frozen
+ * (INV-2). This selection is UPSTREAM of and separate from the appraisal step,
+ * whose valence still comes from the modulatory field (INV-8), so measuring fit
+ * against [data] does not make the appraisal self-scoring. A store that leans
+ * makes situations lean the same way; the loop cannot detect its own lean — that
+ * is Mode-B's job (§1.1, §8), not forward-building's.
+ */

@@ -16,7 +16,8 @@
       "Bash(rmdir scripts *)",
       "Bash(python -)",
       "Bash(node --test dist/runtime/commit.test.js)",
-      "Bash(git commit --amend -m ' *)"
+      "Bash(git commit --amend -m ' *)",
+      "Bash(git commit -q -m ' *)"
     ]
   }
 }

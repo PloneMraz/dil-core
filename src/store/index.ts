@@ -23,6 +23,8 @@ export {
   MIN_SNAPSHOTS_RETAINED,
   OPEN_TAG_REGISTRY,
   OPEN_TAG_DEFINITIONS,
+  H_COUNT,
+  FIT_MEASURE,
 } from "./decisions.js";
 
 export type {
@@ -107,6 +109,8 @@ export {
   stampLayer,
   toRunning,
   toScar,
+  toSimulated,
+  toProjected,
   PROVENANCE_EDGES,
   isProvenanceEdge,
   assertProvenanceEdge,
