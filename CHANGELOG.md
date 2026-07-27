@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: sửa các tuyên bố status cũ phát hiện khi audit toàn repo
+**Commit:** `6fbfd4c`
+
+Audit một lượt toàn repo, thấy **3 chỗ doc lệch thực tế** (không có lỗi code): [README.md](README.md) status ghi "215 tests" → nay **233**; [AGENTS.md](AGENTS.md) nói test files "not yet authored" → **đã có** (`src/**/*.test.ts`, chạy bằng `pnpm test`, nay liệt kê trong khối lệnh); [inspector.ts](src/store/inspector.ts) gọi việc nối vào live daemon là "stage-5 work" → stage 5 đã build, reframe thành *standalone read-only view* mà deployment trỏ vào stores của daemon. **Đã kiểm chứng kèm:** build + 233 test sạch; DECIDE@IMPL tag A–H đều đã khai; một run đa nguồn đa dạng chấm **6 pass / 1 partial / 0 fail** đúng như README; git tree sạch (chỉ `.claude/settings.json`); không còn `layer_trace`/provenance-3-state mô tả sai; không có TODO/FIXME/HACK tồn đọng.
+
+---
+
 ### — docs: dọn sạch mô tả `layer_trace` cũ trong comment source (v0.3.2 §6.1)
 **Commit:** `ee396e8`
 
