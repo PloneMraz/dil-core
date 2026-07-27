@@ -1,10 +1,11 @@
 /**
  * Smoke test — Stage 4c, the layer scaffold + meaning-channel.
  *
- * Fixed checks: a datum traverses the layers leaving a floor-tag (and a
- * layer_trace entry) at each; the scaffold halts on the three invariants it
- * wires — INV-3 (meaning-channel order), INV-4 (ref_frame ≠ null), INV-1
- * (closed-loop topology). No layer logic yet; stub specs stand in.
+ * Fixed checks: a datum traverses the layers, its floor-tag updating to the
+ * current layer at each (the path itself is recorded in `[event]`, not on the
+ * datum); the scaffold halts on the three invariants it wires — INV-3
+ * (meaning-channel order), INV-4 (ref_frame ≠ null), INV-1 (closed-loop
+ * topology). No layer logic yet; stub specs stand in.
  */
 
 import { test } from "node:test";

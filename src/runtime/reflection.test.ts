@@ -155,7 +155,6 @@ function envUnit() {
     content: { present: true, count: 1, sources: ["ch"] },
     ref_frame: { boundLayer: 1 as const, ref: "activity-environment" },
     t: 1,
-    layer_trace: [1 as const],
   };
 }
 

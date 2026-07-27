@@ -14,9 +14,11 @@
  *     (MULTI_STREAM_SCHEDULE): one topological activation pass, cycle-time not
  *     wall-clock — no OS concurrency claimed.
  *
- * Either way the cycle datum threads T1→T8 accruing a floor-tag and a
- * layer_trace entry at each layer, and the mode is recorded as the open tag
- * `flow` — trace-visible to an auditor (§13.3). The rest is unchanged: the
+ * Either way the cycle datum threads T1→T8, its floor-tag updating to the
+ * current layer and each layer-exit recorded as a lean line in the `[event]` log
+ * (the path lives there, never in a running-type field — v0.3.2 §6.1); the mode
+ * is recorded as the open tag `flow` — trace-visible to an auditor (§13.3). The
+ * rest is unchanged: the
  * appraisal step (INV-8) under the cycle's GLOB-MOD context, a response that
  * feeds back as the next cycle's emission (INV-1), held collisions recorded as
  * scars in the append-only [event] log, GLOB-MOD advanced to N+1. This module

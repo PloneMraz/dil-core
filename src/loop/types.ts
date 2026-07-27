@@ -9,9 +9,10 @@
  * innermost, the loop is outer, so the loop depends on them, never the reverse):
  *   - `LayerIndex`, `AgencyTag` are owned by the invariants ring (../invariants)
  *     and imported here — not redefined.
- *   - `LayerTrace`, `ResistEvent`, `MismatchKind` are owned by the store
- *     (../store) and re-used here — the loop writes into the store, so it shares
- *     the store's shapes rather than duplicating them.
+ *   - `ResistEvent`, `MismatchKind` are owned by the store (../store) and re-used
+ *     here — the loop writes into the store, so it shares the store's shapes
+ *     rather than duplicating them. (There is no `LayerTrace`: v0.3.2 §6.1 drops
+ *     the path from the running types; it lives only in `[event]`, see below.)
  *
  * INV-4 at the type level: an `InfoUnit` has a NON-NULL `ref_frame`. A `Signal`
  * has none. That difference is the type-level enforcement of "meaning is a

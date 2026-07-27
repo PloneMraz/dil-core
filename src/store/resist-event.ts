@@ -46,11 +46,12 @@ export interface ContextAnchor {
  * (event-log.ts).
  *
  * The record INHERITS its tags from the `[data]` datum it traced: rather than
- * re-stating fixed/open/trace (which could drift), the record embeds the whole
- * scar datum, so the event carries exactly that datum's four fixed tags, its
- * ≥3 open tags (including `domain`, the reason audit-by-class works), and its
- * `layer_trace`. An [event] record therefore carries the same minimum of seven
- * tags as any datum, plus the anchor.
+ * re-stating the fixed and open tags (which could drift), the record embeds the
+ * whole scar datum, so the event carries exactly that datum's four fixed tags and
+ * its ≥3 open tags (including `domain`, the reason audit-by-class works). An
+ * [event] record therefore carries the same minimum of seven tags (4 fixed + ≥3
+ * open) as any datum, plus the anchor. The path the datum travelled is NOT among
+ * these tags — it is the stream of lean `layer-exit` lines in the log (§9).
  */
 export interface EventRecord {
   readonly kind: "scar";

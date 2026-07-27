@@ -41,13 +41,14 @@ export interface FixedTags {
   readonly timestamp: number;
   /** (2) cycle-mark — the cycle in which it ran; null while still `prior`. */
   readonly cycleMark: number | null;
-  /** (3) provenance — prior | running | scar. */
+  /** (3) provenance — a directed graph (§9): `prior` (one-way entry), then `running`/`simulated`/`projected`/`scar` circulating. */
   readonly provenance: Provenance;
   /**
    * (4) floor-tag — a single slot naming the layer the datum just exited. Each
    * layer overwrites it as the datum passes, so it always names the *current*
-   * layer ("where is it now"). The full path is the separate `layer_trace`, not
-   * this slot.
+   * layer ("where is it now"). The full path — every layer exited — is NOT held
+   * on the datum: it is the stream of `layer-exit` lines in the `[event]` log
+   * (§9), read from there and never from a tag (v0.3.2 §6.1 dropped `layer_trace`).
    */
   readonly floorTag: LayerIndex;
 }

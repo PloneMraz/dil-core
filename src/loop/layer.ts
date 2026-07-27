@@ -10,9 +10,10 @@
  *   - INV-4 (meaning as relation): every InfoUnit a layer emits MUST carry a
  *     non-null ref_frame — `runLayer` asserts it (defense in depth atop the
  *     type-level guarantee).
- *   - The floor-tag/layer_trace stamping every layer performs (protocol §9):
- *     `runLayer` calls `stampLayer` so the datum records the layer it just
- *     exited and appends to its audit path.
+ *   - The floor-tag stamping every layer performs (protocol §9): `runLayer` calls
+ *     `stampLayer` so the datum's floor-tag names the layer it just exited. The
+ *     path itself is not kept on the datum — each exit is recorded as a lean line
+ *     in the `[event]` log (v0.3.2 §6.1 dropped the running-type `layer_trace`).
  *
  * The modulatory field is passed to `process` as read-only background (the
  * down-channel, INV-7); it is a separate argument from the meaning-channel
@@ -113,7 +114,7 @@ export interface LayerRun<Out> {
 /**
  * Run one layer over its input under the modulatory field, against a datum.
  * Order: precondition → process (with the lateral emit capability) → INV-4 check
- * on emitted InfoUnits → postcondition → stamp the floor-tag/layer_trace.
+ * on emitted InfoUnits → postcondition → stamp the floor-tag.
  *
  * Emissions the layer declares through `emit` are buffered here (bound to the
  * layer's index — the layer never states its own issuing layer) and returned for
