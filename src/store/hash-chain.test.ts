@@ -18,7 +18,7 @@ import { CHAIN_GENESIS, chainNext } from "./hash-chain.js";
 import { admitHostData } from "./tagging-gate.js";
 import { toRunning, toScar, stampLayer } from "./data-store.js";
 import { recordScar, type EventRecord, type ContextAnchor } from "./resist-event.js";
-import { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
+import { CONTEXT_ANCHOR_DEPTH, SCHEMA_VERSION } from "./decisions.js";
 
 const open = { domain: "weather", format: "json", platform: "cli" };
 const anchor: ContextAnchor = { depth: CONTEXT_ANCHOR_DEPTH, cycle: 2, fieldState: {} };
@@ -110,6 +110,31 @@ test("reordering two lines is detected", () => {
     fs.writeFileSync(file, [lines[1], lines[0], lines[2]].join("\n") + "\n");
     const v = verifyJsonlSink(dir);
     assert.ok(!v.ok);
+    if (!v.ok) assert.equal(v.atLine, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("each persisted line carries its schema version, folded into the tamper-evident hash", () => {
+  const dir = tmpDir();
+  try {
+    writeThree(dir);
+    const lines = readChainedLines(dir);
+    // an immutable log is self-describing: every line records the schema it was
+    // written under, so a reader interprets each record by its own version
+    assert.ok(lines.every((l) => l.schemaVersion === SCHEMA_VERSION));
+    assert.equal(verifyJsonlSink(dir).ok, true);
+
+    // the schema version is inside the hash — altering it breaks the chain
+    const file = onlySegment(dir);
+    const raw = fs.readFileSync(file, "utf8").split("\n").filter((l) => l.length > 0);
+    const first = JSON.parse(raw[0]!);
+    first.schemaVersion = 999;
+    raw[0] = JSON.stringify(first);
+    fs.writeFileSync(file, raw.join("\n") + "\n");
+    const v = verifyJsonlSink(dir);
+    assert.equal(v.ok, false);
     if (!v.ok) assert.equal(v.atLine, 0);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

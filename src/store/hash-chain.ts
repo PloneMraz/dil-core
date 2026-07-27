@@ -29,6 +29,7 @@
 
 import { createHash } from "node:crypto";
 import type { SerializedEventRecord } from "./event-sink.js";
+import { SCHEMA_VERSION } from "./decisions.js";
 
 /** The `prev` of the first line — no predecessor. */
 export const CHAIN_GENESIS = "0".repeat(64);
@@ -39,9 +40,16 @@ export interface ChainedEventLine {
   readonly seq: number;
   /** Hash of the previous line (CHAIN_GENESIS for the first). */
   readonly prev: string;
+  /**
+   * The store schema version this line was written under (decisions.ts). Because
+   * `[event]` is immutable, the line is self-describing: a reader interprets its
+   * record by THIS version, and a log may hold lines of several versions after a
+   * schema change. Stamped into the hash, so it is tamper-evident.
+   */
+  readonly schemaVersion: number;
   /** The record body, tags in fixed order (event-sink.ts). */
   readonly record: SerializedEventRecord;
-  /** sha256 over seq + prev + record. */
+  /** sha256 over seq + prev + schemaVersion + record. */
   readonly hash: string;
 }
 
@@ -49,22 +57,29 @@ function sha256(input: string): string {
   return createHash("sha256").update(input, "utf8").digest("hex");
 }
 
-/** The hash a well-formed line must carry. */
+/** The hash a well-formed line must carry (covers the line's own schema version). */
 export function hashChainEntry(
   seq: number,
   prev: string,
+  schemaVersion: number,
   record: SerializedEventRecord,
 ): string {
-  return sha256(`${seq}\n${prev}\n${JSON.stringify(record)}`);
+  return sha256(`${seq}\n${prev}\n${schemaVersion}\n${JSON.stringify(record)}`);
 }
 
-/** Build the next chained line after `prevHash`. */
+/** Build the next chained line after `prevHash`, stamped with the current schema. */
 export function chainNext(
   prevHash: string,
   seq: number,
   record: SerializedEventRecord,
 ): ChainedEventLine {
-  return { seq, prev: prevHash, record, hash: hashChainEntry(seq, prevHash, record) };
+  return {
+    seq,
+    prev: prevHash,
+    schemaVersion: SCHEMA_VERSION,
+    record,
+    hash: hashChainEntry(seq, prevHash, SCHEMA_VERSION, record),
+  };
 }
 
 export type ChainVerification =
@@ -86,7 +101,7 @@ export function verifyChain(lines: readonly ChainedEventLine[]): ChainVerificati
     if (line.prev !== prev) {
       return { ok: false, atLine: i, reason: "chain break: prev does not match the previous line's hash" };
     }
-    if (line.hash !== hashChainEntry(line.seq, line.prev, line.record)) {
+    if (line.hash !== hashChainEntry(line.seq, line.prev, line.schemaVersion, line.record)) {
       return { ok: false, atLine: i, reason: "content break: hash does not match the record" };
     }
     prev = line.hash;

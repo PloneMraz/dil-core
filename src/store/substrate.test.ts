@@ -83,3 +83,23 @@ test("a corrupt (unparsable) claim is refused rather than run", () => {
 
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test("an older stored tag-schema is accepted, and the claim is advanced (policy A)", () => {
+  const root = tmpRoot();
+  const layout = claimSubstrate(root);
+  // a substrate stamped under an OLDER schema (v1, the 3-state provenance era)
+  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.2", tagSchema: 1, layout: 1 }));
+  // a newer DIL accepts it — it reads old records by their per-line schemaVersion
+  assert.doesNotThrow(() => claimSubstrate(root));
+  const advanced = JSON.parse(fs.readFileSync(layout.claimFile, "utf8"));
+  assert.equal(advanced.tagSchema, DIL_CLAIM.tagSchema); // claim advanced to current
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test("a newer stored tag-schema is refused — an older DIL must not write it", () => {
+  const root = tmpRoot();
+  const layout = claimSubstrate(root);
+  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.2", tagSchema: 999, layout: 1 }));
+  assert.throws(() => claimSubstrate(root), SubstrateClaimError);
+  fs.rmSync(root, { recursive: true, force: true });
+});

@@ -12,6 +12,20 @@
  * declare differently without changing the protocol.
  */
 
+/**
+ * The store schema version — bumped whenever the meaning or domain of a fixed tag
+ * changes. Provenance went from 3 values to 5 at v0.3.2 (prior/running/scar →
+ * prior/running/simulated/projected/scar), the change that motivates this
+ * versioning. Because `[event]` is immutable — a written record is never edited —
+ * the log must be **self-describing** across such changes: every persisted line
+ * is stamped with the SCHEMA_VERSION it was written under (hash-chain.ts), so a
+ * reader interprets each record by its own version, and the DIL-CLAIM records the
+ * current one (substrate.ts).
+ *   1 → the original 3-state provenance (prior/running/scar).
+ *   2 → v0.3.2's 5-state provenance graph (adds simulated, projected).
+ */
+export const SCHEMA_VERSION = 2;
+
 /** DECIDE@IMPL tag F — store representation. */
 export const STORE_REPRESENTATION =
   "[data] = SQLite (node:sqlite) under store/memory/; [event] = append-only hash-chained JSONL under store/event-log/; RAM holds only bounded caches, never the store of record" as const;

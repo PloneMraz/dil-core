@@ -24,6 +24,7 @@
 
 import * as fs from "node:fs";
 import * as nodePath from "node:path";
+import { SCHEMA_VERSION } from "./decisions.js";
 
 /**
  * The law DIL stamps onto a substrate. A resume whose stored claim does not match
@@ -33,8 +34,8 @@ import * as nodePath from "node:path";
 export const DIL_CLAIM = {
   /** The protocol version whose law governs this store. */
   protocol: "0.3.2",
-  /** The fixed-tag + open-tag schema version (store/tags.ts). */
-  tagSchema: 1,
+  /** The fixed-tag + open-tag schema version (store/tags.ts, SCHEMA_VERSION). */
+  tagSchema: SCHEMA_VERSION,
   /** The on-substrate layout version (the three store kinds below). */
   layout: 1,
 } as const;
@@ -122,12 +123,31 @@ export function claimSubstrate(root: string, sub: Substrate = fsSubstrate()): St
         `existing ${layout.claimFile} is not readable JSON; refusing to run a store whose claim is corrupt`,
       );
     }
-    for (const key of ["protocol", "tagSchema", "layout"] as const) {
+    // `protocol` and `layout` must match exactly — a different law is not this store.
+    for (const key of ["protocol", "layout"] as const) {
       if (stored[key] !== DIL_CLAIM[key]) {
         throw new SubstrateClaimError(
           `substrate at ${root} carries a foreign/incompatible claim (${key}=${String(stored[key])}, expected ${String(DIL_CLAIM[key])}); DIL will not rule a store stamped under a different law`,
         );
       }
+    }
+    // `tagSchema` evolves forward (policy A). An OLDER stored schema is fine: this
+    // DIL reads old records by their per-line schemaVersion (hash-chain.ts) and
+    // writes new ones under the current schema, so the claim is advanced. A NEWER
+    // stored schema is refused: an older DIL must not write a store it cannot
+    // fully interpret. (`[event]` is immutable — the log spans schema versions.)
+    const storedSchema = typeof stored.tagSchema === "number" ? stored.tagSchema : NaN;
+    if (Number.isNaN(storedSchema) || storedSchema > DIL_CLAIM.tagSchema) {
+      throw new SubstrateClaimError(
+        `substrate at ${root} is stamped under tag-schema ${String(stored.tagSchema)}, newer than this DIL's ${DIL_CLAIM.tagSchema}; it cannot safely write a store it does not fully interpret — upgrade DIL`,
+      );
+    }
+    if (storedSchema < DIL_CLAIM.tagSchema) {
+      // advance the claim: new writes are under the current schema
+      sub.writeText(
+        layout.claimFile,
+        JSON.stringify({ ...DIL_CLAIM, claimedAt: Date.now() }, null, 2) + "\n",
+      );
     }
   } else {
     sub.writeText(
