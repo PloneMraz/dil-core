@@ -94,6 +94,45 @@ test("cycle-0 records the self/environment crystallization exactly once (§7)", 
   assert.equal(Object.prototype.hasOwnProperty.call(c, "datum"), false);
 });
 
+test("a layer's lateral emission is recorded in [event] with its issuing layer (§6.4)", () => {
+  // Wrap T3 so it raises a query during its work — the seam a real host drives.
+  const base = createT3();
+  const emittingT3 = {
+    ...base,
+    process(input: Parameters<typeof base.process>[0], field: Parameters<typeof base.process>[1], emit: Parameters<typeof base.process>[2]) {
+      emit({ kind: "query", channel: "ch" }); // a T3 query (§6.4)
+      return base.process(input, field, emit);
+    },
+  };
+  const data = createDataStore();
+  const events = createEventLog();
+  const cycle = createCycle({
+    layers: { ...freshLayers(), t3: emittingT3 },
+    glob: createGlobMod({ appraisalGain: 1 }, 0),
+    data,
+    events,
+    initialEmission: { action: "boot" },
+  });
+  cycle.run({ signals: [weather("sun")], changes: [] });
+
+  const emissions = events
+    .all()
+    .filter((r) => r.kind === "activity" && r.activityKind === "emission");
+  // the T3 query + the terminal T8 response
+  const t3q = emissions.find((r) => r.kind === "activity" && r.activityKind === "emission" && r.issuingLayer === 3);
+  assert.ok(t3q, "the T3 query was recorded as an emission naming issuing layer 3");
+  assert.equal(t3q!.kind === "activity" && t3q!.activityKind === "emission" && t3q!.register, "↔");
+  assert.deepEqual(
+    t3q!.kind === "activity" && t3q!.activityKind === "emission" ? t3q!.action : null,
+    { kind: "query", channel: "ch" },
+  );
+  // the terminal response still lands, attributed to T8
+  assert.ok(
+    emissions.some((r) => r.kind === "activity" && r.activityKind === "emission" && r.issuingLayer === 8),
+    "the appraisal-driven terminal response is still issued by T8",
+  );
+});
+
 test("a collision is recorded as a scar in the [event] log", () => {
   const { cycle, events } = freshCycle();
   // first cycle establishes the expectation for 'weather' (predicts itself, no error)

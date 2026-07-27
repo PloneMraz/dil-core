@@ -57,6 +57,50 @@ test("runLayer runs pre → process → post in order", () => {
   assert.deepEqual(calls, ["pre", "process", "post"]);
 });
 
+test("a layer may emit (§6.4); runLayer returns it bound to the layer's own index", () => {
+  const spec: LayerSpec<unknown, string> = {
+    index: 5,
+    consumes: [],
+    process: (_input, _field, emit) => {
+      emit({ kind: "test", to: "region" }); // a T5 test (§6.4)
+      return "done";
+    },
+  };
+  const datum = admitHostData({ payload: 1, admittingLayer: 1, open }, 0);
+  const run = runLayer(spec, null, field, datum);
+  assert.equal(run.output, "done");
+  assert.equal(run.emissions.length, 1);
+  assert.equal(run.emissions[0]!.issuingLayer, 5); // bound by runLayer, not stated by the layer
+  assert.deepEqual(run.emissions[0]!.action, { kind: "test", to: "region" });
+});
+
+test("a layer that does not emit yields no emissions (the common case)", () => {
+  const datum = admitHostData({ payload: 1, admittingLayer: 1, open }, 0);
+  const run = runLayer(stubLayer(3), null, field, datum);
+  assert.deepEqual(run.emissions, []);
+});
+
+test("a layer may emit more than once; each is returned in order, same issuer", () => {
+  const spec: LayerSpec<unknown, null> = {
+    index: 2,
+    consumes: [],
+    process: (_i, _f, emit) => {
+      emit("probe-a");
+      emit("probe-b");
+      return null;
+    },
+  };
+  const datum = admitHostData({ payload: 1, admittingLayer: 1, open }, 0);
+  const run = runLayer(spec, null, field, datum);
+  assert.deepEqual(
+    run.emissions,
+    [
+      { issuingLayer: 2, action: "probe-a" },
+      { issuingLayer: 2, action: "probe-b" },
+    ],
+  );
+});
+
 test("validateLayerSpec halts (INV-3) if a layer consumes a higher layer", () => {
   assert.throws(
     () => validateLayerSpec({ index: 3, consumes: [5] }),

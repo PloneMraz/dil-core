@@ -39,7 +39,7 @@ import type { EventLog } from "../store/event-log.js";
 import type { ContextAnchor } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 
-import { runLayer, type LayerSpec } from "./layer.js";
+import { runLayer, type LayerSpec, type LayerEmission } from "./layer.js";
 import { appraise } from "./appraisal.js";
 import { createMeaningChannel } from "./meaning-channel.js";
 import {
@@ -140,6 +140,8 @@ interface LayerPass {
   readonly t7: T7Output;
   /** T2 first drew the self/environment distinction this pass (§7 crystallization). */
   readonly crystallized: boolean;
+  /** Lateral emissions raised by any layer during this pass (§6.4), each bound to its issuer. */
+  readonly emissions: readonly LayerEmission[];
 }
 
 export function createCycle(deps: CycleDeps): Cycle {
@@ -158,12 +160,14 @@ export function createCycle(deps: CycleDeps): Cycle {
     events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
   }
   /**
-   * Emission — link 5 as a lateral capability (§6.4). Any layer MAY invoke it to
-   * push a committed action to the region; it records exactly one emission line
-   * naming the issuing layer (register ↔, never =). There is NO internal arbiter:
-   * a conflict among emissions is collided against the region, not adjudicated.
-   * Returns the action so a caller can also feed it forward. (With a real host,
-   * layers call this; the minimal host exercises it once per cycle — the response.)
+   * Emission — link 5 as a lateral capability (§6.4). The one sink through which
+   * every emission is recorded: it writes exactly one activity record naming the
+   * issuing layer (register ↔, never =). There is NO internal arbiter — a conflict
+   * among emissions is collided against the region, not adjudicated. Two callers
+   * reach it: any layer, via the bound `emit` handed to its `process` (drained
+   * from the pass, each carrying its own issuing layer, §6.4); and the driver, for
+   * the appraisal-driven terminal response at the close of the meaning-channel
+   * (issuing layer T8). Returns the action so a caller can also feed it forward.
    */
   function emit(issuingLayer: LayerIndex, action: unknown): unknown {
     events.append(recordEmission(datumId(), cycle, issuingLayer, action, cycleT));
@@ -225,7 +229,8 @@ export function createCycle(deps: CycleDeps): Cycle {
     );
     datum = t8.datum;
     logExit(8);
-    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized };
+    const emissions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.emissions);
+    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized, emissions };
   }
 
   /**
@@ -272,7 +277,8 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t8.datum;
     logExit(8);
     channel.publish(8, t8.output);
-    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized };
+    const emissions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.emissions);
+    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized, emissions };
   }
 
   return {
@@ -313,6 +319,14 @@ export function createCycle(deps: CycleDeps): Cycle {
       if (pass.crystallized) {
         events.append(recordCrystallization(datumId(), cycle, cycleT));
       }
+
+      // ── Lateral emissions raised during the pass (§6.4) ──
+      // Any layer MAY have pushed a committed action to the region during its
+      // work (a T2 probe, T3 query, T5 test, T6 model-test); each is recorded as
+      // one activity record naming its issuing layer (§9), register ↔. Under the
+      // minimal scripted host no layer emits (no live region to push to) — the
+      // capability is afforded, not fabricated; the buffer is then empty.
+      for (const e of pass.emissions) emit(e.issuingLayer, e.action);
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──
       // The datum takes the running→simulated→projected road WHEN the store

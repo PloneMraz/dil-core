@@ -138,12 +138,14 @@ export interface Appraisal {
  * Its correctness is never scored by the emitting layer — only the next cycle's
  * return judges it (no internal action-arbiter, §6.4).
  *
- * NOTE (honest scope): a *real* emission — a layer genuinely pushing an action to
- * a live region and reading its return — only occurs with a real host. Under the
- * minimal scripted host the loop still issues one real committed action per cycle
- * (the appraisal-driven response), delivered to the test fixture; per-layer
- * probes/queries/tests are a capability the architecture affords, not behaviour to
- * fabricate when no real region receives them.
+ * The capability is genuinely afforded, not merely typed: `process` receives a
+ * layer-bound `emit` (layer.ts, the structural mirror of the modulatory field),
+ * so any layer CAN raise an emission and the driver records it against that
+ * layer. What the minimal scripted host does NOT do is drive per-layer
+ * probes/queries/tests — a *real* emission (a layer pushing to a live region and
+ * reading its return) only occurs with a real host, so under the scripted host
+ * the only action issued is the appraisal-driven terminal response (issuing layer
+ * T8). Affording the capability is not fabricating behaviour for it.
  */
 export interface Directive {
   /** The committed action pushed to the region. */
