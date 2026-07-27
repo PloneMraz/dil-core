@@ -136,6 +136,20 @@ export const EVENT_LOG_SEGMENTATION =
  * a record is never dropped to keep running.
  */
 
+/** DECIDE@IMPL tag F — durability sync policy of the persisted [event] log. */
+export const EVENT_SYNC_POLICY =
+  "fsync per record (write-through): each appended line is flushed to disk before the write returns, so every record is durable the instant it is appended" as const;
+/**
+ * Rationale (safe default, NOT derived): the sink fsyncs on every write
+ * (event-sink.ts), so no appended record is ever lost to a crash — the
+ * maximally-durable choice, and the reason the write-through default forfeits no
+ * record. A high-throughput deployment MAY batch the fsync to a cycle boundary
+ * (durability becomes cycle-atomic rather than record-atomic, trading per-record
+ * durability for fewer syncs under the dense activity journal); that batching is
+ * deployment-open and deliberately not built here, so the default stays the one
+ * that loses nothing.
+ */
+
 /** DECIDE@IMPL tag F — tamper-evidence of the persisted [event] log. */
 export const EVENT_TAMPER_EVIDENCE =
   "sha256 hash chain over the JSONL sink lines (hash-chain.ts): each line carries seq + prev + hash; verifyJsonlSink detects any altered, removed, inserted, or reordered line; the chain resumes across restarts" as const;
