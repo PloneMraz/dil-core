@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: forward-building §6.2 + tag H — simulated/projected exercised (Bước 6)
+**Commits:** `1c2d805` (6a on-ramps + tag H), `08ff982` (6b–d loop + appraisal + tests)
+
+§6.2 forward-building, theo nguyên tắc tác giả chốt: **ta dựng con đường (cạnh + điều kiện lên cạnh), dữ liệu chạy đường nào là do *tình huống*** — hành trình emergent, không script. **6a:** khai DECIDE@IMPL **tag H** (`H_COUNT` số situation/cycle — trần, không quota; `FIT_MEASURE` = độ nhất quán với `[data]`, verdict-free, blend, *trên* appraisal nên INV-8 giữ), thêm on-ramp `toSimulated`/`toProjected` (validate cạnh §9). **6b–d:** sau T5, khi store có **vật liệu** (entity đã tích confidence) datum đi `running→simulated` (dựng ≤H_COUNT situation) `→projected` (cast = `Expectation.predicted`); fit = confidence, blend chọn; projected vào appraisal như InfoUnit **chưa va chạm** (§6.4, không thêm resistance). Return khớp → `projected→running`; va → `projected→scar`; datum không vật liệu → `running→scar` (reflex, §5/§8.7); cold start không forward-build. **`simulated`/`projected` giờ được đi tới thật, emergent.** §13.6 vẫn xanh, E2E 6 pass / 1 partial / 0 fail. 7 test mới (215 tổng), tsc sạch.
+
+---
+
 ### — docs: fix ring diagram — INVARIANTS is the innermost ring
 **Commit:** `c53e731`
 
