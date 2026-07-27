@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: tách trace-verifiable khỏi structurally-guaranteed trong conformance (§13)
+**Commit:** `93f7fb1`
+
+§13 định nghĩa conformance = *"confirmable from traces alone"*, nhưng nhiều tiêu chí tựa một phần vào những sự thật **không đọc được từ `[event]`**: channel separation, đóng vòng INV-1, **vắng** action-arbiter, Mode-B không giữ store handle (đều *structural*), cộng reflection (*declared*) và self-continuity (*third-party*). Checker vốn **đã biết** các hạng này nhưng chôn trong văn xuôi của một `verdict` phẳng duy nhất → chữ PASS nói quá những gì trace chứng minh. Đưa hạng bằng chứng thành **first-class**: mỗi tiêu chí phân rã thành `claims`, mỗi claim mang `EvidenceBasis` (`trace | structural | declared | third-party`); **verdict cuộn lên từ claims** (claim `third-party` **cap ở partial**, không bao giờ pass). Bảng render thêm dòng **Evidence** (đếm claim theo basis + *bao nhiêu tiêu chí xác nhận được HOÀN TOÀN từ `[event]`* — ở đây **2/7**: §13.6, §13.7) và gắn basis mỗi claim, nên người đọc không nhầm một PASS *structural* với PASS *trace-confirmed*; auditor tính lại được "trace-only conformance" bằng cách lọc `basis === "trace"`. Giữ `verdict`+`detail` cuộn-lên (back-compat). **6 test mới (233 tổng), tsc sạch.**
+
+---
+
 ### — feat: expose emission như năng lực ngang cho các layer (§6.4)
 **Commit:** `18717a4`
 
