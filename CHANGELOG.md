@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: fix ring diagram — INVARIANTS is the innermost ring
+**Commit:** `c53e731`
+
+Sơ đồ vòng ở CONTEXT.md §3 (và README.md) vẽ EXPERIENCE STORE trong cùng (nằm *trong* INVARIANTS), mâu thuẫn với "build from the inside out" + phần chữ "Invariants (innermost law)... write first" + thứ tự build thật (invariants stage 2 trước store stage 3; `store/tags.ts` import `LayerIndex` từ invariants). Đảo hai vòng trong cùng → nesting đúng `REQUISITION ⊃ LOOP ⊃ STORE ⊃ INVARIANTS`. Chỉ sửa docs; thứ tự build và code không đổi.
+
+---
+
 ### — feat: Mode-B return-not-write — read-only [event] view, §13.5 (Bước 5)
 **Commit:** `c78116f`
 
