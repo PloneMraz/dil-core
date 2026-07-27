@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: declare EVENT_SYNC_POLICY (write-through fsync)
+**Commit:** `293416c`
+
+Khép đầu mối fsync: biến "residual" thành **lựa chọn DECIDE@IMPL khai báo** (kỷ luật dự án — mọi lựa chọn biểu diễn phải truy được về một khai báo). Sink fsync mỗi record (write-through) nên không mất gì khi crash — mặc định an toàn; gộp fsync/cycle dưới nhật ký dày là tuning throughput deployment-open, cố ý không build ở đây. Không đổi hành vi. 215 test, tsc sạch.
+
+---
+
 ### — docs: consolidate AGENTS.md + README to v0.3.2 — migration complete (Bước 7)
 **Commit:** `3364d09`
 
