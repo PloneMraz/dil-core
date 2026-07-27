@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: expose emission như năng lực ngang cho các layer (§6.4)
+**Commit:** `18717a4`
+
+Emission provenance đã được biểu diễn (`issuing_layer`, register ↔, một activity record) nhưng **capability chưa thực sự expose**: `process()` không nhận handle emit nào, nên chỉ driver phát, `issuing_layer` **hardcode = 8** trong mọi run. Đọc lại protocol §6.4 + spec gốc §6.1: emission là *"a capacity the loop exercises from many points"*, *"belongs to no single layer and is available to all"*, và là **tấm gương cấu trúc của GLOB-MOD** — field **giáng vào** `process` như nền, emission **phóng ra** từ đó (§6.1). §9 chủ định `issuing_layer` của *từng* emission, truy được về layer phát. Mở seam đúng theo đối xứng đó: `LayerSpec.process(input, field, emit)`; `runLayer` **bind issuing-layer = spec.index** (layer không tự khai issuer), **buffer** các emission layer khai rồi giao lại cho **một sink `emit` duy nhất của driver** ghi (layer **không bao giờ** chạm `[event]`). Giờ bất kỳ layer nào cũng có thể phát T2 probe / T3 query / T5 test / T6 model-test và được truy về đúng issuer. **Giữ honest scope:** host script tối thiểu **không** drive emission per-layer (không có region sống) → hành động duy nhất vẫn là response cuối ở T8 — *afford* năng lực, **không bịa** hành vi. **8 test mới (227 tổng), tsc sạch.** E2E: T5 phát → dòng `@T5 ↔`; host tối thiểu vẫn chỉ `@T8`.
+
+---
+
 ### — feat: self crystallization như một state transition được kiểm chứng (§7)
 **Commit:** `60a6696`
 
