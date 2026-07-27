@@ -31,6 +31,7 @@ import {
   recordLayerExit,
   recordEmission,
   recordCrystallization,
+  recordExpectation,
   type EventRecord,
   type ActivityRecord,
   type ContextAnchor,
@@ -203,6 +204,14 @@ test("a crystallization line round-trips (§7: lean, no datum, no anchor)", () =
   const rec = recordCrystallization("cycle-0", 0, 1);
   const serialized = serializeEventRecord(rec);
   assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "t"]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
+});
+
+test("an expectation line round-trips (INV-5: entity, confidence, recurrence)", () => {
+  const rec = recordExpectation("cycle-2", 2, "weather", 0.67, 2, 5);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "confidence", "recurrence", "t"]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });

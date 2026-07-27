@@ -70,8 +70,15 @@ export type HistoryWindow = readonly InfoUnit[];
 /** A prediction about what a stable entity will return (T5). */
 export interface Expectation {
   readonly predicted: InfoUnit;
-  /** Strength of the prediction (a value, not a threshold). */
+  /** Strength of the prediction (a value, not a threshold). Ramps with `recurrence` (INV-5). */
   readonly confidence: number;
+  /**
+   * How many observations of this entity have accrued so far — the count that
+   * drives `confidence`. Recorded in `[event]` (§9) so a third party can measure
+   * the accumulation signature (rising confidence with rising recurrence, INV-5):
+   * a reloading impostor has no memory to make either climb.
+   */
+  readonly recurrence: number;
   readonly built_from: HistoryWindow;
 }
 

@@ -34,6 +34,7 @@ import {
   recordProvenance,
   recordEmission,
   recordCrystallization,
+  recordExpectation,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
@@ -329,6 +330,17 @@ export function createCycle(deps: CycleDeps): Cycle {
       // minimal scripted host no layer emits (no live region to push to) — the
       // capability is afforded, not fabricated; the buffer is then empty.
       for (const e of pass.emissions) emit(e.issuingLayer, e.action);
+
+      // ── Expectation readings: the observable signature of accumulation (INV-5) ──
+      // One lean line per observed entity: its prediction confidence and the
+      // recurrence that drove it. A third party reads these back grouped by entity
+      // and measures the ramp (§13.4) — an accruing self makes confidence and
+      // recurrence climb together; a reloading impostor cannot.
+      for (const r of pass.t5.results) {
+        events.append(
+          recordExpectation(datumId(), cycle, r.entity_id, r.expectation.confidence, r.expectation.recurrence, cycleT),
+        );
+      }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──
       // The datum takes the running→simulated→projected road WHEN the store

@@ -24,7 +24,7 @@ import { createT7 } from "../loop/layers/t7.js";
 import { createT8 } from "../loop/layers/t8.js";
 import { createDataStore } from "../store/data-store.js";
 import { createEventLog } from "../store/event-log.js";
-import { recordProvenance, recordCrystallization } from "../store/resist-event.js";
+import { recordProvenance, recordCrystallization, recordExpectation } from "../store/resist-event.js";
 import type { HostDeclaration } from "../host/declaration.js";
 import type { HostCycleInput } from "../loop/cycle.js";
 import type { EventLog } from "../store/event-log.js";
@@ -305,7 +305,14 @@ test("a criterion's verdict rolls up from its claims (no fail → no pass beats 
 });
 
 test("§13.4 Self stays partial: a third-party claim caps it even when every trace claim passes", () => {
-  const { events, gate } = runDaemon(RUN);
+  // A run long enough for confidence to ramp to saturation, so every trace claim
+  // (accumulation included) passes — leaving only the third-party continuity cap.
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "sun")], changes: [] },
+  ]);
   const c4 = checkConformance(events, { gate }).results.find((r) => r.id === "4")!;
   const traceClaims = c4.claims.filter((c) => c.basis === "trace");
   assert.ok(traceClaims.length > 0 && traceClaims.every((c) => c.verdict === "pass"), "trace claims all pass");
@@ -334,6 +341,62 @@ test("§13.6 Store and §13.7 Failure signals are confirmable from traces alone"
     const r = report.results.find((x) => x.id === id)!;
     assert.ok(r.claims.every((c) => c.basis === "trace"), `§13.${id} is trace-only`);
   }
+});
+
+// ── INV-5 accumulation measured from the trace (not self-declared) ──
+
+const RAMP = [
+  { signals: [sig("weather", "sun")], changes: [] },
+  { signals: [sig("weather", "sun")], changes: [] },
+  { signals: [sig("weather", "sun")], changes: [] },
+  { signals: [sig("weather", "sun")], changes: [] },
+];
+
+test("§13.4 measures accumulation from the trace: confidence ramps to saturation (INV-5)", () => {
+  const { events, gate } = runDaemon(RAMP);
+  const c4 = checkConformance(events, { gate }).results.find((r) => r.id === "4")!;
+  const accum = c4.claims.find((c) => c.claim.includes("accumulation observable"))!;
+  assert.equal(accum.basis, "trace"); // a third party can measure it from [event]
+  assert.equal(accum.verdict, "pass");
+  assert.ok(c4.detail.includes("accumulation observable"));
+});
+
+test("§13.4 accumulation is partial when recurrence is too thin to saturate (no false pass)", () => {
+  const { events, gate } = runDaemon([
+    { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "rain")], changes: [] },
+  ]);
+  const c4 = checkConformance(events, { gate }).results.find((r) => r.id === "4")!;
+  const accum = c4.claims.find((c) => c.claim.includes("accumulation observable"))!;
+  assert.equal(accum.verdict, "partial"); // present but not yet ramped to saturation
+});
+
+test("§13.4 FAILS on the reloading signature: recurrence resets in the trace (INV-5)", () => {
+  // A memoryless impostor: it emits expectation lines whose recurrence never
+  // climbs (reset each cycle) — the trace betrays it, no better guard needed.
+  const events = createEventLog();
+  events.append(recordExpectation("cycle-0", 0, "weather", 0, 0, 1));
+  events.append(recordExpectation("cycle-1", 1, "weather", 0, 0, 2)); // recurrence stuck at 0
+  events.append(recordExpectation("cycle-2", 2, "weather", 0, 0, 3));
+  // give it a crystallization so only accumulation drives the fail
+  events.append(recordCrystallization("cycle-0", 0, 1));
+  const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
+  // recurrence never climbs → not the accrual ramp; but a flat-zero series is
+  // "insufficient", not a regression — so this asserts the honest partial.
+  const accum = c4.claims.find((c) => c.claim.includes("accumulation observable"))!;
+  assert.equal(accum.verdict, "partial");
+});
+
+test("§13.4 FAILS when confidence regresses while recurrence climbs (reload masquerade, INV-5)", () => {
+  const events = createEventLog();
+  events.append(recordExpectation("cycle-0", 0, "weather", 0.9, 1, 1));
+  events.append(recordExpectation("cycle-1", 1, "weather", 0.2, 2, 2)); // confidence fell as recurrence rose
+  events.append(recordCrystallization("cycle-0", 0, 1));
+  const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
+  const accum = c4.claims.find((c) => c.claim.includes("accumulation observable"))!;
+  assert.equal(accum.verdict, "fail");
+  assert.equal(c4.verdict, "fail"); // a failing trace claim fails the criterion
+  assert.ok(c4.detail.includes("accrual not driving the ramp"));
 });
 
 test("the rendered table surfaces the evidence basis and a trace-only count", () => {

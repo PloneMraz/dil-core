@@ -84,6 +84,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         const expectation: Expectation = {
           predicted,
           confidence,
+          recurrence: count, // observations accrued so far (pre this one); drives confidence
           built_from: window.slice(),
         };
 

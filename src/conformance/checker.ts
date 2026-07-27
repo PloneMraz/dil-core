@@ -31,6 +31,7 @@ import type {
   ProvenanceActivity,
   EmissionActivity,
   CrystallizationActivity,
+  ExpectationActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
@@ -124,6 +125,68 @@ function datumOf(rec: DatumBearing): TaggedDatum {
   return rec.kind === "scar" ? rec.scar : rec.datum;
 }
 
+/**
+ * Measure the accumulation signature of INV-5 from the expectation readings alone
+ * (the answer to "is this an accruing self or a reloading impostor?", read by a
+ * third party on a foreign system). Group the readings by entity, ordered by
+ * cycle, and inspect each entity's (recurrence, confidence) series:
+ *   - FAIL — the reloading signature: recurrence regressed (the count reset), or
+ *     confidence fell while recurrence rose (accrual is not driving the ramp). A
+ *     memoryless impostor cannot avoid one of these once it must fake a series.
+ *   - PASS — an entity's confidence ramped from below saturation up to 1 as its
+ *     recurrence climbed: accumulation is demonstrably observable in the trace.
+ *   - PARTIAL — readings present and non-regressing, but none has yet ramped to
+ *     saturation (too little recurrence to establish the ramp — never a false pass).
+ */
+function measureAccumulation(
+  readings: readonly ExpectationActivity[],
+): { verdict: ConformanceVerdict; note: string } {
+  if (readings.length === 0) {
+    return { verdict: "partial", note: "no expectation readings — accumulation not measurable from these traces" };
+  }
+  const byEntity = new Map<string, ExpectationActivity[]>();
+  for (const e of readings) {
+    const s = byEntity.get(e.entity) ?? [];
+    s.push(e);
+    byEntity.set(e.entity, s);
+  }
+  let sawRamp = false;
+  for (const series of byEntity.values()) {
+    series.sort((a, b) => a.cycleMark - b.cycleMark);
+    for (let i = 1; i < series.length; i++) {
+      const prev = series[i - 1]!;
+      const cur = series[i]!;
+      if (cur.recurrence < prev.recurrence) {
+        return {
+          verdict: "fail",
+          note: `entity "${cur.entity}" recurrence regressed ${prev.recurrence}→${cur.recurrence} — memory reset, the reloading signature (INV-5)`,
+        };
+      }
+      // Genuine accrual: while unsaturated, a rise in recurrence MUST lift
+      // confidence (confidence = f(count) monotone until it hits 1). Recurrence
+      // climbing without confidence climbing — flat OR falling — is the broken/
+      // faked ramp of something with no real memory behind the number.
+      if (cur.recurrence > prev.recurrence && prev.confidence < 1 && cur.confidence <= prev.confidence) {
+        return {
+          verdict: "fail",
+          note: `entity "${cur.entity}" confidence did not rise ${prev.confidence}→${cur.confidence} though recurrence climbed while unsaturated — accrual not driving the ramp (INV-5)`,
+        };
+      }
+    }
+    const confs = series.map((e) => e.confidence);
+    if (Math.min(...confs) < Math.max(...confs) && Math.max(...confs) >= 1) sawRamp = true;
+  }
+  return sawRamp
+    ? {
+        verdict: "pass",
+        note: "accumulation observable: an entity's confidence ramped with recurrence to saturation (INV-5) — a reloading impostor has no memory to make it climb",
+      }
+    : {
+        verdict: "partial",
+        note: "expectation readings present and non-regressing, but none has ramped to saturation yet — insufficient recurrence to establish accumulation",
+      };
+}
+
 function wellFormedStore(rec: LogRecord): string | null {
   // Lean trace lines (layer-exit / provenance): only a datumId + the move.
   if (rec.kind === "activity" && rec.activityKind !== "cycle-seal") {
@@ -186,6 +249,9 @@ export function checkConformance(
   );
   const crystallizations = records.filter(
     (r): r is CrystallizationActivity => r.kind === "activity" && r.activityKind === "crystallization",
+  );
+  const expectations = records.filter(
+    (r): r is ExpectationActivity => r.kind === "activity" && r.activityKind === "expectation",
   );
   const results: CriterionResult[] = [];
 
@@ -316,8 +382,14 @@ export function checkConformance(
           : !crystallizedOnce
             ? `; self/environment distinction drawn ${crystallizations.length} times — crystallization is one-time (§7)`
             : "; a crystallization record marks a cycle other than 0 — the distinction is drawn at cycle-0 T2 (§7)";
+    // INV-5 accumulation, MEASURED from the expectation ramp — not the weak
+    // cycle-mark proxy (which a reloading impostor also passes) and not a self-
+    // declared guard (which trusts the declarer). This is the trace-verifiable
+    // consequence a third party can measure on a foreign system.
+    const accum = measureAccumulation(expectations);
     const claims: ClaimCheck[] = [
-      claim("state accrues — cycle-marks non-decreasing (INV-5)", "trace", nonDecreasing ? "pass" : "partial"),
+      claim("cycle-marks non-decreasing (basic monotonicity)", "trace", nonDecreasing ? "pass" : "partial"),
+      claim("accumulation observable — confidence ramps with recurrence to saturation (INV-5)", "trace", accum.verdict),
       claim("self/environment distinction crystallized once, at cycle-0 (§7)", "trace", crystallizationOk ? "pass" : "fail"),
       claim("no internal claim of measured continuity (§7)", "structural", "pass"),
       claim("self-continuity — attributable only by a third party (§7)", "third-party", "partial"),
@@ -329,7 +401,8 @@ export function checkConformance(
       (nonDecreasing
         ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
         : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
-        crystallizationNote,
+        crystallizationNote +
+        "; " + accum.note,
     );
   }
 

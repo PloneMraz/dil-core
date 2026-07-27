@@ -94,6 +94,22 @@ test("cycle-0 records the self/environment crystallization exactly once (§7)", 
   assert.equal(Object.prototype.hasOwnProperty.call(c, "datum"), false);
 });
 
+test("each cycle records an expectation reading per entity; confidence ramps (INV-5)", () => {
+  const { cycle, events } = freshCycle();
+  for (let i = 0; i < 4; i++) cycle.run({ signals: [weather("sun")], changes: [] });
+  const exp = events
+    .all()
+    .filter((r): r is import("../store/resist-event.js").ExpectationActivity =>
+      r.kind === "activity" && r.activityKind === "expectation" && r.entity === "weather",
+    )
+    .sort((a, b) => a.cycleMark - b.cycleMark);
+  assert.ok(exp.length >= 4, "one expectation line per cycle for the recurring entity");
+  // confidence and recurrence both climb with exposure — the accumulation signature
+  assert.ok(exp[0]!.confidence < exp[exp.length - 1]!.confidence, "confidence ramps up");
+  assert.ok(exp[0]!.recurrence < exp[exp.length - 1]!.recurrence, "recurrence climbs");
+  assert.equal(exp[exp.length - 1]!.confidence, 1, "reaches saturation");
+});
+
 test("a layer's lateral emission is recorded in [event] with its issuing layer (§6.4)", () => {
   // Wrap T3 so it raises a query during its work — the seam a real host drives.
   const base = createT3();

@@ -29,7 +29,7 @@ function result(entity_id: string, delta: 0 | 1): T5Result {
   const predErr: PredErr = { observed: unit("v"), predicted: unit("v"), delta, signed: "+" };
   return {
     entity_id,
-    expectation: { predicted: unit("v"), confidence: 1, built_from: [] },
+    expectation: { predicted: unit("v"), confidence: 1, recurrence: 3, built_from: [] },
     predErr,
   };
 }

@@ -66,6 +66,8 @@ export function inspectEventLog(log: EventLog): string {
         return `  #${i}  [emission] ${r.datumId} @T${r.issuingLayer} ${r.register} ${preview(r.action)} (c${r.cycleMark}) ${clock(r.t)}`;
       case "crystallization":
         return `  #${i}  [crystallization] ${r.datumId} self|env (c${r.cycleMark}) ${clock(r.t)}`;
+      case "expectation":
+        return `  #${i}  [expectation] ${r.entity} conf=${r.confidence.toFixed(2)} rec=${r.recurrence} (c${r.cycleMark}) ${clock(r.t)}`;
     }
   });
   return [`[event-log] — ${records.length} record(s)`, ...lines].join("\n");

@@ -117,7 +117,7 @@ test("fan-out is real: T6 and T7 both read T5's single published output", () => 
   const t5out: T5Output = {
     results: [{
       entity_id: "e",
-      expectation: { predicted: unit("v"), confidence: 1, built_from: [] },
+      expectation: { predicted: unit("v"), confidence: 1, recurrence: 3, built_from: [] },
       predErr: { observed: unit("v"), predicted: unit("v"), delta: 0, signed: "+" },
     }],
   };

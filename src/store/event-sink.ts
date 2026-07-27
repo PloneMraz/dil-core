@@ -95,13 +95,25 @@ export interface SerializedCrystallization {
   readonly t: number;
 }
 
+/** Serialized form of a lean `expectation` activity line (INV-5; the accumulation ramp). */
+export interface SerializedExpectation {
+  readonly form: "expectation";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly entity: string;
+  readonly confidence: number;
+  readonly recurrence: number;
+  readonly t: number;
+}
+
 /** A serialized [event] line, discriminated by `form`. */
 export type SerializedEventRecord =
   | SerializedDatumRecord
   | SerializedLayerExit
   | SerializedProvenance
   | SerializedEmission
-  | SerializedCrystallization;
+  | SerializedCrystallization
+  | SerializedExpectation;
 
 function datumForm(
   form: "scar" | "cycle-seal",
@@ -152,6 +164,16 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
       };
     case "crystallization":
       return { form: "crystallization", datumId: rec.datumId, cycleMark: rec.cycleMark, t: rec.t };
+    case "expectation":
+      return {
+        form: "expectation",
+        datumId: rec.datumId,
+        cycleMark: rec.cycleMark,
+        entity: rec.entity,
+        confidence: rec.confidence,
+        recurrence: rec.recurrence,
+        t: rec.t,
+      };
   }
 }
 
@@ -353,6 +375,18 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       activityKind: "crystallization",
       datumId: rec.datumId,
       cycleMark: rec.cycleMark,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "expectation") {
+    return {
+      kind: "activity",
+      activityKind: "expectation",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      entity: rec.entity,
+      confidence: rec.confidence,
+      recurrence: rec.recurrence,
       t: rec.t,
     };
   }
