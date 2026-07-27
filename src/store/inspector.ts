@@ -7,8 +7,9 @@
  * mutates — so inspecting can never alter the store or an `[event]` record.
  *
  * This renders to a string; the caller decides where to send it (stdout, a
- * file, a test). Wiring it to a live daemon is stage-5 work; the rendering is
- * complete and testable now.
+ * file, a test). It is a standalone read-only view — a deployment or tool points
+ * it at a live daemon's stores where an operator wants to look; the loop itself
+ * never depends on it.
  */
 
 import type { DataStore } from "./data-store.js";

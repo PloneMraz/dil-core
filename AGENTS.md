@@ -152,9 +152,10 @@ A step that needs one of these is **not** a gap to guess — it is a `DECIDE@IMP
 pnpm install          # install dependencies
 npx tsc --noEmit      # TypeScript check (must be 0 errors)
 pnpm build            # compile to dist/
+pnpm test             # tsc && node --test "dist/**/*.test.js"
 ```
 
-Smoke tests follow the build order below — each stage is checkable before the next. Concrete test files are **`DECIDE@IMPL`** (not yet authored); the *checks* they must perform are fixed:
+Smoke tests follow the build order below — each stage is checkable before the next. The test files are authored (`src/**/*.test.ts`, run from `dist/` by `pnpm test`); the *checks* they must perform are fixed:
 
 - precondition gate → a non-qualifying host declaration yields a clean non-start, not a degraded run
 - invariants → a step that violates any INV is blocked (the loop halts, no work-around)
