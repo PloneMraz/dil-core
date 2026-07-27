@@ -24,7 +24,7 @@
  */
 
 import { admitHostData } from "../store/tagging-gate.js";
-import { toRunning, toScar } from "../store/data-store.js";
+import { toRunning, toScar, toSimulated, toProjected } from "../store/data-store.js";
 import {
   recordScar,
   recordActivity,
@@ -32,7 +32,7 @@ import {
   recordProvenance,
   recordEmission,
 } from "../store/resist-event.js";
-import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
+import { CONTEXT_ANCHOR_DEPTH, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
 import type { ContextAnchor } from "../store/resist-event.js";
@@ -51,7 +51,7 @@ import {
   gatherT8,
 } from "./gathers.js";
 import type { GlobMod } from "./glob-mod.js";
-import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive } from "./types.js";
+import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive, InfoUnit } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
 import type { T3Input, T3Output } from "./layers/t3.js";
@@ -302,6 +302,32 @@ export function createCycle(deps: CycleDeps): Cycle {
           : passMultiStream(host, field, admitted);
       let datum = pass.datum;
 
+      // ── Forward-building (§6.2): build situations, cast outcomes ──
+      // The datum takes the running→simulated→projected road WHEN the store
+      // affords material — an entity whose expectation has accrued confidence.
+      // No material (cold start) → it stays running and, on collision, reflexes
+      // straight to scar (§5/§8.7). This is a CONDITION on the road, not a
+      // scheduled step; which road the datum takes depends on the situation.
+      const material = pass.t5.results.filter((r) => r.expectation.confidence > 0);
+      let forwardBuilt = false;
+      let projectedUnits: readonly InfoUnit[] = [];
+      if (material.length > 0) {
+        // running → simulated: the loop takes the datum up into building situations
+        datum = toSimulated(datum);
+        events.append(recordProvenance(datumId(), cycle, "running", "simulated", cycleT));
+        // Build up to H_COUNT situations (a ceiling, not a quota). Fit = the store's
+        // support for the situation (accrued confidence); the closer-fitting
+        // outcomes carry, blended by fit (INV-7), never a hard scored winner.
+        const situations = [...material]
+          .sort((a, b) => b.expectation.confidence - a.expectation.confidence)
+          .slice(0, H_COUNT);
+        // simulated → projected: each situation yields the outcome cast from it
+        datum = toProjected(datum);
+        events.append(recordProvenance(datumId(), cycle, "simulated", "projected", cycleT));
+        projectedUnits = situations.map((r) => r.expectation.predicted);
+        forwardBuilt = true;
+      }
+
       // ── Appraisal step (INV-8), under the cycle's field context (§8.5) ──
       const predErrs: PredErr[] = [
         ...pass.t5.results.map((r) => r.predErr),
@@ -312,6 +338,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         predErrs,
         field,
         editedState: EDITED_STATE_ID,
+        projected: projectedUnits, // not-yet-collided outcomes (§6.4)
       });
 
       // ── Respond (link 5, §6.4): the cycle's committed action, register ↔ ──
@@ -344,8 +371,12 @@ export function createCycle(deps: CycleDeps): Cycle {
       const collisionSources = new Set<string>();
       if (collisions.length > 0) {
         const scarDatum = toScar(datum, true);
-        // running → scar: the cycle datum collided and held (a lean line).
-        events.append(recordProvenance(datumId(), cycle, "running", "scar", cycleT));
+        // → scar: from `projected` if a cast preceded the collision, else a direct
+        // `running → scar` (reflex, §5/§8.7). Which road it was depends on whether
+        // the store afforded a forward-cast this cycle — a situational fact.
+        events.append(
+          recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", cycleT),
+        );
         for (const { source_id, e } of collisions) {
           events.append(
             recordScar(
@@ -364,6 +395,11 @@ export function createCycle(deps: CycleDeps): Cycle {
           scars += 1;
         }
         datum = scarDatum;
+      } else if (forwardBuilt) {
+        // projected → running: the cast produced no scar; the datum returns to use
+        // (a datum is never a conclusion at rest — §9).
+        datum = toRunning(datum, cycle);
+        events.append(recordProvenance(datumId(), cycle, "projected", "running", cycleT));
       }
 
       // ── Emit the cycle's committed action (link 5, §6.4) ──
