@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: INV-5 accumulation đo được từ trace, không còn tự khai (§13.4)
+**Commit:** `1c9ffaa`
+
+Guard INV-5 ([assertAccrual](src/invariants/guards.ts)) **tự khai** (`kind: "accrue" | "load"` do người gọi khai) và **còn không được wire vào loop thật**; claim §13.4 "cycle-marks non-decreasing" là **proxy rỗng** mà một impostor reload cũng qua; confidence ramp có thật nhưng chỉ nằm trong bộ nhớ T5 + một unit test nội bộ — **bên thứ ba không đo được**. Đưa **hệ quả quan sát được** vào trace: một dòng `[event]` lean `expectation` mỗi (entity, cycle) mang `confidence` + `recurrence` (type `Expectation` thêm `recurrence`). §13.4 giờ **ĐO** chữ ký tích lũy từ các dòng đó — gom theo entity, đòi confidence **ramp theo recurrence tới bão hòa**; **recurrence reset**, hoặc recurrence tăng mà confidence (chưa bão hòa) **không tăng**, → **FAIL** đúng chữ ký reloading. Một impostor không bộ nhớ thì không có gì để làm hai con số leo, nên **không giả được ramp** trên hệ lạ chỉ từ trace. Thêm form serialize/deserialize + render inspector. §13.4 vẫn `partial` (self-continuity third-party vẫn cap), nhưng **bằng chứng INV-5 nay là trace-measured, không phải tin lời khai**. Ranh giới trung thực: đây đo *chữ ký* tích lũy, không chống kẻ ghi số giả vào log — đó là lớp toàn vẹn log (append-only + hash-chain). **6 test mới (239 tổng), tsc sạch.** E2E: `weather conf 0.00→0.33→0.67→1.00` theo recurrence 0→3, claim accumulation pass.
+
+---
+
 ### — docs: sửa các tuyên bố status cũ phát hiện khi audit toàn repo
 **Commit:** `6fbfd4c`
 
