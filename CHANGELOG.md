@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: dọn sạch mô tả `layer_trace` cũ trong comment source (v0.3.2 §6.1)
+**Commit:** `ee396e8`
+
+Nhiều comment trong `loop/` và `store/` vẫn mô tả datum **hiện tại** như thể còn "accruing a floor-tag and a layer_trace entry at each layer" và nhắc type `LayerTrace` **không còn tồn tại** — mâu thuẫn với thiết kế thật: path được ghi thành các dòng `layer-exit` gọn trong `[event]`, **không** nằm trên running-type field (v0.3.2 §6.1 đã drop `layer_trace`). Đã sửa: header của [cycle.ts](src/loop/cycle.ts), [layer.ts](src/loop/layer.ts), [layer.test.ts](src/loop/layer.test.ts) (floor-tag stamping + dòng `layer-exit` trong `[event]`, không có layer_trace); comment bước `runLayer`; danh sách borrowed-shapes ở [types.ts](src/loop/types.ts) + [index.ts](src/loop/index.ts) (bỏ `LayerTrace` ma); [resist-event.ts](src/store/resist-event.ts) (tối thiểu bảy tag = 4 fixed + ≥3 open, path nằm ở log); doc floor-tag ở [tags.ts](src/store/tags.ts). **Tiện thể** sửa một dòng kề cũng cũ ở tags.ts mô tả provenance là 3-state ("prior | running | scar") — từ v0.3.2 là **đồ thị 5-state** — và gỡ một field `layer_trace` sót trong object fixture của test. Chỉ comment + một field test chết; không đổi hành vi. **233 test, tsc sạch.**
+
+---
+
 ### — feat: tách trace-verifiable khỏi structurally-guaranteed trong conformance (§13)
 **Commit:** `93f7fb1`
 
