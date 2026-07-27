@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: consolidate AGENTS.md + README to v0.3.2 — migration complete (Bước 7)
+**Commit:** `3364d09`
+
+Bước cuối của migrate v0.2 → **v0.3.2 (hoàn tất)**. AGENTS.md: provenance là đồ thị 5-state (không còn chuỗi prior/running/scar); path đọc từ `[event]`, không từ tag (đã bỏ `layer_trace`); `[event]` là nhật ký dòng-hoạt-động (layer-exit/provenance/emission, mỗi emission mang `issuing_layer`); timestamp là wall-clock host, tách khỏi cycle-mark; respond là năng lực emission ngang (§6.4); thêm tag H vào danh sách DECIDE@IMPL. README: Status → migrated to v0.3.2, 215 test; store section viết lại (SQLite `[data]` trên chất nền requisition, `[event]` nhật ký hoạt động, provenance graph, timestamp wall-clock); quick-start sang đường **bền/requisition** (host.store.root, không tiêm store, auditor độc lập đọc từ đĩa); mục Deferred **Empty** (nội dung cũ đã ship), ghi rõ residual trung thực (cạnh scar-reentry có sẵn nhưng host tối thiểu chưa chạm điều kiện — emergence-by-condition, không phải chưa build). **Verify cuối:** tsc sạch, 215/215 test; daemon bền E2E (requisition + SQLite + JSONL trên đĩa) → auditor độc lập chấm **6 pass / 1 partial / 0 fail** với mọi §13 phản ánh v0.3.2. **Danh sách 7 tag DECIDE@IMPL (A–H) đều đã khai.**
+
+---
+
 ### — feat: forward-building §6.2 + tag H — simulated/projected exercised (Bước 6)
 **Commits:** `1c2d805` (6a on-ramps + tag H), `08ff982` (6b–d loop + appraisal + tests)
 
