@@ -19,9 +19,9 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented and green: **177 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **215 tests, 0 failures.**
 
-A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**. Every partial is honest and derived, not attested:
+A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
 - **§13.4 Self** — always `partial` by design: self-continuity is attributable only by a third party (§7); the checker verifies accrual but never claims continuity.
 - **§13.5 Resistance** — `partial` only while the run's traces show a single resistance source (limited diversity). The reflection mechanism (tag E) is wired: a third party reads a recorded collision out of the `[event]` log into coordinates and returns it through a declared T3 channel, classified ENV_PUSHED; who the reader is stays deployment-open.
@@ -87,16 +87,16 @@ Wire a daemon over a declared host, run it continuously, then read its conforman
 import {
   createDaemon, scriptedSource, createGlobMod,
   createT1, createT2, createT3, createT4, createT5, createT6, createT7, createT8,
-  createDataStore, createEventLog,
-  checkConformance, renderConformance,
-  inspectEventLog,
+  createDurableEventLog, layoutFor,
+  checkConformance, renderConformance, inspectEventLog,
 } from "dil-core";
 
-// The host declares its structural faculties (the precondition gate reads this).
+// The host declares its structural faculties (the precondition gate reads this)
+// and WHERE its durable substrate is — DIL requisitions it at startup.
 const host = {
   boundary: { present: true },
   channels: [{ id: "ch", canReturn: true }],
-  store: { persistsAcrossCycles: true },
+  store: { persistsAcrossCycles: true, root: "./host-store" }, // a directory / partition
   trace: { externallyReadable: true },
   emitter: { canEmitFirstAction: true },
   resilience: { wipesStateOnMismatch: false },
@@ -105,11 +105,14 @@ const host = {
 const sig = (entity: string, value: unknown) =>
   ({ source_id: "ch", raw_payload: { entity, value }, t: Date.now() });
 
-const events = createEventLog();
+// No data/events passed: with a substrate, daemon.start() requisitions it —
+// claims store.root, imposes the layout + DIL-CLAIM, binds SQLite [data] and the
+// durable [event] log, and admits any pre-existing host memory as `prior`.
 const daemon = createDaemon({
   host,
   source: scriptedSource([
     { signals: [sig("weather", "sun")], changes: [] },
+    { signals: [sig("weather", "sun")], changes: [] }, // stable → forward-building fires
     { signals: [sig("weather", "rain")], changes: [] }, // a collision → a scar
   ]),
   layers: {
@@ -117,61 +120,43 @@ const daemon = createDaemon({
     t5: createT5(), t6: createT6(), t7: createT7(), t8: createT8(),
   },
   glob: createGlobMod({ appraisalGain: 1 }, 0),
-  data: createDataStore(),
-  events,
   initialEmission: { action: "boot" },
 });
 
-const gate = daemon.start();          // precondition-gated; qualify | non-start
-daemon.run();                         // run cycles until the source is idle
+const gate = daemon.start();  // precondition-gated + requisition; qualify | non-start
+daemon.run();                 // run cycles until the source is idle
+daemon.close();               // release the substrate handles (the on-disk log stays)
 
-console.log(inspectEventLog(events)); // human-readable [event] audit trail
-console.log(
-  // the checker takes only the gate outcome; diversity is DERIVED from the
-  // [event] log, never a caller flag (no self-attestation).
-  renderConformance(checkConformance(events, { gate })),
-);
+// An independent auditor reads the durable [event] log from disk — the trusted
+// artifact, anchored outside the process's RAM (verifyJsonlSink checks its chain).
+const audit = createDurableEventLog(layoutFor("./host-store").eventLog);
+console.log(inspectEventLog(audit));
+console.log(renderConformance(checkConformance(audit, { gate })));
 ```
 
-For a **durable** audit trail that survives the process, back the `[event]` log
-with an append-only JSONL file sink:
-
-```ts
-import { createJsonlFileSink, createEventLog, readJsonlSink, verifyJsonlSink } from "dil-core";
-
-const sink = createJsonlFileSink("./store/event-log"); // a DIRECTORY of daily segments, append-only, fsync'd, hash-chained
-// layout — one root, three siblings: store/memory/ holds only what rollback may
-// rewrite; store/event-log/ and store/commits/ sit BESIDE it — outside the
-// loop's mutable reach, never rolled back.
-const events = createEventLog(sink);   // every appended record is mirrored to disk
-// … run the daemon …
-sink.close();
-const durable = readJsonlSink("./store/event-log"); // records survive, tags in fixed order
-const audit = verifyJsonlSink("./store/event-log"); // { ok, count, head } — one chain across all segments
-```
-
-`inspectEventLog` renders each scar by its *derived* name — tags are stored as
-structured properties, not baked into names:
+`inspectEventLog` renders the datum-activity journal — lean lines for each move,
+scars by their *derived* name (tags are structured properties, not baked into names):
 
 ```
-[event-log] — 1 record(s)
-  #0  [20260630]_[c1]_[scar]_[T8]_[domain:cycle]_[phase:loop]_[source:driver]_[value-mismatch]  ...  trace=1>1>2>3>4>5>6>7>8
+[event-log] — 46 record(s)
+  #0  [provenance] cycle-0 prior→running (c0) 10:00:00
+  #1  [layer-exit] cycle-0 @T1 (c0) 10:00:00
+  …
+  #20 [20260724]_[10:00:00]_[scar]_[T8]_[domain:cycle]_[flow:multi-stream]_[phase:loop]_[source:driver]_[value-mismatch]  {…}→{…}
 ```
 
 ---
 
 ## The `[data]` / `[event]` store
 
-Two store kinds (protocol §9):
+Two store kinds (protocol §9), on the host's **requisitioned substrate** — never RAM:
 
-- **`[data]`** — mutable working memory, overwritten each cycle.
-- **`[event]`** — an append-only log of **read-only** records. Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — there is no separate trace channel. It holds two record kinds: **scars** (ResistEvents — the atomic unit of *experience*) and one **activity record per cycle** (the emitted action, observed entities, flow mode — *trace, not experience*: no layer learns from it; it keeps the audit trail complete across quiet stretches, per E4).
+- **`[data]`** — mutable working memory (the present), a **SQLite** table under `store/memory/` (via `node:sqlite`). Its provenance is a directed **state-graph** (§9): `prior` is a one-way entry, and `running` / `simulated` / `projected` / `scar` circulate with **no terminal state** — a datum is never a conclusion at rest, but data waiting to be used.
+- **`[event]`** — an append-only, hash-chained log of **read-only** records on disk (`store/event-log/`). Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — no separate trace channel. It is a **journal of each datum's activities**, written as they occur: **scars** (ResistEvents — the atomic unit of *experience*, the only kind a layer learns from) and **activity** lines (*trace, not experience*) — the per-cycle seal plus a lean line for every layer-exit, every provenance move, and every emission (each naming its `issuing_layer`, §6.4). The path a datum travelled is read from these lines, **never** from a tag.
 
-Every datum carries, in fixed order, four tags that are never stripped or reordered — **timestamp, cycle-mark, provenance (`prior`→`running`→`scar`), floor-tag** — plus **at least three open tags** (one being `domain`, for audit-by-class) and a **`layer_trace`** (the full path). The floor-tag is a single updatable slot ("where is it now"); the `layer_trace` is the accumulated path ("where has it been"). An `[event]` record **inherits** the scar datum's tags.
+Every datum carries four fixed tags, never stripped or reordered — **timestamp** (the host's wall-clock, epoch-ms, separate from the cycle-mark), **cycle-mark**, **provenance**, **floor-tag** — plus **≥3 open tags** (one being `domain`, for audit-by-class). Both provenance and floor-tag name the **present** position only; the floor-tag updates to the layer just exited. An `[event]` scar record **inherits** the datum's tags.
 
-> These reflect the **current v0.2-semantics build**. Protocol v0.3.2 changes both: it adds the `simulated`/`projected` provenance states (a state-graph, not the `prior→running→scar` chain) and **drops `layer_trace` from `InfoUnit`** (the path is read only from the `[event]` log). Not yet migrated — see [Deferred](#deferred-unbuilt-core-work--marked-not-faked).
-
-**Durability & tamper-evidence.** By default the `[event]` log is in-memory: append-only with read-only records *within the process*, but it does not survive the process on its own. For a durable audit trail, wire an append-only **JSONL file sink** (`createJsonlFileSink`) into `createEventLog`; each record is mirrored to disk and fsynced, one immutable line per record, with tags serialized in the fixed order. The sink opens the file in append mode only — it can never rewrite or truncate, and its surface has no update/delete method.
+**Requisition & durability.** On a real host DIL **requisitions a durable substrate at startup**: `daemon.start()`, after the gate qualifies, claims the host's `store.root`, imposes the layout + a `DIL-CLAIM` (refusing a foreign/incompatible claim), and scans the host's pre-existing memory into `prior` through the tagging-gate (no side door). The `[event]` source of truth is then the on-disk append-only **JSONL sink**; RAM holds only a bounded counter + chain head, so it cannot grow without bound, and an auditor reads the durable log, not a process's RAM. (An in-memory store is a **test fixture** only.) Each record is one immutable, fsynced line, tags in fixed order; the sink opens in append mode only — no rewrite, truncate, update, or delete surface exists.
 
 The sink writes a **directory of daily segments** (`event-log-yyyymmdd.jsonl`, overflowing to `-002`, `-003`… past `MAX_SEGMENT_BYTES` = 64 MiB — a declared tunable; records are never split across files). The log itself has **no maximum length**: records are never removed, no segment is ever pruned (snapshots never license truncation), and an append failure (disk full) halts the loop rather than dropping a record; archival of closed segments is deployment-open. Each persisted line is **hash-chained** (sha256 over `seq + prev + record`): `verifyJsonlSink(dir)` detects any altered, removed, inserted, or reordered line, and the chain continues across segments and restarts. Honest limit: detection is relative to a **trusted head** — a party with full write access could rewrite the whole chain consistently, so a deployment anchors the sink's `head()` outside its own write reach (publish it to the user, an external log); that anchoring is deployment-open. **Commit / snapshot / recovery (§9).** With a `CommitStore` wired (`createDirCommitStore("./store/commits")`), a commit fires after every `COMMIT_EVERY = 9` scars (the `[event]` log acts as the counter; scar-rhythm by the author's choice), snapshotting the **entire system** — stateful layers, GLOB-MOD, the cycle driver, `[data]` — into a content-addressed, parent-linked, write-once marker (git-style: names are sha256 of content, `HEAD` is the one movable ref). `daemon.commit()` is the manual out-of-loop trigger. Recovery (`recoverFrom: <marker>`) restores the full accrued state and stamps a **fork marker** (`parent = recoveredFrom`) into the DAG; the `[event]` log is **never rolled back** — it keeps recording straight through, so the abandoned timeline stays auditable. Markers are never pruned; payload retention (`SNAPSHOTS_RETAINED = all`, floor `MIN_SNAPSHOTS_RETAINED = 9` for pruning deployments) is declared in decisions.
 
@@ -182,7 +167,7 @@ The sink writes a **directory of daily segments** (`event-log-yyyymmdd.jsonl`, o
 The protocol leaves constants open on purpose; a conforming implementation must **fill each for its environment and declare the choice** — never invent one silently. This implementation's choices are declared in code:
 
 - Precondition ([`src/precondition/decisions.ts`](src/precondition/decisions.ts)) — the gate is declaration-based by design (requisition: the host declares, DIL threads through), but where a condition is mechanically probeable *before* the loop runs the gate probes it and grades the verdict `probed` vs `declared`: E3/P(b) via a store marker round-trip, E4 via a trace marker read-back — evidence beats claim (a failing probe fails a true declaration). E1, E2, P(a), P(c) stay declaration-based with the reasons stated (e.g. E2: idle is the default of an informational setting, so a silent probe window proves nothing).
-- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — in-memory representation; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open); daily 64 MiB segments, no pruning, halt-on-append-failure; commit cadence `COMMIT_EVERY = 9` scars and retention (`all`, floor 9) for the git-style commit repo.
+- Store ([`src/store/decisions.ts`](src/store/decisions.ts)) — `[data]` = **SQLite** (`node:sqlite`) under `store/memory/`, `[event]` = hash-chained JSONL under `store/event-log/`, RAM only bounded caches; `source_id`/`provenance` index; store-all `[event]`; private store; **full-field-state** context anchor; open-tag registry free-form (only `domain` required, ≥3 total); sink tamper-evidence via sha256 hash chain (head anchoring deployment-open); daily 64 MiB segments, no pruning, halt-on-append-failure; commit cadence `COMMIT_EVERY = 9` scars and retention (`all`, floor 9); **tag H** — `H_COUNT = 3` situations/cycle (a ceiling, not a quota), fit = consistency with `[data]` (verdict-free, never a scored standard — INV-8).
 - Loop ([`src/loop/decisions.ts`](src/loop/decisions.ts)) — concrete `Signal`/`InfoUnit`/`RefFrame` shapes; T2 `MATCHING_WINDOW=8`, `STABILITY_THRESHOLD=3`; T5 `BASELINE_WINDOW=16`, `SUFFICIENT_RECURRENCE=3`, persistence update law; GLOB-MOD convex blend (no inertia constant); static Mode-A appraisal anchor; multi-stream schedule = one topological activation pass via the meaning-channel (flow topology, cycle-time — no OS concurrency claimed).
 - Runtime ([`src/runtime/decisions.ts`](src/runtime/decisions.ts)) — live Mode-B = the host source; diversity-loss window/minimum; reflection (tag E) = event-coordinate reading over the `[event]` log, entering through a declared T3 channel (reader identity deployment-open).
 
@@ -196,15 +181,9 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 ### Deferred (unbuilt core work — marked, not faked)
 
-The code realizes protocol **v0.2** semantics; the law is now [**v0.3.2**](DIL-protocol-v0.3.2.md) (parent spec [`DIL-en-v6.md`](DIL-en-v6.md)). The full-system commit/snapshot/recovery of §9 shipped (git-style content-addressed markers in `store/commits/`, scar-rhythm cadence, whole-system restore, fork markers on rollback). What v0.3.2 newly requires and the code does **not** yet do:
+**Empty.** The codebase is **migrated to protocol v0.3.2** (parent spec [`DIL-en-v6.md`](DIL-en-v6.md)): `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission lines); the 5-state provenance **graph** (`simulated`/`projected`) with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
 
-- **Provenance state-graph** (§9) — lifecycle moves from the chain `prior→running→scar` to a directed graph adding **`simulated`** and **`projected`**: `prior` is a one-way entry, the other four circulate with no terminal state. The `[data]` lifecycle, the provenance enum, and the conformance check (§13.6) all change.
-- **Drop `layer_trace` from `InfoUnit`** (§6.1) — a normative MUST: the path a datum travelled is read only from the `[event]` log. The current `TaggedDatum.trace` slot and its `trace=1>1>2>…` rendering go; each layer-exit is instead recorded as an `[event]` transition.
-- **§6.4 Emission** — link 5 as a *lateral capability* any layer may invoke (not a dedicated layer), the `Directive` type, and recording each emission's `issuing_layer` in the activity record. Conflict among emissions is collided (a ResistEvent), never arbitrated internally (no action-arbiter).
-- **Mode-B return-not-write** (§8.4) — the Mode-B source returns through E2 only; it never writes `[data]`/`[event]` or corrects the store. Conformance §13.5 gains this check.
-- **DECIDE@IMPL tag H** (§12) — the building of situations in `simulated` (how many per cycle; the fit-against-store measure, never a scored standard — INV-8).
-
-Everything else still open is open *by design*, below.
+The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
 
 ### Deployment-open by design (no core work owed — each deployment declares its own)
 

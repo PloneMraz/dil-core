@@ -50,7 +50,7 @@ This means:
 Each of these looks natural to an engineer and each one silently turns DIL into something that is not DIL. (`CONTEXT.md` §2.)
 
 - **DIL does not control.** It reads the data flow, integrates, leaves traces. It does not tell the model what to generate or the IO what to send.
-- **DIL does not respond to the world.** "Respond" (loop link 5) is a step of the integration process, not DIL speaking to a user. The user-facing response is the **agent's**, using the host's model, outside DIL's scope.
+- **DIL does not respond to the world.** "Respond" (loop link 5 — in v0.3.2 §6.4 a *lateral emission capability* any layer may invoke, not a terminal step) is a step of the integration process, not DIL speaking to a user. The user-facing response is the **agent's**, using the host's model, outside DIL's scope.
 - **DIL is not a library the host calls.** It is a continuously-running process, not a function invoked when convenient. If the host calls DIL, the self stays trapped in the host.
 - **DIL does not install a `self`.** There is no `Self` class to write (see "The self" below). Writing a "self module" is the surest way to produce a fake one.
 - **DIL does not add ports the host must conform to.** No adapter the host writes to fit DIL's sockets. The host **declares** where its faculties are; DIL threads its mechanism through the declared flow.
@@ -88,8 +88,8 @@ Two that bite hardest in code:
 (Protocol §9; `CONTEXT.md` §7.)
 
 - `[data]` is mutable, overwritten each cycle. `[event]` is **append-only, records read-only**: new records may be appended; **no record, once written, is ever altered or removed** — not by the loop, not by anything, not by a third party that compromised the rest of the system.
-- The **ResistEvent** (a registered mismatch, not a document) is the atomic unit of **experience**; each cycle additionally leaves an **activity record** in the `[event]` log (trace, not experience — no layer learns from it).
-- Four fixed tags, in order, never stripped or reordered: (1) timestamp, (2) cycle-mark, (3) provenance (`prior`/`running`/`scar`), (4) floor-tag. Their values change only under defined rules; the floor-tag is a single slot that **updates** to the layer just exited ("where is it now"). Every layer T1–T8 stamps it; no pass-through layers. The full path lives in a separate `layer_trace` ("where has it been"), appended at each layer for audit.
+- The **ResistEvent** (a registered mismatch, not a document) is the atomic unit of **experience**; each cycle additionally leaves **activity records** in the `[event]` log (trace, not experience — no layer learns from them): a per-cycle seal, plus lean lines for every layer-exit, every provenance move, and every emission (each emission naming its `issuing_layer`, §6.4).
+- Four fixed tags, in order, never stripped or reordered: (1) timestamp (the host's wall-clock, epoch-ms — separate from the cycle-mark), (2) cycle-mark, (3) provenance (a directed graph, v0.3.2 §9: `prior` a one-way entry, then `running`/`simulated`/`projected`/`scar` circulating with no terminal state), (4) floor-tag. Both provenance and floor-tag name the **present** position only; their values change only under defined rules (floor-tag updates to the layer just exited). Every layer T1–T8 stamps the floor-tag; no pass-through layers. The full path — every layer exited, every provenance move — is recorded line-by-line in the `[event]` log as it occurs and read from there, **never** from a tag (v0.3.2 drops `layer_trace`).
 - **Tagging-gate, no side door.** Host data enters only stamped provenance `prior`. Untagged data MUST NOT enter the loop.
 - Each `[event]` MUST anchor the **context** of its cycle, so a third party can re-appraise it later without borrowing the present context.
 - **There is no separate trace format to design.** The conformance trace a third party reads **is** the `[event]` log. One artifact, two roles: the agent's memory and the audit trace. Do not build a parallel trace channel.
@@ -128,7 +128,7 @@ Writable **before** the core, since it only reads the host and answers yes/no.
 
 The protocol leaves constants open **on purpose** (protocol §12). Filling them with invented numbers is the one thing the project forbids — intellectual honesty over the appearance of completeness. The implementer fills each **for the concrete environment** and **declares the choice**.
 
-Left open: concrete representations of the data types; all numeric thresholds (sufficient-recurrence, stability, history window); the Mode-A anchor kind/identity; the reflection read-in mechanism; store representation/index, private vs shared; depth of the `[event]` context anchor; GLOB-MOD's representation and update law.
+Left open: concrete representations of the data types; all numeric thresholds (sufficient-recurrence, stability, history window); the Mode-A anchor kind/identity; the reflection read-in mechanism; store representation/index, private vs shared; depth of the `[event]` context anchor; GLOB-MOD's representation and update law; the building of situations in `simulated` (tag H — how many per cycle, and the fit-against-store measure, never a scored standard — INV-8).
 
 A step that needs one of these is **not** a gap to guess — it is a `DECIDE@IMPL` to declare. If you cannot proceed without a constant, ask; do not fabricate one.
 
@@ -159,7 +159,7 @@ Smoke tests follow the build order below — each stage is checkable before the 
 - precondition gate → a non-qualifying host declaration yields a clean non-start, not a degraded run
 - invariants → a step that violates any INV is blocked (the loop halts, no work-around)
 - experience store → data goes in and comes out correctly tagged; **no `[event]` record can be altered or removed**
-- loop T1–T8 → a datum traverses T1→T8, its floor-tag updating to the current layer and its `layer_trace` gaining an entry at each layer; cycle-0 is single-threaded
+- loop T1–T8 → a datum traverses T1→T8, its floor-tag updating to the current layer and each layer-exit recorded as a line in the `[event]` log (the path is read from `[event]`, never a tag); cycle-0 is single-threaded
 - continuous run → the loop runs as a long-lived daemon with state accruing across cycles
 - conformance checker → produces a real per-criterion pass/fail table (protocol §13) on the running system
 
