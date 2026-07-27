@@ -275,3 +275,72 @@ test("the report renders a readable table", () => {
   assert.ok(text.includes("Conformance (§13)"));
   assert.ok(text.includes("§13.6 Store"));
 });
+
+// ── Evidence basis: trace-verifiable separated from structurally-guaranteed ──
+
+const RUN = [
+  { signals: [sig("weather", "sun")], changes: [] },
+  { signals: [sig("weather", "rain")], changes: [] },
+];
+
+test("every criterion decomposes into claims, each carrying an evidence basis", () => {
+  const { events, gate } = runDaemon(RUN);
+  const report = checkConformance(events, { gate });
+  const valid = new Set(["trace", "structural", "declared", "third-party"]);
+  for (const r of report.results) {
+    assert.ok(r.claims.length > 0, `§13.${r.id} has claims`);
+    for (const c of r.claims) assert.ok(valid.has(c.basis), `basis ${c.basis} is one of the four`);
+  }
+});
+
+test("a criterion's verdict rolls up from its claims (no fail → no pass beats a fail)", () => {
+  const { events, gate } = runDaemon(RUN);
+  for (const r of checkConformance(events, { gate }).results) {
+    const hasFail = r.claims.some((c) => c.verdict === "fail");
+    const hasUnverifiable = r.claims.some((c) => c.verdict === "unverifiable");
+    const hasPartial = r.claims.some((c) => c.verdict === "partial");
+    const expected = hasFail ? "fail" : hasUnverifiable ? "unverifiable" : hasPartial ? "partial" : "pass";
+    assert.equal(r.verdict, expected, `§13.${r.id} rolls up correctly`);
+  }
+});
+
+test("§13.4 Self stays partial: a third-party claim caps it even when every trace claim passes", () => {
+  const { events, gate } = runDaemon(RUN);
+  const c4 = checkConformance(events, { gate }).results.find((r) => r.id === "4")!;
+  const traceClaims = c4.claims.filter((c) => c.basis === "trace");
+  assert.ok(traceClaims.length > 0 && traceClaims.every((c) => c.verdict === "pass"), "trace claims all pass");
+  assert.ok(
+    c4.claims.some((c) => c.basis === "third-party" && c.verdict === "partial"),
+    "self-continuity is a third-party claim, capped at partial",
+  );
+  assert.equal(c4.verdict, "partial");
+});
+
+test("structural / declared claims are named where §13 rests on non-trace guarantees", () => {
+  const { events, gate } = runDaemon(RUN);
+  const report = checkConformance(events, { gate });
+  const has = (id: string, basis: string) =>
+    report.results.find((r) => r.id === id)!.claims.some((c) => c.basis === basis);
+  assert.ok(has("1", "structural"), "§13.1 channel separation is structural");
+  assert.ok(has("3", "structural"), "§13.3 loop closure / no-arbiter are structural");
+  assert.ok(has("5", "structural"), "§13.5 Mode-B no-store-handle is structural");
+  assert.ok(has("5", "declared"), "§13.5 reflection is declared");
+});
+
+test("§13.6 Store and §13.7 Failure signals are confirmable from traces alone", () => {
+  const { events, gate } = runDaemon(RUN);
+  const report = checkConformance(events, { gate });
+  for (const id of ["6", "7"]) {
+    const r = report.results.find((x) => x.id === id)!;
+    assert.ok(r.claims.every((c) => c.basis === "trace"), `§13.${id} is trace-only`);
+  }
+});
+
+test("the rendered table surfaces the evidence basis and a trace-only count", () => {
+  const { events, gate } = runDaemon(RUN);
+  const text = renderConformance(checkConformance(events, { gate }));
+  assert.ok(text.includes("Evidence —"), "an evidence line is rendered");
+  assert.ok(text.includes("[trace]"), "claims are tagged with their basis");
+  assert.ok(text.includes("[structural]"), "structural claims are visible");
+  assert.ok(/\d+\/\d+ criteria confirmable from \[event\] alone/.test(text), "a trace-only count is shown");
+});

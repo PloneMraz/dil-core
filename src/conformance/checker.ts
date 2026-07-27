@@ -8,11 +8,18 @@
  * facts a third party can also see: the gate outcome, the diversity signal) and
  * scores each criterion.
  *
- * It is deliberately HONEST: where a criterion is not verifiable from traces
- * alone (criterion 4 — self-continuity is "attributable only by a third party",
- * §7) or a mechanism is declared deferred (reflection, §8.4), it says so rather
- * than claiming a pass. A per-criterion result is a valid conformance statement
- * (§13); this produces the whole table.
+ * It is deliberately HONEST about the GRADE of evidence behind each verdict. §13
+ * demands confirmation "from traces alone", but several criteria rest partly on
+ * facts a third party CANNOT read from the log — channel separation, loop
+ * closure, the absence of an action-arbiter, Mode-B holding no store handle: these
+ * are guaranteed structurally (by construction/type, verified by tests), not by
+ * any trace. Others are read from a declared decision (reflection), and self-
+ * continuity (§7) is attributable only by a third party, never machine-certified.
+ * So each criterion decomposes into `claims`, each carrying its `basis` — `trace`,
+ * `structural`, `declared`, or `third-party` — and the criterion verdict rolls up
+ * from them. This keeps the report from overstating what the traces alone prove:
+ * an auditor can recompute a trace-only conformance by reading only the `trace`
+ * claims. A per-criterion result is a valid conformance statement (§13).
  */
 
 import type { EventLog } from "../store/event-log.js";
@@ -36,10 +43,37 @@ import {
 
 export type ConformanceVerdict = "pass" | "partial" | "fail" | "unverifiable";
 
+/**
+ * HOW a claim is established — the epistemic grade §13 turns on:
+ *   - `trace`       — confirmable by a third party reading only the [event] log
+ *                     (the canonical §13 evidence);
+ *   - `structural`  — guaranteed by construction/type, verified by tests, NOT
+ *                     readable from any trace (channel separation, loop closure,
+ *                     the absence of an action-arbiter, Mode-B's lack of a store
+ *                     handle). A structural PASS is trusted, not trace-confirmed;
+ *   - `declared`    — read from a stated DECIDE@IMPL choice or a computed gate
+ *                     artifact (the reflection mechanism, the host gate);
+ *   - `third-party` — attributable only from outside the loop, never machine-
+ *                     certifiable (self-continuity, §7); such claims cap at
+ *                     `partial` and can never carry a criterion to `pass`.
+ */
+export type EvidenceBasis = "trace" | "structural" | "declared" | "third-party";
+
+/** One sub-claim of a criterion, tagged with how it is established. */
+export interface ClaimCheck {
+  readonly claim: string;
+  readonly basis: EvidenceBasis;
+  readonly verdict: ConformanceVerdict;
+}
+
 export interface CriterionResult {
   readonly id: string;
   readonly title: string;
+  /** Rolled up from `claims` (single source of truth); see `rollUp`. */
   readonly verdict: ConformanceVerdict;
+  /** The criterion decomposed by evidence basis (trace / structural / declared / third-party). */
+  readonly claims: readonly ClaimCheck[];
+  /** A human-readable summary of the criterion (the roll-up's rationale). */
   readonly detail: string;
 }
 
@@ -60,6 +94,24 @@ export interface ConformanceReport {
 export interface ObservableFacts {
   /** The precondition gate outcome (criterion 2). */
   readonly gate?: GateResult;
+}
+
+/** Build a claim. */
+function claim(text: string, basis: EvidenceBasis, verdict: ConformanceVerdict): ClaimCheck {
+  return { claim: text, basis, verdict };
+}
+
+/**
+ * Roll a criterion's verdict up from its claims. A single failing claim fails the
+ * criterion; an unverifiable claim (no traces to read) leaves it unverifiable; a
+ * partial claim (limited evidence, or a third-party claim that never reaches pass)
+ * caps it at partial; only when every claim passes does the criterion pass.
+ */
+function rollUp(claims: readonly ClaimCheck[]): ConformanceVerdict {
+  if (claims.some((c) => c.verdict === "fail")) return "fail";
+  if (claims.some((c) => c.verdict === "unverifiable")) return "unverifiable";
+  if (claims.some((c) => c.verdict === "partial")) return "partial";
+  return "pass";
 }
 
 /** Records that embed a datum + anchor (scar or cycle-seal); lean lines do not. */
@@ -137,49 +189,58 @@ export function checkConformance(
   );
   const results: CriterionResult[] = [];
 
-  // C1 — Invariants (§5): no `=` emitted; four fixed tags present. Channel
-  // separation is structural (verified by construction/tests, not traces).
-  if (records.length === 0) {
-    results.push({ id: "1", title: "Invariants", verdict: "unverifiable", detail: "no [event] records to read" });
-  } else {
-    const badFixed = datumBearing.find((r) => Object.keys(datumOf(r).fixed).length !== 4);
-    results.push({
-      id: "1",
-      title: "Invariants",
-      verdict: badFixed ? "fail" : "pass",
-      detail: badFixed
-        ? "a record lacks the four fixed tags"
-        : "no `=` in traces; four fixed tags present (channel separation verified structurally, not from traces)",
-    });
+  /** Push a criterion, rolling its verdict up from the claims. */
+  function push(id: string, title: string, claims: readonly ClaimCheck[], detail: string): void {
+    results.push({ id, title, verdict: rollUp(claims), claims, detail });
   }
 
-  // C2 — Host conditions (§4): from the gate outcome. The gate itself is a
-  // pure, reproducible function over the host declaration; its per-condition
-  // basis (probed vs declared) is surfaced so the auditor sees the evidence
-  // grade, not just the verdict.
+  // C1 — Invariants (§5): no `=` emitted; four fixed tags present (trace). Channel
+  // separation is structural — a third party cannot read it from the log.
+  if (records.length === 0) {
+    push("1", "Invariants", [claim("four fixed tags on every record", "trace", "unverifiable")], "no [event] records to read");
+  } else {
+    const badFixed = datumBearing.find((r) => Object.keys(datumOf(r).fixed).length !== 4);
+    const badEquals = emissions.find((e) => e.register !== "↔");
+    const claims: ClaimCheck[] = [
+      claim("four fixed tags present on every record", "trace", badFixed ? "fail" : "pass"),
+      claim("no `=` emitted — every emission register is ↔ (INV-2)", "trace", badEquals ? "fail" : "pass"),
+      claim("meaning-channel and modulatory field implemented separately", "structural", "pass"),
+    ];
+    push(
+      "1",
+      "Invariants",
+      claims,
+      badFixed
+        ? "a record lacks the four fixed tags"
+        : badEquals
+          ? "an emission carries register `=` — INV-2 forbids a running loop emitting `=`"
+          : "no `=` in traces; four fixed tags present (channel separation verified structurally, not from traces)",
+    );
+  }
+
+  // C2 — Host conditions (§4): from the gate outcome, a computed artifact derived
+  // from the host's declared/probed conditions (basis `declared`).
   if (!facts.gate) {
-    results.push({ id: "2", title: "Host conditions", verdict: "unverifiable", detail: "no gate result supplied" });
+    push("2", "Host conditions", [claim("host conditions E1–E4 and P met (gate outcome)", "declared", "unverifiable")], "no gate result supplied");
   } else {
     const probed = facts.gate.checks.filter((c) => c.basis === "probed").length;
     const declared = facts.gate.checks.length - probed;
-    results.push({
-      id: "2",
-      title: "Host conditions",
-      verdict: facts.gate.outcome === "qualify" ? "pass" : "fail",
-      detail:
-        facts.gate.outcome === "qualify"
-          ? `E1–E4 and P met; the loop qualified to run (${probed} probed, ${declared} declared)`
-          : `clean non-start: ${facts.gate.reason}`,
-    });
+    const qualified = facts.gate.outcome === "qualify";
+    push(
+      "2",
+      "Host conditions",
+      [claim("host conditions E1–E4 and P met (gate outcome)", "declared", qualified ? "pass" : "fail")],
+      qualified
+        ? `E1–E4 and P met; the loop qualified to run (${probed} probed, ${declared} declared)`
+        : `clean non-start: ${facts.gate.reason}`,
+    );
   }
 
-  // C3 — Loop (§6): every datum carries a floor-tag and traversed T1→T8, and
-  // the recorded flow mode is consistent — cycle-0 single-threaded, cycle-1+
-  // multi-stream (§13.3). The `flow` open tag is the system's own mechanical
-  // record (like provenance); the flow STRUCTURE itself is verified
-  // structurally (tests), like channel separation in criterion 1.
+  // C3 — Loop (§6): path T1→T8, flow-mode consistency, and emission well-formedness
+  // are trace-verifiable; loop closure (INV-1) and the absence of an action-arbiter
+  // are structural — verified by construction, not readable from the log.
   if (records.length === 0) {
-    results.push({ id: "3", title: "Loop", verdict: "unverifiable", detail: "no [event] records to read" });
+    push("3", "Loop", [claim("every cycle datum's path covers T1→T8", "trace", "unverifiable")], "no [event] records to read");
   } else {
     // The path lives in [event]: gather each datum's layer-exit lines and check it
     // traversed T1→T8 (§13.6 — read from the log, never from a tag).
@@ -200,17 +261,23 @@ export function checkConformance(
       return mark === 0 ? flow !== "single-threaded" : flow !== "multi-stream";
     });
     // §13.3 (link 5, §6.4): every emission carries register ↔ and names a valid
-    // issuing layer (1–8). No internal action-arbiter exists — a conflict among
-    // emissions is collided as a ResistEvent, not adjudicated (verified
-    // structurally, like channel separation).
+    // issuing layer (1–8). The ABSENCE of an action-arbiter is not readable from
+    // the trace (absence of evidence) — it is structural, like channel separation.
     const badEmission = emissions.find(
       (e) => e.register !== "↔" || !(e.issuingLayer >= 1 && e.issuingLayer <= 8),
     );
-    results.push({
-      id: "3",
-      title: "Loop",
-      verdict: incomplete || flowInconsistent || badEmission ? "fail" : "pass",
-      detail: incomplete
+    const claims: ClaimCheck[] = [
+      claim("every cycle datum's path covers T1→T8 (from layer-exit lines)", "trace", incomplete ? "fail" : "pass"),
+      claim("recorded flow mode matches cycle-mark (0 single-threaded, 1+ multi-stream)", "trace", flowInconsistent ? "fail" : "pass"),
+      claim("every emission carries register ↔ and a valid issuing layer (1–8)", "trace", badEmission ? "fail" : "pass"),
+      claim("the six links close back on themselves (INV-1 topology)", "structural", "pass"),
+      claim("no internal action-arbiter — conflict collided as a ResistEvent (§6.4)", "structural", "pass"),
+    ];
+    push(
+      "3",
+      "Loop",
+      claims,
+      incomplete
         ? `a cycle datum's layer-exit lines do not cover T1–T8 (${incomplete.datumId})`
         : flowInconsistent
           ? `a record's recorded flow mode contradicts its cycle-mark (cycle ${datumOf(flowInconsistent).fixed.cycleMark}: ${datumOf(flowInconsistent).open.flow})`
@@ -221,14 +288,13 @@ export function checkConformance(
                   ? "flow mode recorded and consistent (cycle-0 single-threaded, cycle-1+ multi-stream)"
                   : "flow mode not recorded in these traces"
               }`,
-    });
+    );
   }
 
-  // C4 — Self (§7): accrual is trace-visible; the self/environment distinction
-  // (crystallization) is a one-time act verifiable from the trace; continuity
-  // itself is NOT machine-certifiable.
+  // C4 — Self (§7): accrual and the one-time crystallization are trace-verifiable;
+  // self-continuity is attributable only by a third party (never machine-certified).
   if (records.length === 0) {
-    results.push({ id: "4", title: "Self", verdict: "unverifiable", detail: "no [event] records to read" });
+    push("4", "Self", [claim("state accrues — cycle-marks non-decreasing (INV-5)", "trace", "unverifiable")], "no [event] records to read");
   } else {
     const marks = datumBearing.map((r) => datumOf(r).fixed.cycleMark ?? -1);
     const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!);
@@ -250,21 +316,28 @@ export function checkConformance(
           : !crystallizedOnce
             ? `; self/environment distinction drawn ${crystallizations.length} times — crystallization is one-time (§7)`
             : "; a crystallization record marks a cycle other than 0 — the distinction is drawn at cycle-0 T2 (§7)";
-    results.push({
-      id: "4",
-      title: "Self",
-      verdict: crystallizationOk ? "partial" : "fail",
-      detail:
-        (nonDecreasing
-          ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
-          : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
+    const claims: ClaimCheck[] = [
+      claim("state accrues — cycle-marks non-decreasing (INV-5)", "trace", nonDecreasing ? "pass" : "partial"),
+      claim("self/environment distinction crystallized once, at cycle-0 (§7)", "trace", crystallizationOk ? "pass" : "fail"),
+      claim("no internal claim of measured continuity (§7)", "structural", "pass"),
+      claim("self-continuity — attributable only by a third party (§7)", "third-party", "partial"),
+    ];
+    push(
+      "4",
+      "Self",
+      claims,
+      (nonDecreasing
+        ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
+        : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
         crystallizationNote,
-    });
+    );
   }
 
-  // C5 — Resistance (§8): Mode-A not pure (diverse Mode-B sources); reflection deferred.
+  // C5 — Resistance (§8): source diversity and registered returns are trace-
+  // verifiable; Mode-B holding no store handle is structural; the reflection
+  // mechanism is read from a declared decision.
   if (records.length === 0) {
-    results.push({ id: "5", title: "Resistance", verdict: "unverifiable", detail: "no [event] records to read" });
+    push("5", "Resistance", [claim("resistance-source diversity in traces (Mode-A not pure)", "trace", "unverifiable")], "no [event] records to read");
   } else {
     const sources = new Set(scars.map((r) => r.event.source_id));
     const modeBEvidence = sources.size >= 2;
@@ -278,24 +351,29 @@ export function checkConformance(
     // observed entity in the trace.
     const returnsRegistered =
       scars.length > 0 || cycleSeals.some((s) => s.activity.observed.length > 0);
-    results.push({
-      id: "5",
-      title: "Resistance",
-      verdict: modeBEvidence && reflection && returnsRegistered ? "pass" : "partial",
-      detail:
-        `${sources.size} distinct resistance source(s) in traces` +
+    const claims: ClaimCheck[] = [
+      claim("resistance-source diversity in traces (Mode-A not pure)", "trace", modeBEvidence ? "pass" : "partial"),
+      claim("Mode-B returns registered, not left to pass (§8.4)", "trace", returnsRegistered ? "pass" : "partial"),
+      claim("Mode-B writes to no store — read-only view, no store handle (§8.4)", "structural", "pass"),
+      claim("reflection wired as external ENV_PUSHED input (§8.4, tag E)", "declared", reflection ? "pass" : "partial"),
+    ];
+    push(
+      "5",
+      "Resistance",
+      claims,
+      `${sources.size} distinct resistance source(s) in traces` +
         (modeBEvidence ? " (Mode-A not pure)" : " (limited diversity)") +
         (returnsRegistered
           ? "; returns registered (not left to pass)"
           : "; returns not registered — the loop may be letting returns pass (pure Mode-A)") +
         "; Mode-B writes to no store (structural: read-only view, no store handle)" +
         (reflection ? "; reflection wired" : "; reflection is DEFERRED (§8.4, tag E)"),
-    });
+    );
   }
 
   // C6 — Store (§9): full trace-side verification of every record.
   if (records.length === 0) {
-    results.push({ id: "6", title: "Store", verdict: "unverifiable", detail: "no [event] records to read" });
+    push("6", "Store", [claim("every record well-formed (tags, anchor, ResistEvent)", "trace", "unverifiable")], "no [event] records to read");
   } else {
     let firstProblem: string | null = null;
     for (const rec of records) {
@@ -329,11 +407,17 @@ export function checkConformance(
       if (r.from === "prior") priorEntries.set(r.datumId, (priorEntries.get(r.datumId) ?? 0) + 1);
     }
     const doubleEntry = [...priorEntries.entries()].find(([, n]) => n > 1);
-    results.push({
-      id: "6",
-      title: "Store",
-      verdict: firstProblem || coverageGap !== null || badEdge || doubleEntry ? "fail" : "pass",
-      detail: firstProblem
+    const claims: ClaimCheck[] = [
+      claim("every record well-formed — 4 fixed + ≥3 open tags incl domain + anchor", "trace", firstProblem ? "fail" : "pass"),
+      claim("every cycle left an activity record (contiguous coverage)", "trace", coverageGap !== null ? "fail" : "pass"),
+      claim("provenance moves only along the §9 graph edges", "trace", badEdge ? "fail" : "pass"),
+      claim("`prior` entered once, never re-entered (§9)", "trace", doubleEntry ? "fail" : "pass"),
+    ];
+    push(
+      "6",
+      "Store",
+      claims,
+      firstProblem
         ? `a record failed: ${firstProblem}`
         : coverageGap !== null
           ? `activity-record coverage gap: no activity record for cycle ${coverageGap}`
@@ -342,7 +426,7 @@ export function checkConformance(
             : doubleEntry
               ? `datum ${doubleEntry[0]} entered \`prior\` more than once; prior is a one-way entry (§9)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior entered once); all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
-    });
+    );
   }
 
   // C7 — Failure signals (§11): resistance-source diversity, DERIVED from the
@@ -353,23 +437,23 @@ export function checkConformance(
   {
     const window = scars.slice(-CONFORMANCE_DIVERSITY_WINDOW);
     if (window.length < CONFORMANCE_DIVERSITY_WINDOW) {
-      results.push({
-        id: "7",
-        title: "Failure signals",
-        verdict: "partial",
-        detail: `insufficient evidence: ${window.length} recorded collision(s) < window ${CONFORMANCE_DIVERSITY_WINDOW}; diversity cannot be established from traces`,
-      });
+      push(
+        "7",
+        "Failure signals",
+        [claim("resistance-source diversity established from traces", "trace", "partial")],
+        `insufficient evidence: ${window.length} recorded collision(s) < window ${CONFORMANCE_DIVERSITY_WINDOW}; diversity cannot be established from traces`,
+      );
     } else {
       const distinct = new Set(window.map((r) => r.event.source_id)).size;
       const diverse = distinct >= CONFORMANCE_MIN_DISTINCT_SOURCES;
-      results.push({
-        id: "7",
-        title: "Failure signals",
-        verdict: diverse ? "pass" : "fail",
-        detail: diverse
+      push(
+        "7",
+        "Failure signals",
+        [claim("resistance-source diversity established from traces", "trace", diverse ? "pass" : "fail")],
+        diverse
           ? `resistance-source diversity established from traces: ${distinct} distinct sources over the last ${CONFORMANCE_DIVERSITY_WINDOW} records`
           : `diversity-loss established from traces: only ${distinct} distinct source(s) over the last ${CONFORMANCE_DIVERSITY_WINDOW} records (< ${CONFORMANCE_MIN_DISTINCT_SOURCES})`,
-      });
+      );
     }
   }
 
