@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: self crystallization như một state transition được kiểm chứng (§7)
+**Commit:** `60a6696`
+
+T2 đã phân loại agency (SELF_WRITTEN/ENV_PUSHED/UNDECIDED) nhưng chưa ghi **crystallization của self** — hành vi §7 — như một chuyển-trạng-thái kiểm được từ trace. Bổ khuyết: ghi **đúng mặt chữ §7** = *cái ACT vẽ ranh giới self/môi trường* tại T2 của cycle-0, **không** ghi self bền/stable (ghi giá trị stable sẽ gián tiếp khẳng định tính continue của self — điều §7 cấm). Cơ chế: T2 phát `crystallized` **chỉ ở lần chạy đầu** (`cyclesRun === 0`; T2 phục hồi mang `cyclesRun` tích luỹ → không tái phát — recovery *nối lại* một self-line, không tái-crystallize); cycle ghi **một** dòng `[event]` activityKind `crystallization` (lean: `datumId`+`cycleMark`+`t`, **không nhúng datum** — nên nó khẳng định *act*, không phải self bền). §13.4 kiểm: crystallization **một lần** và **tại cycle-0** → `partial` (continuity vẫn chỉ bên-thứ-ba quy được); >1 lần hoặc ≠cycle-0 → `fail`. Thêm form serialize/deserialize + render inspector. **9 test mới (223 tổng), tsc sạch.** E2E: đúng 1 crystallization ở cycle-0, §13.4 "crystallized once at cycle-0 … no persistent self is asserted".
+
+---
+
 ### — feat: schema versioning — self-describing [event] log across schema changes
 **Commit:** `8f20041`
 
