@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: schema versioning — self-describing [event] log across schema changes
+**Commit:** `8f20041`
+
+Miền `provenance` đổi 3→5 ở v0.3.2, mà `[event]` bất biến (bản ghi cũ không sửa được), nên log trải qua đổi schema phải **tự mô tả**. Vá hai lỗ hổng: (1) `SCHEMA_VERSION` (=2, khai ở decisions) theo dõi schema store — đổi provenance 3→5 là version 1→2; (2) **mỗi dòng `[event]` được đóng dấu `schemaVersion`** viết dưới, **nằm trong hash-chain** (chống-giả-mạo) — reader diễn giải từng bản ghi theo version của nó, một log có thể chứa nhiều version sau một lần đổi. DIL-CLAIM `tagSchema` giờ lấy từ `SCHEMA_VERSION` (trước là hằng `1` stale, không bump khi Bước 3 đổi miền provenance). Claim-check **tiến hoá mềm (policy A)**: substrate stamp schema **cũ hơn** → chấp nhận + advance claim; schema **mới hơn** → từ chối (DIL cũ không ghi an toàn được); `protocol`/`layout` vẫn khớp tuyệt đối. 3 test mới (218 tổng), tsc sạch.
+
+---
+
 ### — docs: declare EVENT_SYNC_POLICY (write-through fsync)
 **Commit:** `293416c`
 
