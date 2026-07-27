@@ -39,9 +39,9 @@ Built inside-out, the causal order fixed in the protocol (Invariants → Loop �
         │   ┌───────────────────────────────────┐   │
         │   │  THE LOOP  (T1–T8, six links)      │   │   src/loop
         │   │   ┌───────────────────────────┐    │   │
-        │   │   │  INVARIANTS (8, hard law)  │    │   │   src/invariants
+        │   │   │  EXPERIENCE STORE          │    │   │   src/store
         │   │   │   ┌───────────────────┐    │    │   │
-        │   │   │   │  EXPERIENCE STORE │    │    │   │   src/store
+        │   │   │   │  INVARIANTS       │    │    │   │   src/invariants
         │   │   │   └───────────────────┘    │    │   │
         │   │   └───────────────────────────┘    │   │
         │   └───────────────────────────────────┘   │

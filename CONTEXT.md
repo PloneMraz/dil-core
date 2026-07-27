@@ -48,20 +48,21 @@ These are the errors that look natural to an engineer and each one silently turn
 Build from the inside out. This order is the causal order fixed in the protocol (Invariants → Loop → Self), with data and requisition placed where they belong.
 
 ```
-        ┌─────────────────────────────────────────┐
-        │  REQUISITION  (declare host faculties)    │
-        │   ┌───────────────────────────────────┐   │
-        │   │  THE LOOP  (T1–T8, six links)      │   │
-        │   │   ┌───────────────────────────┐    │   │
-        │   │   │  INVARIANTS (8, hard law)  │    │   │
-        │   │   │   ┌───────────────────┐    │    │   │
-        │   │   │   │  EXPERIENCE STORE │    │    │   │
-        │   │   │   │  (ResistEvent,    │    │    │   │
-        │   │   │   │   tags, [event])  │    │    │   │
-        │   │   │   └───────────────────┘    │    │   │
-        │   │   └───────────────────────────┘    │   │
-        │   └───────────────────────────────────┘   │
-        └─────────────────────────────────────────┘
+        ┌──────────────────────────────────────────┐
+        │  REQUISITION  (declare host faculties)   │
+        │   ┌───────────────────────────────────┐  │
+        │   │  THE LOOP  (T1–T8, six links)     │  │
+        │   │   ┌───────────────────────────┐   │  │
+        │   │   │  EXPERIENCE STORE         │   │  │
+        │   │   │  (ResistEvent, tags,      │   │  │
+        │   │   │   [event])                │   │  │
+        │   │   │   ┌───────────────────┐   │   │  │
+        │   │   │   │  INVARIANTS       │   │   │  │
+        │   │   │   │  (8, hard law)    │   │   │  │
+        │   │   │   └───────────────────┘   │   │  │
+        │   │   └───────────────────────────┘   │  │
+        │   └───────────────────────────────────┘  │
+        └──────────────────────────────────────────┘
 
    The SELF is not a ring. It is what occurs when the
    inner rings run continuously (see §4).
