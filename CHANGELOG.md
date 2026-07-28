@@ -6,6 +6,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — fix: log `[event]` tiền-versioning bị từ chối nhất quán theo phiên bản (policy B)
+**Commit:** `ed09544`
+
+Ca biên tầng hash-chain (bên thứ ba báo, đã tự tái lập): 8f20041 vừa **đổi công thức băm** (thêm ô `schemaVersion`) vừa đóng dấu schema thẳng ở **2** trong một bước — nên mọi dòng ghi **trước** đó (kỷ nguyên tiền-versioning) **không có** `schemaVersion` và được băm theo công thức cũ *không có ô version*. `verifyChain` khi đó gãy ngay dòng 0 với lý do mơ hồ **"content break"**, như thể bị giả mạo. Tệ hơn: substrate lại **nâng claim** một store v1 lên v2 (policy A cũ) trong khi chain của chính store đó **không verify được** — trạng thái **incoherent** (claim bảo hợp lệ, gốc-tin-cậy bảo gãy). Cách "coi thiếu = v1" **không chạy** (đã kiểm: `hashChainEntry(...,1,...)` ≠ hash cũ) vì đây là đổi *công thức*, không phải thêm trường.
+
+Xử lý bằng **policy B** (khai tường minh, HONEST STATUS, `SCHEMA_VERSIONED_SINCE` trong decisions.ts): log tiền-versioning nằm **ngoài** chuỗi versioned. `verifyChain` giờ từ chối dòng khuyết `schemaVersion` **theo phiên bản**, nêu rõ ranh giới (8f20041), không còn "content break". Và `claimSubstrate` **từ chối** store stamp dưới ranh giới ngay tại cửa (clean non-start), nên hệ **không bao giờ** nâng claim lên một log không verify được — **substrate và chain nay vẽ cùng một lằn ranh** (đây là câu trả lời cho mâu thuẫn substrate↔chain). Policy A (nhánh verifier dual-format vĩnh viễn) ghi nhận là phương án **bị loại**: chi phí bảo mật ~0 nhưng fork gốc-tin-cậy mãi mãi cho những store mà ở 0.1.0 (chưa user ngoài) chỉ là sản phẩm dev vứt đi; ranh giới là **một-lần** vì công thức đã đóng băng từ schema 2. Nếu sau này có user/store thật thì xét lại A trước 1.0 — đã khai rõ. **2 test mới/đổi (240 tổng), tsc sạch.** Repro gốc nay trả `ok:false` với lý do phiên bản.
+
+---
+
 ### — feat: INV-5 accumulation đo được từ trace, không còn tự khai (§13.4)
 **Commit:** `1c9ffaa`
 
