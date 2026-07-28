@@ -17,14 +17,56 @@
  * changes. Provenance went from 3 values to 5 at v0.3.2 (prior/running/scar →
  * prior/running/simulated/projected/scar), the change that motivates this
  * versioning. Because `[event]` is immutable — a written record is never edited —
- * the log must be **self-describing** across such changes: every persisted line
- * is stamped with the SCHEMA_VERSION it was written under (hash-chain.ts), so a
+ * the log is **self-describing** from version 2 on: every persisted line is
+ * stamped with the SCHEMA_VERSION it was written under (hash-chain.ts), so a
  * reader interprets each record by its own version, and the DIL-CLAIM records the
  * current one (substrate.ts).
- *   1 → the original 3-state provenance (prior/running/scar).
- *   2 → v0.3.2's 5-state provenance graph (adds simulated, projected).
+ *   1 → the original 3-state provenance (prior/running/scar). PRE-VERSIONING: these
+ *       lines carry NO per-line stamp and were hashed under the old, version-less
+ *       formula (commit 8f20041 introduced both the stamp and the current formula
+ *       together, landing straight at version 2). They are not part of the
+ *       versioned chain — see SCHEMA_VERSIONED_SINCE.
+ *   2 → v0.3.2's 5-state provenance graph (adds simulated, projected). First
+ *       versioned schema: stamped per line, hashed with the version-inclusive
+ *       formula.
  */
 export const SCHEMA_VERSION = 2;
+
+/**
+ * The first schema version under the self-describing, version-stamped chain — the
+ * boundary of the versioned `[event]` chain. A line below it (a "pre-versioning"
+ * line, carrying no schemaVersion and hashed under the old version-less formula)
+ * is NOT verifiable by the current verifier and is refused, with an explicit
+ * version reason, both by the chain walker (hash-chain.ts) and — before a store is
+ * ever run — by the substrate claim check (substrate.ts refuses a store stamped
+ * below this).
+ *
+ * DECIDE@IMPL policy, HONEST STATUS — not derivable from the protocol. §9 fixes
+ * that `[event]` is immutable and the one trust root, but not how a verifier
+ * treats logs written under an earlier, incompatible hash formula. Two policies
+ * were weighed:
+ *
+ *   CHOSEN (B) — Draw a hard boundary. Pre-versioning logs are declared outside
+ *     the versioned chain: the verifier rejects a pre-versioning line by version
+ *     (not a vague "content break"), and the substrate refuses a store stamped
+ *     below this boundary as a clean non-start, so the system never reaches the
+ *     incoherent state of a claim advanced over a store whose chain will not
+ *     verify. Rationale for dil-core at 0.1.0: there are no external users and
+ *     pre-versioning stores are disposable development artifacts, so continuity
+ *     with them is not worth a permanent dual-format branch in the trust-root
+ *     verifier. The boundary is ONE-TIME: the hash formula is frozen from version
+ *     2 on (the version slot is permanent), so 2→3→… bumps stay verifiable; only
+ *     the pre-versioning era is cut off.
+ *
+ *   REJECTED (A) — A verifier branch that re-hashes pre-versioning lines under the
+ *     old, version-less formula, keeping old logs readable. Its security cost is
+ *     near-zero (a tamperer altering any line still must rewrite the whole tail,
+ *     format notwithstanding), but it permanently forks the one trust-root verifier
+ *     for a format that no live store meaningfully uses. If real users or durable
+ *     stores existed, A would be the honest choice — revisit this before 1.0 if
+ *     that changes.
+ */
+export const SCHEMA_VERSIONED_SINCE = 2;
 
 /** DECIDE@IMPL tag F — store representation. */
 export const STORE_REPRESENTATION =

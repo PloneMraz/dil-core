@@ -13,8 +13,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
+import { createHash } from "node:crypto";
 import { createJsonlFileSink, verifyJsonlSink, readChainedLines, listSegments } from "./event-sink.js";
-import { CHAIN_GENESIS, chainNext } from "./hash-chain.js";
+import { CHAIN_GENESIS, chainNext, verifyChain, type ChainedEventLine } from "./hash-chain.js";
 import { admitHostData } from "./tagging-gate.js";
 import { toRunning, toScar, stampLayer } from "./data-store.js";
 import { recordScar, type EventRecord, type ContextAnchor } from "./resist-event.js";
@@ -138,6 +139,32 @@ test("each persisted line carries its schema version, folded into the tamper-evi
     if (!v.ok) assert.equal(v.atLine, 0);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a pre-versioning line (no schemaVersion, old formula) is rejected BY VERSION, not as a content break (policy B)", () => {
+  const record = {
+    form: "scar",
+    timestamp: 1, cycleMark: 2, provenance: "scar", floorTag: 7,
+    open, payload: "legacy",
+    event: { source_id: "x", expected: "sun", received: "rain", mismatch_kind: "value-mismatch", t: 9 },
+    anchor,
+  } as const;
+  // hashed under the OLD, version-less formula: `${seq}\n${prev}\n${JSON.stringify(record)}`
+  const legacyHash = createHash("sha256")
+    .update(`0\n${CHAIN_GENESIS}\n${JSON.stringify(record)}`)
+    .digest("hex");
+  // a legacy line as read back from a pre-8f20041 store: NO schemaVersion field
+  const legacyLine = { seq: 0, prev: CHAIN_GENESIS, record, hash: legacyHash } as unknown as ChainedEventLine;
+
+  const v = verifyChain([legacyLine]);
+  assert.equal(v.ok, false);
+  if (!v.ok) {
+    assert.equal(v.atLine, 0);
+    // the refusal names the VERSION boundary, not the vague "content break" that
+    // the naive path produced (the whole point of this fix)
+    assert.match(v.reason, /pre-versioning/);
+    assert.ok(!v.reason.includes("content break"));
   }
 });
 

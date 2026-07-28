@@ -24,7 +24,7 @@
 
 import * as fs from "node:fs";
 import * as nodePath from "node:path";
-import { SCHEMA_VERSION } from "./decisions.js";
+import { SCHEMA_VERSION, SCHEMA_VERSIONED_SINCE } from "./decisions.js";
 
 /**
  * The law DIL stamps onto a substrate. A resume whose stored claim does not match
@@ -131,15 +131,29 @@ export function claimSubstrate(root: string, sub: Substrate = fsSubstrate()): St
         );
       }
     }
-    // `tagSchema` evolves forward (policy A). An OLDER stored schema is fine: this
-    // DIL reads old records by their per-line schemaVersion (hash-chain.ts) and
-    // writes new ones under the current schema, so the claim is advanced. A NEWER
-    // stored schema is refused: an older DIL must not write a store it cannot
-    // fully interpret. (`[event]` is immutable — the log spans schema versions.)
+    // `tagSchema` evolves forward within the VERSIONED era (decisions.ts,
+    // SCHEMA_VERSIONED_SINCE, policy B):
+    //   - a stored schema in [SCHEMA_VERSIONED_SINCE, current) is fine — its lines
+    //     are stamped per-line and hash under the versioned formula, so this DIL
+    //     reads them (hash-chain.ts) and writes new ones under the current schema;
+    //     the claim is advanced.
+    //   - a NEWER stored schema is refused: an older DIL must not write a store it
+    //     cannot fully interpret.
+    //   - a PRE-VERSIONING stored schema (< SCHEMA_VERSIONED_SINCE) is refused: its
+    //     `[event]` lines carry no per-line stamp and were hashed under the old
+    //     version-less formula, so the chain will not verify. Accepting it would
+    //     advance the claim over a store whose trust-root log is unverifiable — the
+    //     exact incoherence policy B exists to avoid. Clean non-start instead.
+    // (`[event]` is immutable — a versioned log may span several versions ≥ SINCE.)
     const storedSchema = typeof stored.tagSchema === "number" ? stored.tagSchema : NaN;
     if (Number.isNaN(storedSchema) || storedSchema > DIL_CLAIM.tagSchema) {
       throw new SubstrateClaimError(
         `substrate at ${root} is stamped under tag-schema ${String(stored.tagSchema)}, newer than this DIL's ${DIL_CLAIM.tagSchema}; it cannot safely write a store it does not fully interpret — upgrade DIL`,
+      );
+    }
+    if (storedSchema < SCHEMA_VERSIONED_SINCE) {
+      throw new SubstrateClaimError(
+        `substrate at ${root} is stamped under pre-versioning tag-schema ${String(stored.tagSchema)} (< ${SCHEMA_VERSIONED_SINCE}); its [event] lines predate the self-describing chain (commit 8f20041) and cannot be verified under the versioned hash formula. DIL will not run a store whose trust-root log it cannot verify`,
       );
     }
     if (storedSchema < DIL_CLAIM.tagSchema) {

@@ -29,7 +29,7 @@
 
 import { createHash } from "node:crypto";
 import type { SerializedEventRecord } from "./event-sink.js";
-import { SCHEMA_VERSION } from "./decisions.js";
+import { SCHEMA_VERSION, SCHEMA_VERSIONED_SINCE } from "./decisions.js";
 
 /** The `prev` of the first line — no predecessor. */
 export const CHAIN_GENESIS = "0".repeat(64);
@@ -100,6 +100,20 @@ export function verifyChain(lines: readonly ChainedEventLine[]): ChainVerificati
     }
     if (line.prev !== prev) {
       return { ok: false, atLine: i, reason: "chain break: prev does not match the previous line's hash" };
+    }
+    // Version boundary (decisions.ts SCHEMA_VERSIONED_SINCE, policy B): a line with
+    // no numeric schemaVersion is a pre-versioning line — written before the chain
+    // was self-describing (commit 8f20041), under the old version-less hash formula.
+    // Reject it by VERSION, not as a vague "content break": the current verifier
+    // cannot hash it the way it was written, and pre-versioning logs are declared
+    // outside the versioned chain. (A store this old is refused earlier still, at
+    // the substrate claim — substrate.ts.)
+    if (typeof line.schemaVersion !== "number") {
+      return {
+        ok: false,
+        atLine: i,
+        reason: `pre-versioning line: no schemaVersion, written under the version-less formula before schema ${SCHEMA_VERSIONED_SINCE} (commit 8f20041); it is outside the versioned [event] chain and cannot be verified — a store from that era is refused at claim time`,
+      };
     }
     if (line.hash !== hashChainEntry(line.seq, line.prev, line.schemaVersion, line.record)) {
       return { ok: false, atLine: i, reason: "content break: hash does not match the record" };

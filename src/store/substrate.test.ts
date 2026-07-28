@@ -84,15 +84,26 @@ test("a corrupt (unparsable) claim is refused rather than run", () => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test("an older stored tag-schema is accepted, and the claim is advanced (policy A)", () => {
+test("a pre-versioning stored tag-schema is refused (policy B): its [event] chain cannot be verified", () => {
   const root = tmpRoot();
   const layout = claimSubstrate(root);
-  // a substrate stamped under an OLDER schema (v1, the 3-state provenance era)
+  // a substrate stamped under the PRE-VERSIONING schema (v1, the 3-state provenance
+  // era): its [event] lines carry no per-line stamp and were hashed under the old
+  // version-less formula, so the versioned chain cannot verify them.
   fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.2", tagSchema: 1, layout: 1 }));
-  // a newer DIL accepts it — it reads old records by their per-line schemaVersion
-  assert.doesNotThrow(() => claimSubstrate(root));
-  const advanced = JSON.parse(fs.readFileSync(layout.claimFile, "utf8"));
-  assert.equal(advanced.tagSchema, DIL_CLAIM.tagSchema); // claim advanced to current
+  // DIL refuses at the door rather than advancing the claim over an unverifiable
+  // trust-root log (the substrate↔chain coherence policy B keeps).
+  assert.throws(() => claimSubstrate(root), SubstrateClaimError);
+  // and the refusal names the VERSION boundary as the reason, not a vague mismatch
+  try {
+    claimSubstrate(root);
+    assert.fail("expected a refusal");
+  } catch (e) {
+    assert.match((e as Error).message, /pre-versioning|cannot be verified/);
+  }
+  // the claim file was left untouched (not advanced) — a clean non-start
+  const after = JSON.parse(fs.readFileSync(layout.claimFile, "utf8"));
+  assert.equal(after.tagSchema, 1);
   fs.rmSync(root, { recursive: true, force: true });
 });
 
