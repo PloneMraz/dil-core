@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — fix: INV-1 `assertClosedLoop` không còn là check rỗng ruột (§5)
+**Commit:** `ab04a91`
+
+Check dead-branch thứ hai **rỗng ruột**: `sources` và `hasOutgoing` cùng được nạp từ **một `edge.from`** trong cùng vòng lặp → luôn là **hai set bằng nhau**, nên `!hasOutgoing.has(layer)` **không bao giờ đúng**. Chỉ mỗi ca `SINK` tường minh là thực sự bị bắt; một **dead-branch thật** — layer nhận output nhưng không có cạnh ra — **lọt qua** (`assertClosedLoop([{from:1,to:2}])` pass dù T2 dead-end). Doc cũ cũng tự mâu thuẫn ("a source with no outgoing edge" là bất khả — source luôn có cạnh ra). **Sửa:** dựng `sources` (from) và `targets` (to) thành **hai set khác nhau**, halt khi có target nào **không** là source — output của nó dead-end, không có đường về loop, đúng vi phạm INV-1. Cập nhật test "passes" thành cycle đóng thật (trước chỉ pass vì check rỗng — node 3 thực ra dead-end), thêm test cho ca dead-end mà code cũ bỏ lọt. Canonical 8-cycle và bắt SINK không đổi. **1 test mới (241 tổng), tsc sạch.**
+
+---
+
 ### — fix: log `[event]` tiền-versioning bị từ chối nhất quán theo phiên bản (policy B)
 **Commit:** `ed09544`
 
