@@ -338,7 +338,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // recurrence climb together; a reloading impostor cannot.
       for (const r of pass.t5.results) {
         events.append(
-          recordExpectation(datumId(), cycle, r.entity_id, r.expectation.confidence, r.expectation.recurrence, cycleT),
+          recordExpectation(datumId(), cycle, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, cycleT),
         );
       }
 

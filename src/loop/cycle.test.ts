@@ -110,6 +110,21 @@ test("each cycle records an expectation reading per entity; confidence ramps (IN
   assert.equal(exp[exp.length - 1]!.confidence, 1, "reaches saturation");
 });
 
+test("the expectation reading records the per-probe prediction error (delta), even without a scar", () => {
+  const { cycle, events } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] });  // establish 'weather' → predicts self, no error
+  cycle.run({ signals: [weather("rain")], changes: [] }); // predicts 'sun', observes 'rain' → an error
+  const exp = events
+    .all()
+    .filter((r): r is import("../store/resist-event.js").ExpectationActivity =>
+      r.kind === "activity" && r.activityKind === "expectation" && r.entity === "weather",
+    )
+    .sort((a, b) => a.cycleMark - b.cycleMark);
+  assert.ok(exp.every((e) => typeof e.delta === "number"), "every probe carries a numeric delta");
+  assert.equal(exp[0]!.delta, 0, "first probe predicts itself — no prediction error");
+  assert.equal(exp[1]!.delta, 1, "the mismatch is recorded as the probe's prediction error");
+});
+
 test("a layer's lateral emission is recorded in [event] with its issuing layer (§6.4)", () => {
   // Wrap T3 so it raises a query during its work — the seam a real host drives.
   const base = createT3();

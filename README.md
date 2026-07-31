@@ -19,7 +19,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **252 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **253 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -143,7 +143,7 @@ scars by their *derived* name (tags are structured properties, not baked into na
   #1  [layer-exit] cycle-0 @T1 (c0) 10:00:00
   …
   #9  [crystallization] cycle-0 self|env (c0) 10:00:00           ← §7, once, at cycle-0's T2
-  #10 [expectation] weather conf=0.00 rec=0 (c0) 10:00:00        ← INV-5 accumulation signature
+  #10 [expectation] weather conf=0.00 rec=0 err=0 (c0) 10:00:00  ← INV-5 ramp + per-probe prediction error
   #11 [emission] cycle-0 @T8 ↔ {"kind":"respond",…} (c0) 10:00:00
   …
   #37 [20260724]_[10:00:00]_[scar]_[T8]_[domain:cycle]_[flow:multi-stream]_[phase:loop]_[source:driver]_[value-mismatch]  {…}→{…}
@@ -168,7 +168,7 @@ dil conformance <store-dir>  # score the §13 criteria from traces alone
 Two store kinds (protocol §9), on the host's **requisitioned substrate** — never RAM:
 
 - **`[data]`** — mutable working memory (the present), a **SQLite** table under `store/memory/` (via `node:sqlite`). Its provenance is a directed **state-graph** (§9): `prior` is a one-way entry, and `running` / `simulated` / `projected` / `scar` circulate with **no terminal state** — a datum is never a conclusion at rest, but data waiting to be used.
-- **`[event]`** — an append-only, hash-chained log of **read-only** records on disk (`store/event-log/`). Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — no separate trace channel. It is a **journal of each datum's activities**, written as they occur: **scars** (ResistEvents — the atomic unit of *experience*, the only kind a layer learns from) and **activity** lines (*trace, not experience*) — the per-cycle seal plus a lean line for every layer-exit, every provenance move, and every emission (each naming its `issuing_layer`, §6.4), the one-time self/environment **crystallization** (§7, cycle-0's T2), and a per-entity **expectation** reading (confidence + recurrence — the trace-visible accumulation signature of INV-5). The path a datum travelled is read from these lines, **never** from a tag.
+- **`[event]`** — an append-only, hash-chained log of **read-only** records on disk (`store/event-log/`). Once written, no record is ever altered or removed. This one artifact is both the agent's memory and the audit trace — no separate trace channel. It is a **journal of each datum's activities**, written as they occur: **scars** (ResistEvents — the atomic unit of *experience*, the only kind a layer learns from) and **activity** lines (*trace, not experience*) — the per-cycle seal plus a lean line for every layer-exit, every provenance move, and every emission (each naming its `issuing_layer`, §6.4), the one-time self/environment **crystallization** (§7, cycle-0's T2), and a per-entity **expectation** reading (confidence + recurrence — the trace-visible accumulation signature of INV-5 — plus `delta`, the per-probe prediction-error magnitude, recorded for every probe including the non-colliding ones that leave no scar). The path a datum travelled is read from these lines, **never** from a tag.
 
 Every datum carries four fixed tags, never stripped or reordered — **timestamp** (the host's wall-clock, epoch-ms, separate from the cycle-mark), **cycle-mark**, **provenance**, **floor-tag** — plus **≥3 open tags** (one being `domain`, for audit-by-class). Both provenance and floor-tag name the **present** position only; the floor-tag updates to the layer just exited. An `[event]` scar record **inherits** the datum's tags.
 

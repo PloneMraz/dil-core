@@ -164,11 +164,16 @@ export interface CrystallizationActivity {
 /**
  * An expectation reading — the observable consequence of accumulation (INV-5,
  * §6.3 T5). Each cycle, per observed entity, T5's prediction strength: `confidence`
- * (∈ [0,1]) driven by `recurrence` (observations accrued for that entity). Trace,
- * not experience. Recording it makes INV-5 measurable from the log, not merely
- * self-declared: over an entity's readings, an accruing self shows confidence and
- * recurrence CLIMB together and confidence saturate; a reloading impostor, having
- * no memory to increment, cannot make either climb. `datumId` is the cycle datum
+ * (∈ [0,1]) driven by `recurrence` (observations accrued for that entity), and
+ * `delta` — the magnitude of the prediction error at this probe (the signed
+ * PredErr T5 emits; sign is always `+` on this line, as absence/negative is T7's).
+ * Trace, not experience. Recording it makes INV-5 measurable from the log, not
+ * merely self-declared: over an entity's readings, an accruing self shows
+ * confidence and recurrence CLIMB together and confidence saturate; a reloading
+ * impostor, having no memory to increment, cannot make either climb. `delta`
+ * additionally gives a third party the per-probe prediction error for EVERY probe —
+ * including the non-colliding ones that leave no scar — so prediction accuracy
+ * over time is measurable, not just confidence. `datumId` is the cycle datum
  * (cycle-N); `entity` is the subject whose expectation this reads.
  */
 export interface ExpectationActivity {
@@ -179,6 +184,8 @@ export interface ExpectationActivity {
   readonly entity: string;
   readonly confidence: number;
   readonly recurrence: number;
+  /** Magnitude of the prediction error at this probe (PredErr.delta, §6.3 T5). */
+  readonly delta: number;
   readonly t: number;
 }
 
@@ -246,8 +253,9 @@ export function recordCrystallization(
 
 /**
  * Note an expectation reading — the accumulation signature of INV-5 (T5): the
- * entity's prediction `confidence` and its `recurrence` this cycle, so a third
- * party can measure the ramp from the log rather than trust a declaration.
+ * entity's prediction `confidence`, its `recurrence`, and the `delta` (prediction-
+ * error magnitude) at this probe, so a third party can measure both the confidence
+ * ramp and prediction accuracy over time from the log rather than trust a declaration.
  */
 export function recordExpectation(
   datumId: string,
@@ -255,9 +263,10 @@ export function recordExpectation(
   entity: string,
   confidence: number,
   recurrence: number,
+  delta: number,
   t: number,
 ): ExpectationActivity {
-  return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, confidence, recurrence, t };
+  return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, confidence, recurrence, delta, t };
 }
 
 /** Note an emission — a layer's committed action pushed to the region (§6.4). */

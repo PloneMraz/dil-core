@@ -208,10 +208,10 @@ test("a crystallization line round-trips (§7: lean, no datum, no anchor)", () =
   assert.deepEqual(back, rec);
 });
 
-test("an expectation line round-trips (INV-5: entity, confidence, recurrence)", () => {
-  const rec = recordExpectation("cycle-2", 2, "weather", 0.67, 2, 5);
+test("an expectation line round-trips (INV-5: entity, confidence, recurrence, delta)", () => {
+  const rec = recordExpectation("cycle-2", 2, "weather", 0.67, 2, 1, 5);
   const serialized = serializeEventRecord(rec);
-  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "confidence", "recurrence", "t"]);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "confidence", "recurrence", "delta", "t"]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });

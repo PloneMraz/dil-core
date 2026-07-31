@@ -95,7 +95,7 @@ export interface SerializedCrystallization {
   readonly t: number;
 }
 
-/** Serialized form of a lean `expectation` activity line (INV-5; the accumulation ramp). */
+/** Serialized form of a lean `expectation` activity line (INV-5; the accumulation ramp + per-probe error). */
 export interface SerializedExpectation {
   readonly form: "expectation";
   readonly datumId: string;
@@ -103,6 +103,7 @@ export interface SerializedExpectation {
   readonly entity: string;
   readonly confidence: number;
   readonly recurrence: number;
+  readonly delta: number;
   readonly t: number;
 }
 
@@ -172,6 +173,7 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
         entity: rec.entity,
         confidence: rec.confidence,
         recurrence: rec.recurrence,
+        delta: rec.delta,
         t: rec.t,
       };
   }
@@ -387,6 +389,7 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       entity: rec.entity,
       confidence: rec.confidence,
       recurrence: rec.recurrence,
+      delta: rec.delta,
       t: rec.t,
     };
   }
