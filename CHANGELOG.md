@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: ghi `PredErr.delta` vào dòng expectation — sai số dự đoán mỗi cứ thăm dò (§6.3 T5)
+**Commit:** `5115524`
+
+Dòng `[event]` expectation mang `confidence` + `recurrence` nhưng **thiếu `PredErr.delta`** — độ lớn sai số dự đoán T5 phát mỗi cứ thăm dò. Giá trị **đã nằm sẵn trong scope** ngay chỗ ghi (`r.predErr.delta`) mà bị bỏ, nên **đại lượng đo chính** của việc theo dõi sai số dự đoán **không đọc được từ log**: với cứ **không va chạm** (delta nhỏ/0) không có scar → mất hẳn; với cứ va chạm chỉ lưu `expected`/`received` (nội dung), không lưu **giá trị** delta. **Một trường vào bản ghi đã có:** `ExpectationActivity` + `recordExpectation` thêm `delta`; [cycle.ts](src/loop/cycle.ts) truyền `r.predErr.delta`; serialize/deserialize + inspector (`err=`) cập nhật. Giờ sai số **mỗi** cứ thăm dò đều ở trong trace — bên thứ ba đo được **độ chính xác dự đoán theo thời gian**, không chỉ ramp confidence. Bỏ `signed` vì trên dòng này luôn `+` (âm/absence là của T7, ngoài vòng expectation). **2 test mới, fixture cập nhật, README refresh. 253 test, tsc sạch.** E2E: err ramp `0,0,1,0,1` qua run sun,sun,rain,rain,sun.
+
+---
+
 ### — feat: CLI `dil` thật trên store đĩa — `bin` không còn trỏ vào barrel rỗng
 **Commit:** `bc3aaa4`
 
