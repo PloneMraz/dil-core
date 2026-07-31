@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: cập nhật README về đúng hiện trạng (số test, dòng `[event]` mới, công thức hash)
+**Commit:** `c06e653`
+
+Rà lại README sau các cải tiến gần đây, thấy **4 chỗ cũ** (chỉ docs): số test **233 → 241**; phần mô tả nhật ký `[event]` và ví dụ `inspectEventLog` **bỏ sót** hai loại dòng mới thêm — **crystallization** (§7) và **expectation** (INV-5) — đã bổ sung cả hai, và sửa số record mẫu (**46 → 44**, kiểm từ run 3-cycle thật); công thức hash-chain ghi `seq + prev + record` nhưng đã gồm `schemaVersion` từ 8f20041 — sửa thành `seq + prev + schemaVersion + record`, kèm ghi chú log tiền-versioning bị từ chối theo phiên bản (policy B). Số liệu conformance (4/3/0 ngắn, 6/1/0 dài) kiểm lại vẫn đúng.
+
+---
+
 ### — fix: INV-1 `assertClosedLoop` không còn là check rỗng ruột (§5)
 **Commit:** `ab04a91`
 
