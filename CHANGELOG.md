@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: CLI `dil` thật trên store đĩa — `bin` không còn trỏ vào barrel rỗng
+**Commit:** `bc3aaa4`
+
+`bin` trong package.json trỏ `dil` vào `./dist/index.js` — một barrel re-export thuần 43 dòng, **không shebang, không xử lý argv** — nên `npm install -g` tạo lệnh `dil` **không làm gì** (exit 0, kèm một `ExperimentalWarning` SQLite lạc lõng vì barrel kéo `node:sqlite`). Nó quảng cáo một lệnh **không tồn tại**. Dựng **cửa trước thật** — đúng mục đích của bộ máy conformance/audit: bên thứ ba đọc một `[event]` store lạ trên đĩa mà **không phải viết code**. Thêm [cli.ts](src/cli.ts) (entry thực thi nhỏ, tsc giữ shebang) ủy quyền cho `run(argv, out, err)` trong [cli-run.ts](src/cli-run.ts) — hàm **thuần, unit-test được**, trả exit code (`0` ok / `1` lỗi usage-hoặc-đường-dẫn / `2` verify-gãy). Ba lệnh **chỉ-đọc**, mỗi lệnh là vỏ mỏng bọc hàm đã export/đã test: `dil verify` (`verifyJsonlSink`), `dil inspect` (`inspectEventLog`), `dil conformance` (`renderConformance(checkConformance(...))`). Không mở sink ghi, không đụng gì (adapter log chỉ-đọc trên `readLogRecords`); import module cụ thể chứ không qua barrel → **không nạp `node:sqlite`, hết cảnh báo**. `conformance` báo trung thực **§13.2 Host = unverifiable** (không có gate từ store đĩa). `bin` nay trỏ `./dist/cli.js`; README có mục CLI. **11 test CLI (252 tổng), tsc sạch.**
+
+---
+
 ### — docs: cập nhật README về đúng hiện trạng (số test, dòng `[event]` mới, công thức hash)
 **Commit:** `c06e653`
 
