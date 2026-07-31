@@ -89,11 +89,16 @@ test("collisionCoordinates addresses the real recorded collisions (scars only)",
   assert.equal(coords[0]!.mismatch_kind, "value-mismatch");
 });
 
-test("a reading cannot address an activity record (trace, not a collision)", () => {
+test("a reading cannot address a non-scar record (manifest or activity, not a collision)", () => {
   const { events } = daemonWithScar();
-  // index 0 is cycle-0's activity record, not a scar
-  assert.equal(events.all()[0]!.kind, "activity");
+  const recs = events.all();
+  // index 0 is the genesis manifest (the run's constitution), not a scar
+  assert.equal(recs[0]!.kind, "manifest");
   assert.throws(() => formReading(events, 0, "reader-1", "note"), ReflectionError);
+  // and an activity record (trace, not experience) is equally not a collision
+  const activityIdx = recs.findIndex((r) => r.kind === "activity");
+  assert.ok(activityIdx >= 0);
+  assert.throws(() => formReading(events, activityIdx, "reader-1", "note"), ReflectionError);
 });
 
 test("a reading about a collision that never happened is refused", () => {

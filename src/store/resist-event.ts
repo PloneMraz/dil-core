@@ -197,8 +197,33 @@ export type ActivityRecord =
   | CrystallizationActivity
   | ExpectationActivity;
 
-/** What the [event] log holds: scars (experience) and activity records (trace). */
-export type LogRecord = EventRecord | ActivityRecord;
+/**
+ * The manifest — the log's CONSTITUTION (§9, §8.5). A one-time genesis record,
+ * the first line of a fresh `[event]` log, declaring the DECIDE@IMPL configuration
+ * the run operates under: the numeric thresholds, the appraisal anchor and its
+ * transducer identity, the Mode-B source and reflection mechanism, the store /
+ * context-anchor / forward-building choices. It is neither a scar (experience) nor
+ * a datum-activity (it belongs to no cycle or datum) — it is log-level metadata,
+ * so it carries no datumId, cycleMark, or provenance. Recording it makes the log
+ * self-describing about the LAW it ran under, not only its tag schema (the per-line
+ * schemaVersion): a third party reading only `[event]` can now re-appraise the
+ * trace under the very constants that governed it, and — being hash-chained like
+ * every line — the constitution is tamper-evident and inseparable from its run.
+ */
+export interface ManifestRecord {
+  readonly kind: "manifest";
+  readonly protocol: string;
+  readonly schemaVersion: number;
+  /** The declared DECIDE@IMPL constitution (runtime/manifest.ts collects it). */
+  readonly decisions: Readonly<Record<string, unknown>>;
+  readonly t: number;
+}
+
+/**
+ * What the [event] log holds: scars (experience), activity records (trace), and a
+ * one-time manifest (the constitution the run operates under).
+ */
+export type LogRecord = EventRecord | ActivityRecord | ManifestRecord;
 
 /**
  * Build the per-cycle cycle-seal activity record. The datum must have run (bear a
@@ -267,6 +292,20 @@ export function recordExpectation(
   t: number,
 ): ExpectationActivity {
   return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, confidence, recurrence, delta, t };
+}
+
+/**
+ * Build the log's genesis manifest — the DECIDE@IMPL constitution the run operates
+ * under (§9, §8.5). Written once, as the first `[event]` line; `decisions` is the
+ * declared configuration (runtime/manifest.ts gathers the actual declared values).
+ */
+export function recordManifest(
+  protocol: string,
+  schemaVersion: number,
+  decisions: Readonly<Record<string, unknown>>,
+  t: number,
+): ManifestRecord {
+  return { kind: "manifest", protocol, schemaVersion, decisions, t };
 }
 
 /** Note an emission — a layer's committed action pushed to the region (§6.4). */

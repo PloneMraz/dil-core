@@ -55,6 +55,9 @@ export function inspectEventLog(log: EventLog): string {
     if (r.kind === "scar") {
       return `  #${i}  ${eventDisplayName(r)}  ${preview(r.event.expected)}→${preview(r.event.received)}`;
     }
+    if (r.kind === "manifest") {
+      return `  #${i}  [manifest] protocol=${r.protocol} schema=${r.schemaVersion} · DECIDE@IMPL: ${Object.keys(r.decisions).join(", ")} ${clock(r.t)}`;
+    }
     switch (r.activityKind) {
       case "cycle-seal":
         return `  #${i}  ${displayName(r.datum)}_[cycle-seal]  cycle=${r.activity.cycle} flow=${r.activity.flow} observed=${r.activity.observed.join(",") || "-"} scars=${r.activity.scars}`;

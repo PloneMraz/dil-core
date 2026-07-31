@@ -22,6 +22,8 @@ export {
 
 export { createDaemon, type Daemon, type DaemonDeps } from "./daemon.js";
 
+export { collectManifest } from "./manifest.js";
+
 export {
   requisition,
   RequisitionError,

@@ -119,7 +119,7 @@ function rollUp(claims: readonly ClaimCheck[]): ConformanceVerdict {
 type DatumBearing = EventRecord | CycleSealActivity;
 
 function isDatumBearing(rec: LogRecord): rec is DatumBearing {
-  return rec.kind === "scar" || rec.activityKind === "cycle-seal";
+  return rec.kind === "scar" || (rec.kind === "activity" && rec.activityKind === "cycle-seal");
 }
 function datumOf(rec: DatumBearing): TaggedDatum {
   return rec.kind === "scar" ? rec.scar : rec.datum;
@@ -188,6 +188,17 @@ function measureAccumulation(
 }
 
 function wellFormedStore(rec: LogRecord): string | null {
+  // The genesis manifest (§9): the run's constitution — protocol, schema, and the
+  // declared DECIDE@IMPL configuration. It is log-level metadata, tied to no datum.
+  if (rec.kind === "manifest") {
+    if (typeof rec.protocol !== "string" || typeof rec.schemaVersion !== "number") {
+      return "manifest record is malformed (missing protocol/schemaVersion)";
+    }
+    if (rec.decisions === null || typeof rec.decisions !== "object") {
+      return "manifest record carries no declared decisions";
+    }
+    return null;
+  }
   // Lean trace lines (layer-exit / provenance): only a datumId + the move.
   if (rec.kind === "activity" && rec.activityKind !== "cycle-seal") {
     if (typeof rec.datumId !== "string" || rec.datumId.length === 0) {

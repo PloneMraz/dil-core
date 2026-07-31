@@ -41,6 +41,7 @@ import type { EventLog } from "../store/event-log.js";
 import { takeSnapshot, restoreSnapshot, type SystemSnapshot } from "./commit.js";
 import { createDiversityMonitor, type DiversityMonitor } from "./diversity.js";
 import { requisition, type Requisitioned } from "./requisition.js";
+import { collectManifest } from "./manifest.js";
 import type { HostSource } from "./host-source.js";
 
 export interface DaemonDeps {
@@ -198,6 +199,15 @@ export function createDaemon(deps: DaemonDeps): Daemon {
         }
         data = deps.data;
         events = deps.events;
+      }
+
+      // Genesis: on a FRESH log, the first record is the constitution — the
+      // DECIDE@IMPL configuration this run operates under (§9, §8.5), so a third
+      // party reading only [event] knows the law it ran under. Hash-chained like
+      // every line, it is tamper-evident and inseparable from the run. A resumed
+      // (non-empty) log already carries its genesis manifest — never a second one.
+      if (events.size() === 0) {
+        events.append(collectManifest((deps.now ?? Date.now)()));
       }
 
       // Recovery (before the cycle runs): restore the full accrued state.

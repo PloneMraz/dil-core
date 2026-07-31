@@ -32,6 +32,7 @@ import {
   recordEmission,
   recordCrystallization,
   recordExpectation,
+  recordManifest,
   type EventRecord,
   type ActivityRecord,
   type ContextAnchor,
@@ -212,6 +213,14 @@ test("an expectation line round-trips (INV-5: entity, confidence, recurrence, de
   const rec = recordExpectation("cycle-2", 2, "weather", 0.67, 2, 1, 5);
   const serialized = serializeEventRecord(rec);
   assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "confidence", "recurrence", "delta", "t"]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
+});
+
+test("a manifest record round-trips (§9: the run's DECIDE@IMPL constitution)", () => {
+  const rec = recordManifest("0.3.2", 2, { tagH_forwardBuilding: { H_COUNT: 3 }, diversity: { window: 8, minSources: 2 } }, 7);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), ["form", "protocol", "schemaVersion", "decisions", "t"]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });

@@ -107,6 +107,15 @@ export interface SerializedExpectation {
   readonly t: number;
 }
 
+/** Serialized form of the genesis `manifest` record (§9; the run's DECIDE@IMPL constitution). */
+export interface SerializedManifest {
+  readonly form: "manifest";
+  readonly protocol: string;
+  readonly schemaVersion: number;
+  readonly decisions: Readonly<Record<string, unknown>>;
+  readonly t: number;
+}
+
 /** A serialized [event] line, discriminated by `form`. */
 export type SerializedEventRecord =
   | SerializedDatumRecord
@@ -114,7 +123,8 @@ export type SerializedEventRecord =
   | SerializedProvenance
   | SerializedEmission
   | SerializedCrystallization
-  | SerializedExpectation;
+  | SerializedExpectation
+  | SerializedManifest;
 
 function datumForm(
   form: "scar" | "cycle-seal",
@@ -141,6 +151,9 @@ function datumForm(
 export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
   if (rec.kind === "scar") {
     return datumForm("scar", rec.scar, { event: rec.event, anchor: rec.anchor });
+  }
+  if (rec.kind === "manifest") {
+    return { form: "manifest", protocol: rec.protocol, schemaVersion: rec.schemaVersion, decisions: rec.decisions, t: rec.t };
   }
   switch (rec.activityKind) {
     case "cycle-seal":
@@ -390,6 +403,15 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       confidence: rec.confidence,
       recurrence: rec.recurrence,
       delta: rec.delta,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "manifest") {
+    return {
+      kind: "manifest",
+      protocol: rec.protocol,
+      schemaVersion: rec.schemaVersion,
+      decisions: rec.decisions,
       t: rec.t,
     };
   }
