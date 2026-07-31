@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: genesis manifest — hiến pháp DECIDE@IMPL của run vào [event] (§9, §8.5)
+**Commit:** `da5f7c6`
+
+Cấu hình DECIDE@IMPL mà một run vận hành dưới đó **không có trong [event]**: bên thứ ba đọc chỉ log **không biết** thresholds, appraisal anchor + định danh transducer, Mode-B source, reflection mechanism, hay lựa chọn store/forward-building — nên **không re-appraise được** trace dưới đúng hằng số đã chi phối nó (§8.5). Per-line `schemaVersion` chỉ mô tả *tag schema*; hằng tunable không nằm đâu trong log (một phần config chỉ ở commit marker — ngoài [event], trong commit DAG, và chỉ khi có CommitStore). Thêm **bản ghi manifest một-lần** (kind LogRecord top-level mới `"manifest"`, không gắn datum) ghi làm **dòng [event] ĐẦU TIÊN** trên log rỗng, tại `daemon.start()`. [runtime/manifest.ts](src/runtime/manifest.ts) gom các hằng đã khai **verbatim** (không tự chép lại → không lệch khỏi decisions.ts). Nó **được hash-chain** như mọi dòng — chống-giả-mạo, không tách rời khỏi run — và ghi **một lần**: log resume (không rỗng) giữ manifest genesis, không có cái thứ hai. serialize/deserialize, inspector (`[manifest] …`), và kiểm §13.6 well-formedness đều xử lý; requisition vẫn không ghi gì (genesis thuộc daemon, lúc start). **5 test mới, 258 tổng, tsc sạch.** E2E: record #0 là manifest, `dil verify` chain nó, `decisions` mang trọn hiến pháp.
+
+---
+
 ### — feat: ghi `PredErr.delta` vào dòng expectation — sai số dự đoán mỗi cứ thăm dò (§6.3 T5)
 **Commit:** `5115524`
 
