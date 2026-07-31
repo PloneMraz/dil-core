@@ -4,7 +4,7 @@
   "description": "Data Integration Loop — dil-core",
   "type": "module",
   "bin": {
-    "dil": "./dist/index.js"
+    "dil": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

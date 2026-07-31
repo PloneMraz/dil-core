@@ -19,7 +19,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **241 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **252 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -148,6 +148,18 @@ scars by their *derived* name (tags are structured properties, not baked into na
   …
   #37 [20260724]_[10:00:00]_[scar]_[T8]_[domain:cycle]_[flow:multi-stream]_[phase:loop]_[source:driver]_[value-mismatch]  {…}→{…}
 ```
+
+### Audit a store from the command line
+
+The same read-only audit, without writing code — for a **third party** pointing at a foreign store on disk. `npm install -g` (or `npx dil`) exposes a `dil` command; every subcommand is a thin wrapper over the exported functions above and only ever **reads** the store:
+
+```bash
+dil verify <store-dir>       # verify the [event] hash chain — ok | BROKEN (exit 2)
+dil inspect <store-dir>      # print the datum-activity journal (inspectEventLog)
+dil conformance <store-dir>  # score the §13 criteria from traces alone
+```
+
+`<store-dir>` is the store root (the directory holding `store/event-log/`). Exit code is `0` on success, `2` when the chain fails to verify, `1` on a usage or bad-path error. Read-only: it opens no writable sink and touches nothing. Since no precondition gate is available from a store on disk, `dil conformance` reports **§13.2 Host** as `unverifiable` rather than assuming it — honest about what the trace alone can establish.
 
 ---
 
