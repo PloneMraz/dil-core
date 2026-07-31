@@ -43,12 +43,22 @@ test("INV-1 halts on a SINK (dead branch)", () => {
     ]),
   );
 });
-test("INV-1 passes a closed topology", () => {
+test("INV-1 passes a closed topology (every target also produces onward)", () => {
   assert.doesNotThrow(() =>
     assertClosedLoop([
       { from: 1, to: 2 },
       { from: 2, to: 3 },
-      { from: 8, to: 1 },
+      { from: 3, to: 1 }, // closes the cycle — every node is both a source and a target
+    ]),
+  );
+});
+test("INV-1 halts on a dead-end layer: a target with no outgoing edge", () => {
+  // node 3 receives output (2→3) but never produces onward — a dead branch with
+  // no explicit SINK marker; the earlier check missed this.
+  expectHalt("INV-1", () =>
+    assertClosedLoop([
+      { from: 1, to: 2 },
+      { from: 2, to: 3 },
     ]),
   );
 });

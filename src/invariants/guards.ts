@@ -25,25 +25,26 @@ import type {
  * INV-1 — Closed loop. Every layer output MUST have a path back to some layer's
  * input; no dead branches. Checked on topology, not per-packet timing (the
  * INV-1 note: a cycle-time constraint, not wall-clock). Halts if any edge
- * terminates in a SINK, or if any layer that appears as a source has no
- * outgoing edge.
+ * terminates in a SINK, or if any layer that RECEIVES output (a target) never
+ * produces onward (is never a source) — its output dead-ends with no path back
+ * into the loop.
  */
 export function assertClosedLoop(edges: readonly LoopEdge[]): void {
+  const sources = new Set<LayerIndex>();
+  const targets = new Set<LayerIndex>();
   for (const edge of edges) {
     if (edge.to === "SINK") {
       halt("INV-1", `layer T${edge.from} output terminates in a SINK (dead branch)`);
     }
-  }
-  const sources = new Set<LayerIndex>();
-  const hasOutgoing = new Set<LayerIndex>();
-  for (const edge of edges) {
     sources.add(edge.from);
-    hasOutgoing.add(edge.from);
+    targets.add(edge.to); // `to` narrowed to LayerIndex — SINK already halted
   }
-  // A producing layer with no outgoing edge is a dead branch.
-  for (const layer of sources) {
-    if (!hasOutgoing.has(layer)) {
-      halt("INV-1", `layer T${layer} produces output with no return path`);
+  // A layer that receives output but has no outgoing edge is a dead branch: the
+  // output that reached it has no path back into the loop. (A source always has
+  // an outgoing edge by construction, so the meaningful check is over targets.)
+  for (const layer of targets) {
+    if (!sources.has(layer)) {
+      halt("INV-1", `layer T${layer} receives output but has no outgoing edge (dead branch)`);
     }
   }
 }
