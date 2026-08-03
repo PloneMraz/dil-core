@@ -375,9 +375,9 @@ test("§13.4 FAILS on the reloading signature: recurrence resets in the trace (I
   // A memoryless impostor: it emits expectation lines whose recurrence never
   // climbs (reset each cycle) — the trace betrays it, no better guard needed.
   const events = createEventLog();
-  events.append(recordExpectation("cycle-0", 0, "weather", 0, 0, 1, 1));
-  events.append(recordExpectation("cycle-1", 1, "weather", 0, 0, 1, 2)); // recurrence stuck at 0
-  events.append(recordExpectation("cycle-2", 2, "weather", 0, 0, 1, 3));
+  events.append(recordExpectation("cycle-0", 0, "weather", "weather", 0, 0, 1, 1));
+  events.append(recordExpectation("cycle-1", 1, "weather", "weather", 0, 0, 1, 2)); // recurrence stuck at 0
+  events.append(recordExpectation("cycle-2", 2, "weather", "weather", 0, 0, 1, 3));
   // give it a crystallization so only accumulation drives the fail
   events.append(recordCrystallization("cycle-0", 0, 1));
   const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
@@ -389,8 +389,8 @@ test("§13.4 FAILS on the reloading signature: recurrence resets in the trace (I
 
 test("§13.4 FAILS when confidence regresses while recurrence climbs (reload masquerade, INV-5)", () => {
   const events = createEventLog();
-  events.append(recordExpectation("cycle-0", 0, "weather", 0.9, 1, 0, 1));
-  events.append(recordExpectation("cycle-1", 1, "weather", 0.2, 2, 1, 2)); // confidence fell as recurrence rose
+  events.append(recordExpectation("cycle-0", 0, "weather", "weather", 0.9, 1, 0, 1));
+  events.append(recordExpectation("cycle-1", 1, "weather", "weather", 0.2, 2, 1, 2)); // confidence fell as recurrence rose
   events.append(recordCrystallization("cycle-0", 0, 1));
   const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
   const accum = c4.claims.find((c) => c.claim.includes("accumulation observable"))!;

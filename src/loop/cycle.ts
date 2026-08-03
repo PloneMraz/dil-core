@@ -35,6 +35,7 @@ import {
   recordEmission,
   recordCrystallization,
   recordExpectation,
+  recordResistanceReading,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
@@ -337,8 +338,20 @@ export function createCycle(deps: CycleDeps): Cycle {
       // and measures the ramp (§13.4) — an accruing self makes confidence and
       // recurrence climb together; a reloading impostor cannot.
       for (const r of pass.t5.results) {
+        // `source === entity_id`: for a value-mismatch, the entity IS the resistance
+        // source (the scar's source_id, cycle.ts collisions) — recorded explicitly.
         events.append(
-          recordExpectation(datumId(), cycle, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, cycleT),
+          recordExpectation(datumId(), cycle, r.entity_id, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, cycleT),
+        );
+      }
+      // ── Resistance readings for absences (§8, T7) ──
+      // The expectation line covers value-mismatch sources; a region that withholds
+      // an expected return resists by absence. Record that per-source too (source
+      // `region`, matching the absence scar's source_id), so no resistance source
+      // is left un-measurable in the trace (§8.3 absorption covers absences too).
+      for (const a of pass.t7.absences) {
+        events.append(
+          recordResistanceReading(datumId(), cycle, "region", a.entity_id, "absence", a.recurrence, a.delta, "-", cycleT),
         );
       }
 

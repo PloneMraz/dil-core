@@ -32,6 +32,7 @@ import {
   recordEmission,
   recordCrystallization,
   recordExpectation,
+  recordResistanceReading,
   recordManifest,
   type EventRecord,
   type ActivityRecord,
@@ -210,9 +211,17 @@ test("a crystallization line round-trips (§7: lean, no datum, no anchor)", () =
 });
 
 test("an expectation line round-trips (INV-5: entity, confidence, recurrence, delta)", () => {
-  const rec = recordExpectation("cycle-2", 2, "weather", 0.67, 2, 1, 5);
+  const rec = recordExpectation("cycle-2", 2, "weather", "weather", 0.67, 2, 1, 5);
   const serialized = serializeEventRecord(rec);
-  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "confidence", "recurrence", "delta", "t"]);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "entity", "source", "confidence", "recurrence", "delta", "t"]);
+  const back = deserializeEventRecord(serialized);
+  assert.deepEqual(back, rec);
+});
+
+test("a resistance-reading line round-trips (§8: an absence's per-source resistance)", () => {
+  const rec = recordResistanceReading("cycle-1", 1, "region", "weather", "absence", 2, 1, "-", 3);
+  const serialized = serializeEventRecord(rec);
+  assert.deepEqual(Object.keys(serialized), ["form", "datumId", "cycleMark", "source", "entity", "mismatchKind", "recurrence", "delta", "signed", "t"]);
   const back = deserializeEventRecord(serialized);
   assert.deepEqual(back, rec);
 });

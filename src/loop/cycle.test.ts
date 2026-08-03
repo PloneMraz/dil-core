@@ -123,6 +123,29 @@ test("the expectation reading records the per-probe prediction error (delta), ev
   assert.ok(exp.every((e) => typeof e.delta === "number"), "every probe carries a numeric delta");
   assert.equal(exp[0]!.delta, 0, "first probe predicts itself — no prediction error");
   assert.equal(exp[1]!.delta, 1, "the mismatch is recorded as the probe's prediction error");
+  // the expectation line carries an EXPLICIT source — the join key to a scar's
+  // source_id (for a value-mismatch, source === entity)
+  assert.equal(exp[0]!.source, exp[0]!.entity);
+});
+
+test("an absence is recorded as a per-source resistance-reading (§8, T7)", () => {
+  const { cycle, events } = freshCycle();
+  cycle.run({ signals: [weather("sun")], changes: [] }); // 'weather' seen (expected next)
+  cycle.run({
+    signals: [{ source_id: "ch", raw_payload: { entity: "market", value: "up" }, t: 1 }],
+    changes: [],
+  }); // 'weather' does not return → an absence
+  const rr = events
+    .all()
+    .filter((r): r is import("../store/resist-event.js").ResistanceReadingActivity =>
+      r.kind === "activity" && r.activityKind === "resistance-reading",
+    );
+  const w = rr.find((r) => r.entity === "weather");
+  assert.ok(w, "the absent weather's resistance is recorded per-source");
+  assert.equal(w!.source, "region"); // the join key to the absence scar's source_id
+  assert.equal(w!.mismatchKind, "absence");
+  assert.equal(w!.signed, "-");
+  assert.ok(w!.recurrence >= 1);
 });
 
 test("a layer's lateral emission is recorded in [event] with its issuing layer (§6.4)", () => {

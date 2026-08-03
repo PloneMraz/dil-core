@@ -24,7 +24,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { LogRecord, ResistEvent, ActivityEvent, ContextAnchor } from "./resist-event.js";
+import type { LogRecord, ResistEvent, ActivityEvent, ContextAnchor, MismatchKind } from "./resist-event.js";
 import type { OpenTags, Provenance, TaggedDatum } from "./tags.js";
 import type { LayerIndex } from "../invariants/types.js";
 import { MAX_SEGMENT_BYTES } from "./decisions.js";
@@ -101,9 +101,24 @@ export interface SerializedExpectation {
   readonly datumId: string;
   readonly cycleMark: number;
   readonly entity: string;
+  readonly source: string;
   readonly confidence: number;
   readonly recurrence: number;
   readonly delta: number;
+  readonly t: number;
+}
+
+/** Serialized form of a lean `resistance-reading` activity line (§8; absence's per-source resistance). */
+export interface SerializedResistanceReading {
+  readonly form: "resistance-reading";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly source: string;
+  readonly entity: string;
+  readonly mismatchKind: MismatchKind;
+  readonly recurrence: number;
+  readonly delta: number;
+  readonly signed: "+" | "-";
   readonly t: number;
 }
 
@@ -124,6 +139,7 @@ export type SerializedEventRecord =
   | SerializedEmission
   | SerializedCrystallization
   | SerializedExpectation
+  | SerializedResistanceReading
   | SerializedManifest;
 
 function datumForm(
@@ -184,9 +200,23 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
         datumId: rec.datumId,
         cycleMark: rec.cycleMark,
         entity: rec.entity,
+        source: rec.source,
         confidence: rec.confidence,
         recurrence: rec.recurrence,
         delta: rec.delta,
+        t: rec.t,
+      };
+    case "resistance-reading":
+      return {
+        form: "resistance-reading",
+        datumId: rec.datumId,
+        cycleMark: rec.cycleMark,
+        source: rec.source,
+        entity: rec.entity,
+        mismatchKind: rec.mismatchKind,
+        recurrence: rec.recurrence,
+        delta: rec.delta,
+        signed: rec.signed,
         t: rec.t,
       };
   }
@@ -400,9 +430,25 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       datumId: rec.datumId,
       cycleMark: rec.cycleMark,
       entity: rec.entity,
+      source: rec.source,
       confidence: rec.confidence,
       recurrence: rec.recurrence,
       delta: rec.delta,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "resistance-reading") {
+    return {
+      kind: "activity",
+      activityKind: "resistance-reading",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      source: rec.source,
+      entity: rec.entity,
+      mismatchKind: rec.mismatchKind,
+      recurrence: rec.recurrence,
+      delta: rec.delta,
+      signed: rec.signed,
       t: rec.t,
     };
   }

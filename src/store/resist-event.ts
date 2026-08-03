@@ -174,7 +174,11 @@ export interface CrystallizationActivity {
  * additionally gives a third party the per-probe prediction error for EVERY probe —
  * including the non-colliding ones that leave no scar — so prediction accuracy
  * over time is measurable, not just confidence. `datumId` is the cycle datum
- * (cycle-N); `entity` is the subject whose expectation this reads.
+ * (cycle-N); `entity` is the subject whose expectation this reads; `source` is
+ * that same subject as a RESISTANCE-SOURCE identity — the EXPLICIT join key to a
+ * scar's `source_id` (for a value-mismatch, `source === entity === scar.source_id`),
+ * so a third party can correlate the learning signal here with the collisions a
+ * source produced, without assuming an internal convention.
  */
 export interface ExpectationActivity {
   readonly kind: "activity";
@@ -182,10 +186,38 @@ export interface ExpectationActivity {
   readonly datumId: string;
   readonly cycleMark: number;
   readonly entity: string;
+  /** The resistance-source identity — the join key to a scar's `source_id`. */
+  readonly source: string;
   readonly confidence: number;
   readonly recurrence: number;
   /** Magnitude of the prediction error at this probe (PredErr.delta, §6.3 T5). */
   readonly delta: number;
+  readonly t: number;
+}
+
+/**
+ * A resistance reading for an ABSENCE (§8, T7) — the source-keyed record that the
+ * expectation line (T5, value-mismatch only) does not cover. A live region that
+ * keeps withholding an expected return is resisting by absence; recording it here,
+ * per source, lets a third party measure that resistance too. `source` is the
+ * scar-side identity (`region`, matching the absence scar's `source_id` — the
+ * EXPLICIT join key); `entity` is the specific subject that fell silent; together
+ * with `recurrence`+`delta` this feeds the absorption measure (§8.3) for absences,
+ * so it is not the case that only value-mismatch resistance is trace-measurable.
+ */
+export interface ResistanceReadingActivity {
+  readonly kind: "activity";
+  readonly activityKind: "resistance-reading";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  /** The resistance-source identity — the join key to a scar's `source_id`. */
+  readonly source: string;
+  /** The specific entity whose absence this reads (the subject of the resistance). */
+  readonly entity: string;
+  readonly mismatchKind: MismatchKind;
+  readonly recurrence: number;
+  readonly delta: number;
+  readonly signed: "+" | "-";
   readonly t: number;
 }
 
@@ -195,7 +227,8 @@ export type ActivityRecord =
   | ProvenanceActivity
   | EmissionActivity
   | CrystallizationActivity
-  | ExpectationActivity;
+  | ExpectationActivity
+  | ResistanceReadingActivity;
 
 /**
  * The manifest — the log's CONSTITUTION (§9, §8.5). A one-time genesis record,
@@ -286,12 +319,32 @@ export function recordExpectation(
   datumId: string,
   cycleMark: number,
   entity: string,
+  source: string,
   confidence: number,
   recurrence: number,
   delta: number,
   t: number,
 ): ExpectationActivity {
-  return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, confidence, recurrence, delta, t };
+  return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, source, confidence, recurrence, delta, t };
+}
+
+/**
+ * Note a resistance reading for an absence (§8, T7): the absent source's per-source
+ * resistance — `source` (the scar-side identity, the join key), the `entity` that
+ * fell silent, its `recurrence` and prediction-error `delta` this cycle (signed `-`).
+ */
+export function recordResistanceReading(
+  datumId: string,
+  cycleMark: number,
+  source: string,
+  entity: string,
+  mismatchKind: MismatchKind,
+  recurrence: number,
+  delta: number,
+  signed: "+" | "-",
+  t: number,
+): ResistanceReadingActivity {
+  return { kind: "activity", activityKind: "resistance-reading", datumId, cycleMark, source, entity, mismatchKind, recurrence, delta, signed, t };
 }
 
 /**

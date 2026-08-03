@@ -12,7 +12,7 @@
  */
 
 import type { LayerSpec, Snapshottable } from "../layer.js";
-import type { InfoUnit, PredErr } from "../types.js";
+import type { InfoUnit } from "../types.js";
 
 export interface T7Input {
   /** This cycle's expectations (entity → predicted), used to update memory. */
@@ -21,8 +21,25 @@ export interface T7Input {
   readonly observed: ReadonlySet<string>;
 }
 
+/**
+ * A registered absence — a signed-negative PredErr that additionally names WHICH
+ * entity fell silent and how many times it had been expected (`recurrence`). It is
+ * still a PredErr (assignable everywhere one is used), enriched so a third party
+ * can read the absent source's resistance per-source in the trace (the source's
+ * "resistance reading" for absence, §8, cycle driver).
+ */
+export interface AbsenceReading {
+  readonly entity_id: string;
+  /** How many times this entity had been expected (T7's `seen`). */
+  readonly recurrence: number;
+  readonly observed: null;
+  readonly predicted: InfoUnit;
+  readonly delta: number;
+  readonly signed: "-";
+}
+
 export interface T7Output {
-  readonly absences: readonly PredErr[];
+  readonly absences: readonly AbsenceReading[];
 }
 
 export interface T7Options {
@@ -57,11 +74,15 @@ export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> & S
         st.seen += 1;
         expected.set(e.entity_id, st);
       }
-      // Register absence for expected entities that did not return.
-      const absences: PredErr[] = [];
+      // Register absence for expected entities that did not return, naming which
+      // entity fell silent and how many times it had been expected (recurrence),
+      // so the absent source's resistance is readable per-source in the trace.
+      const absences: AbsenceReading[] = [];
       for (const [id, st] of expected) {
         if (st.seen >= minSeen && !input.observed.has(id)) {
           absences.push({
+            entity_id: id,
+            recurrence: st.seen,
             observed: null, // the missing InfoUnit
             predicted: st.predicted,
             delta: 1,

@@ -40,6 +40,7 @@ import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
 import { takeSnapshot, restoreSnapshot, type SystemSnapshot } from "./commit.js";
 import { createDiversityMonitor, type DiversityMonitor } from "./diversity.js";
+import { measureAbsorption } from "./absorption.js";
 import { requisition, type Requisitioned } from "./requisition.js";
 import { collectManifest } from "./manifest.js";
 import type { HostSource } from "./host-source.js";
@@ -90,6 +91,13 @@ export interface Daemon {
   cyclesRun(): number;
   /** The current diversity-loss signal, or null (conformance criterion 7). */
   diversitySignal(): string | null;
+  /**
+   * The current absorption signal (§8.3), or null — fires when every
+   * sufficiently-probed resistance source has been memorized (prediction error →
+   * 0), a deceleration-only regime. Observability, not a §13 criterion; read from
+   * the [event] readings, so a third party can recompute it from the log.
+   */
+  absorptionSignal(): string | null;
   /** The result of the most recent cycle, or null before the first. */
   lastResult(): CycleResult | null;
   /** Manual, out-of-loop commit trigger; returns the marker hash, or null without a store. */
@@ -254,6 +262,7 @@ export function createDaemon(deps: DaemonDeps): Daemon {
     isRunning: () => running,
     cyclesRun: () => cycle?.cycleCount() ?? 0,
     diversitySignal: () => diversity.signal(),
+    absorptionSignal: () => (events ? measureAbsorption(events.all()).signal : null),
     lastResult: () => last,
     commit: () => (running && commits ? writeMarker() : null),
     requisitionReport: () =>

@@ -54,6 +54,7 @@ export type {
   EmissionActivity,
   CrystallizationActivity,
   ExpectationActivity,
+  ResistanceReadingActivity,
   ManifestRecord,
   LogRecord,
 } from "./resist-event.js";
@@ -65,6 +66,7 @@ export {
   recordEmission,
   recordCrystallization,
   recordExpectation,
+  recordResistanceReading,
   recordManifest,
   EventRecordError,
 } from "./resist-event.js";

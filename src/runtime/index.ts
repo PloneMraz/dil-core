@@ -20,6 +20,12 @@ export {
   type DiversityOptions,
 } from "./diversity.js";
 
+export {
+  measureAbsorption,
+  type AbsorptionReport,
+  type SourceAbsorption,
+} from "./absorption.js";
+
 export { createDaemon, type Daemon, type DaemonDeps } from "./daemon.js";
 
 export { collectManifest } from "./manifest.js";
