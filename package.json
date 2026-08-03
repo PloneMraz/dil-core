@@ -6,6 +6,10 @@
   "bin": {
     "dil": "./dist/cli.js"
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

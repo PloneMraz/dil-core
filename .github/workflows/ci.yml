@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm is read from package.json "packageManager"; no version pin needed here.
+      - uses: pnpm/action-setup@v4
+
+      # Node 24+: node:sqlite (the [data] store) is available unflagged, and the
+      # built-in node:test runner + glob is used for the suite (engines: >=24).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # `pnpm test` compiles to dist/ then runs node --test over dist/**/*.test.js.
+      - name: Test
+        run: pnpm test
