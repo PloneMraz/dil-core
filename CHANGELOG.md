@@ -6,6 +6,19 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — feat: tín hiệu absorption, liên kết source tường minh, và resistance-reading cho absence (§8, §8.3)
+**Commit:** `9753e4d`
+
+Ba thứ phân tích cạn-nguồn / new-in-kind cần — không thứ nào cần bộ phân loại mismatch ("kind" ở §8.3 là *tính mới*, không phải taxonomy):
+
+**(a) Ghép tường minh.** Dòng expectation nay mang `source` (== entity cho value-mismatch) — khóa ghép tường minh tới `scar.source_id` — nên bên thứ ba tương quan được tín hiệu học với các va chạm của một nguồn mà không phải đoán quy ước nội bộ.
+
+**(b) Phủ absence.** T7 nay nêu **entity nào** im lặng + recurrence (`AbsenceReading`, vẫn là `PredErr`), và cycle ghi một dòng **`resistance-reading`** cho mỗi absence (source "region" — khóa ghép tới absence scar) — nên nguồn kháng cự bằng cách nín cũng đo được per-source, không chỉ value-mismatch.
+
+**Absorption (§8.3).** Hàm thuần `measureAbsorption` đọc các reading đó, gom theo chủ thể kháng cự, báo per-source: nguồn **còn sai số ở recurrence cao = phanh thật** (còn collision new in kind); nguồn **sai số về 0 = đã học thuộc** (chỉ deceleration). Tín hiệu **bùng khi mọi nguồn đủ-thăm-dò đều đã hấp thụ**. Lộ qua `daemon.absorptionSignal()`; là **observability, KHÔNG phải tiêu chí §13** (§13.7 là *source* diversity — trục khác) — nêu trung thực, không mạo nhận conformance. serialize/deserialize + inspector + round-trip cập nhật. **7 test mới, 265 tổng, tsc sạch.** E2E: absence → `resistance-reading region/weather`; run học thuộc → `absorbed` + "deceleration only, not a real brake (§8.3)".
+
+---
+
 ### — feat: genesis manifest — hiến pháp DECIDE@IMPL của run vào [event] (§9, §8.5)
 **Commit:** `da5f7c6`
 
