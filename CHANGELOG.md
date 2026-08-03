@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
+### — docs: đồng bộ câu chốt + thay "rule"→"command" ở CONTEXT/AGENTS (hướng A)
+**Commit:** `865cce5`
+
+Tiếp nối sửa README: câu chốt "one sentence to keep" trước lặp y hệt ở cả ba file mà mới chỉ README được sửa → đồng bộ [CONTEXT:159](CONTEXT.md#L159) và [AGENTS:239](AGENTS.md#L239) về cùng *"DIL is the law of that operation, never its actor"*. Trong metaphor sovereign **giữ lại** (CONTEXT §1, AGENTS §Sovereign), thay chữ **"rule" (bị phủ định) → "command"** — vì "rule" đụng với sự thật DIL *chính là* một tập rule (invariants, tag schema); "command" đúng nghĩa idiom, vốn đã được body giải thích ("does not command each action"). Thêm một mệnh đề nói rõ: DIL **áp luật nhưng không tự hành động; luật ≠ hành động**. Các "rule(s)" hợp lệ (coding rules, defined tag-change rules) giữ nguyên. Chỉ docs.
+
+---
+
 ### — docs: bỏ cách ngôn "reigns; it does not rule" trong README (nói thẳng)
 **Commit:** (docs)
 
