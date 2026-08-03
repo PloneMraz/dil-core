@@ -6,7 +6,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
-### — feat: tín hiệu absorption, liên kết source tường minh, và resistance-reading cho absence (§8, §8.3)
+### — chore: LICENSE (MIT), CI, và engines — ba khoảng trống repo-hygiene
+**Commits:** `ad6ee88` (engines + CI), `2a34d99` (LICENSE)
+
+Ba việc cũ chưa làm, đã xử lý:
+- **LICENSE:** repo trước không có giấy phép (mặc định all-rights-reserved) và package.json không có trường `license`. Thêm **MIT LICENSE** (copyright Plone Mraz, 2026 — do chủ repo chọn), đặt `"license": "MIT"`, ghi mục License trong README.
+- **CI:** không có `.github/`. Thêm [.github/workflows/ci.yml](.github/workflows/ci.yml): trên push `master` + PR → `pnpm install --frozen-lockfile` → typecheck (`tsc --noEmit`) → `pnpm test` (compile + `node --test`) trên Node 24. Đã kiểm frozen-lockfile install cục bộ (xanh).
+- **engines:** package.json không khai runtime. Thêm `engines.node ">=24.0.0"` — mốc mà `node:sqlite` (kho `[data]`) chạy **không cờ** `--experimental-sqlite` (đúng cái test script dựa vào; máy dev là Node v24.14), kèm `packageManager` pin đúng pnpm repo dùng.
+
+Không đụng mã nguồn/logic; không đổi hành vi (265 test giữ nguyên).
 **Commit:** `9753e4d`
 
 Ba thứ phân tích cạn-nguồn / new-in-kind cần — không thứ nào cần bộ phân loại mismatch ("kind" ở §8.3 là *tính mới*, không phải taxonomy):
