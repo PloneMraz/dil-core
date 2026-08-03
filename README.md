@@ -217,3 +217,9 @@ The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`�
 ## The one sentence to keep
 
 > DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL reigns; it does not rule.
+
+---
+
+## License
+
+[MIT](LICENSE) © Plone Mraz.

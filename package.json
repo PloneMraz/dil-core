@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Data Integration Loop — dil-core",
   "type": "module",
+  "license": "MIT",
   "bin": {
     "dil": "./dist/cli.js"
   },
