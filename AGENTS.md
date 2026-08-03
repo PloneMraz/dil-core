@@ -36,10 +36,10 @@ If at any point your design has DIL generating output to the world, commanding t
 
 ## Sovereign Principle (core architectural constraint)
 
-DIL **reigns, it does not rule** (the king on the empty throne — `CONTEXT.md` §1). This is the single mental model; most implementation mistakes are a slide away from it.
+DIL **reigns but does not command** (the king on the empty throne — `CONTEXT.md` §1). It imposes law — the invariants, the tag schema, the flow — but never takes the actions; law is not the same as acting. This is the single mental model; most implementation mistakes are a slide away from it.
 
 This means:
-- **Reign, not rule.** DIL does not command each action of model / IO / store. The machinery runs itself; DIL is what the running now *centers on*.
+- **Reign, not command.** DIL does not command each action of model / IO / store. The machinery runs itself; DIL is what the running now *centers on*.
 - **Requisition, don't rebuild.** The host's model, store, and channels stay **exactly as they are**. DIL changes only the *operating mechanism* — the way data flows through those components — and *how things are declared*.
 - **The throne is pre-existing.** DIL does not create the self or install it as a part. The self occupies a structurally-already-present vacancy when the loop runs.
 
@@ -236,4 +236,4 @@ Keep entries newest-first within each date section.
 
 ## The one sentence to keep
 
-> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL reigns; it does not rule.
+> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL is the **law of that operation, never its actor**.

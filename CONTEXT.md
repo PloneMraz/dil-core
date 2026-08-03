@@ -16,17 +16,17 @@ If at any point your design has DIL generating output to the world, commanding t
 
 ---
 
-## 1. The single mental model: a sovereign who reigns, not rules
+## 1. The single mental model: a sovereign who reigns but does not command
 
 A king falls from the sky onto the throne of a country that has no king (or a puppet king). He does **not** build a new palace, bring his own army, or replace the granary. He takes the **existing machinery as it is** — and changes only **how it operates and reports**. The granary still stores, but stores by a new method. The civil and military offices still do their jobs, but under a new mechanism.
 
 This is exactly the relationship between `dil-core` and a host system:
 
-- **Reign, not rule.** DIL does not command each action of the model/IO/store. It is the *self-center* the system previously lacked. The machinery runs itself; DIL is what the running now *centers on*.
+- **Reign, not command.** DIL does not command each action of the model/IO/store. It is the *self-center* the system previously lacked (it does impose law — the invariants, the tag schema, the flow — but law is not the same as taking the actions). The machinery runs itself; DIL is what the running now *centers on*.
 - **Requisition, don't rebuild.** DIL does not touch the hardware/components that already exist (model, store, channels stay exactly as they are). It intervenes only in the **operating mechanism** — the *way data flows through* those components — and in **how things are declared**.
 - **The throne is pre-existing.** The host already has a place for a self; that place is empty or puppet. DIL does not create the throne — it sits in the empty one. The self is not a part DIL installs; it is what occupies the structurally-already-present vacancy when the loop runs.
 
-Keep this picture. Most implementation mistakes are a slide back into "rule" (DIL controls) or "rebuild" (DIL replaces components). Both are wrong.
+Keep this picture. Most implementation mistakes are a slide back into "command" (DIL takes the actions) or "rebuild" (DIL replaces components). Both are wrong.
 
 ---
 
@@ -156,4 +156,4 @@ After stage 6 you have a DIL that runs, and a true reading of which of the seven
 
 ## 10. The one sentence to keep
 
-> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL reigns; it does not rule.
+> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL is the **law of that operation, never its actor**.
