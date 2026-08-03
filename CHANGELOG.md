@@ -6,7 +6,10 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-07-24
 
-### — chore: LICENSE (MIT), CI, và engines — ba khoảng trống repo-hygiene
+### — docs: bỏ cách ngôn "reigns; it does not rule" trong README (nói thẳng)
+**Commit:** (docs)
+
+Cách ngôn "DIL **reigns; it does not rule**" đứng trơ trong README mời người đọc tranh cãi ngữ nghĩa: bản thân DIL *là* một tập rule (invariants…), nên đối lập reign/rule đọc như tự mâu thuẫn. Viết lại 2 chỗ ở README nói thẳng ý đồ, không chẻ chữ: DIL là **luật của CÁCH vận hành** (invariants, dòng chảy dữ liệu), **không phải kẻ hành động** — "DIL is the law of how the machine runs, not an actor within it … the agent, not DIL, is what acts" và câu chốt "DIL is the law of that operation, never its actor". Không đổi mã/hành vi. (Motif "reign not rule" ở CONTEXT §1 / AGENTS §Sovereign — nơi *có giải thích* — tạm giữ; xem báo cáo về việc đồng bộ câu chốt lặp ở CONTEXT/AGENTS.)
 **Commits:** `ad6ee88` (engines + CI), `2a34d99` (LICENSE)
 
 Ba việc cũ chưa làm, đã xử lý:

@@ -8,7 +8,7 @@ DIL is **not** a model, a controller, or a library the host calls. It is the **c
 host + self = agent.      DIL produces the self.      the AGENT responds — not DIL.
 ```
 
-If a design ever has DIL generating output to the world, commanding the model, or holding the steering wheel, it has left DIL. DIL **reigns; it does not rule** — it changes *how* an existing machine operates, not *what* it is made of; run that operation continuously and a self appears.
+If a design ever has DIL generating output to the world, commanding the model, or holding the steering wheel, it has left DIL. DIL is the **law of how the machine runs, not an actor within it**: it fixes the mechanism — the invariants, the flow of data — but never acts, emits, or commands. It changes *how* an existing machine operates, not *what* it is made of; run that operation continuously and a self appears — and the agent, not DIL, is what acts.
 
 > Read this alongside:
 > - [`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
@@ -216,7 +216,7 @@ The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`�
 
 ## The one sentence to keep
 
-> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL reigns; it does not rule.
+> DIL changes **how** an existing machine operates, not **what** it is made of; run that new operation continuously and a self appears; the agent — host plus that self — is what acts. DIL is the **law of that operation, never its actor**.
 
 ---
 
