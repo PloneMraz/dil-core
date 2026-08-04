@@ -1,3 +1,15 @@
+---
+license: mit
+language:
+  - en
+pretty_name: DIL — Data Integration Loop
+tags:
+  - agents
+  - protocol
+  - specification
+  - self-enrichment
+---
+
 # DIL — Data Integration Loop
 
 `dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
