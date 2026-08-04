@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-08-04
+
+### — docs: thêm front matter dataset card cho HuggingFace vào README
+**Commit:** `45dc495`
+
+Chuẩn bị mirror repo lên HF dưới dạng **dataset repo public** `PloneMraz/dil-core`. HF đọc khối YAML front matter ở đầu `README.md` để dựng dataset card, nên thêm `license: mit`, `language: en`, `pretty_name`, `tags`. Chọn thêm thẳng vào README chung (thay vì tách nhánh `hf` riêng) để GitHub và HF luôn đồng bộ, đổi lại GitHub render khối đó thành một bảng nhỏ ở đầu trang. Không đụng mã/nội dung README.
+
+---
+
 ## [Unreleased] — 2026-07-24
 
 ### — docs: đồng bộ câu chốt + thay "rule"→"command" ở CONTEXT/AGENTS (hướng A)
