@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-08-04
 
+### — chore: thêm trường repository vào package.json
+**Commit:** `7c321ce`
+
+Rà 17 link tương đối trong README trước khi cân nhắc đổi sang URL tuyệt đối. Kết luận: **không đổi** — HuggingFace resolve link tương đối đúng và còn phân biệt `blob` (file) với `tree` (thư mục), ví dụ `src/loop` → `/datasets/plonemraz/dil-core/tree/main/src/loop`. Đổi sang tuyệt đối sẽ đá người đọc HF sang GitHub và đóng cứng tên nhánh `master` vào text (hỏng âm thầm với mọi fork/branch). Nơi link tương đối **thật sự** hỏng là npmjs.com, vì npm viết lại chúng dựa trên trường `repository` — trường này đang thiếu. Thêm `repository` (git+https tới GitHub) là đủ, không đụng README. JSON hợp lệ, `tsc --noEmit` sạch.
+
+---
+
 ### — docs: thêm mục Citation vào README
 **Commit:** `33c39ce`
 
