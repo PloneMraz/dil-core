@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-08-04
 
+### — docs: thêm CITATION.cff
+**Commit:** `3119d2c`
+
+Metadata trích dẫn chuẩn **CFF 1.2.0** do chủ repo soạn: tác giả Mai Phuc Huynh (alias Plone Mraz) kèm ORCID, `version: 0.1.0`, `license: MIT`, `date-released: 2026-08-04`, `repository-code` trỏ GitHub. GitHub đọc file này để dựng nút "Cite this repository". Đã đối chiếu các trường kiểm được: version khớp [package.json](package.json), license khớp [LICENSE](LICENSE), và cụm "append-only, hash-chained" trong `abstract` khớp cơ chế thật ([src/store/decisions.ts](src/store/decisions.ts) `EVENT_TAMPER_EVIDENCE` — chuỗi sha256 + `dil verify`), không phải mạo nhận.
+
+---
+
 ### — docs: thêm front matter dataset card cho HuggingFace vào README
 **Commit:** `45dc495`
 
