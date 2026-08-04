@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-08-04
 
+### — chore: thêm .gitattributes mặc định của HuggingFace (quy tắc LFS)
+**Commit:** `be343ef`
+
+Repo dataset `plonemraz/dil-core` khi tạo qua web đã tự sinh commit khởi tạo `b81bf59` gồm `README.md` 21 byte và `.gitattributes` 60 dòng (55 quy tắc `filter=lfs`: `*.parquet`, `*.bin`, `*.h5`, `*.safetensors`…). Lịch sử đó không liên quan tới lịch sử local nên sẽ bị đè bằng force push; copy `.gitattributes` vào repo trước để không mất quy tắc LFS phòng khi sau này thêm file nhị phân lớn. Repo hiện không có file nào khớp các quy tắc này.
+
+---
+
 ### — docs: thêm CITATION.cff
 **Commit:** `3119d2c`
 
