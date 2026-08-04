@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-08-04
 
+### — docs: thêm mục Citation vào README
+**Commit:** `33c39ce`
+
+[CITATION.cff](CITATION.cff) chỉ GitHub đọc được (dựng nút "Cite this repository"); HuggingFace **không** parse CFF nên dataset card `plonemraz/dil-core` không lộ chút thông tin trích dẫn nào. Thêm mục `## Citation` ngay trước `## License` với khối BibTeX `@software` khớp đúng CITATION.cff (tác giả, `version 0.1.0`, MIT, ORCID trong trường `note`). Kèm một đoạn phân biệt: trích dẫn **implementation** thì dùng khối trên, trích dẫn **protocol** thì nêu `DIL-protocol-v0.3.2.md` (v0.3.2) — nhất quán với nguyên tắc protocol là normative đã nêu ở đầu README. Chỉ docs.
+
+---
+
 ### — chore: thêm .gitattributes mặc định của HuggingFace (quy tắc LFS)
 **Commit:** `be343ef`
 
