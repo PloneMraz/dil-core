@@ -232,6 +232,26 @@ The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`�
 
 ---
 
+## Citation
+
+Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (CFF 1.2.0) — GitHub builds its **Cite this repository** button from it. To cite this software directly:
+
+```bibtex
+@software{huynh_dilcore_2026,
+  author  = {Huynh, Mai Phuc},
+  title   = {dil-core: a reference implementation of the DIL (Data Integration Loop) protocol},
+  year    = {2026},
+  version = {0.1.0},
+  license = {MIT},
+  url     = {https://github.com/PloneMraz/dil-core},
+  note    = {ORCID: 0009-0009-0571-7151}
+}
+```
+
+To cite the **protocol** rather than this implementation, name the specification file and its version: `DIL-protocol-v0.3.2.md` (v0.3.2). Where the two differ, the protocol is normative — see the note at the top of this file.
+
+---
+
 ## License
 
 [MIT](LICENSE) © Plone Mraz.
