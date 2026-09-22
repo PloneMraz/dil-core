@@ -6,14 +6,28 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-22
 
-### — chore: thêm .mailmap gộp hai danh tính tác giả
+### 16:12 — docs: ghi đúng tên model đang dùng trong Commit Format
+**Commit:** `917df25`
+
+Trailer đồng tác giả trong [AGENTS.md](AGENTS.md) ghi `Claude Opus 4.8`, không còn khớp với model thực sự làm việc. Ghi công sai tên tác giả, dù nhỏ, vẫn là ghi công sai — nên dòng đó giờ ghi đúng thứ đang được ký.
+
+---
+
+### 16:12 — chore: khai MIT-0 trong metadata dataset card của HuggingFace
+**Commit:** `9ef8c7a`
+
+Lần đổi giấy phép **bỏ sót** front matter của dataset card, vẫn còn `license: mit`: lần quét đầu phân biệt hoa thường nên không thấy, lần quét lại không phân biệt thì ra ngay. Danh sách định danh của Hub **không có** MIT-0 ([tài liệu Hub](https://huggingface.co/docs/hub/repositories-licenses)), nên áp đúng lối đi tài liệu chỉ: `license: other` kèm `license_name: mit-0` và `license_link` trỏ vào [LICENSE](LICENSE) mà repo đã có.
+
+---
+
+### 16:06 — chore: thêm .mailmap gộp hai danh tính tác giả
 **Commit:** `6a39bfa`
 
 77 commit đầu (30/06–07/07) đứng tên tài khoản phụ của chủ repo, 80 commit sau đứng tên tài khoản chính, nên `git shortlog` và biểu đồ đóng góp của GitHub báo **hai** người cho công việc của **một** người — lệch với [CITATION.cff](CITATION.cff) vốn chỉ ghi một tác giả. `.mailmap` ánh xạ danh tính phụ về danh tính chính: `git shortlog -sne` giờ ra đúng một dòng, 157 commit. Đây là thay đổi **hiển thị**, không đụng object commit nào. Phương án viết lại lịch sử đã được cân nhắc và **loại**: force-push chỉ bỏ tham chiếu chứ không xoá commit khỏi máy chủ GitHub, nên địa chỉ cũ vẫn truy cập được theo SHA trong khi toàn bộ 157 SHA đổi mới — trả giá thật để lấy một lịch sử chỉ *trông* sạch. Lý do đó viết thẳng trong file.
 
 ---
 
-### — chore: đổi giấy phép sang MIT-0
+### 16:06 — chore: đổi giấy phép sang MIT-0
 **Commit:** `b59663e`
 
 ARC Prize 2026 buộc mọi mã **do người nộp viết** phải mở dưới giấy phép công cộng rộng rãi, nêu đích danh CC0 và MIT-0. MIT còn điều khoản giữ ghi công, nên một bài nộp `import` gói này sẽ không thoả điều kiện — mà phần đáng chấm chính là gói này chứ không phải lớp adapter bọc ngoài. Thay [LICENSE](LICENSE) bằng văn bản SPDX của MIT No Attribution, rồi theo định danh đó qua [package.json](package.json), [CITATION.cff](CITATION.cff) và cả hai chỗ [README.md](README.md) nhắc tới. Chủ sở hữu bản quyền không đổi và là tác giả duy nhất của mọi commit (xem mục `.mailmap` ở trên), nên không cần sự đồng ý của bên thứ ba. MIT-0 chỉ **bỏ bớt** một điều kiện, nên ai đã nhận bản cũ theo MIT vẫn giữ nguyên mọi quyền đang có. `tsc --noEmit` sạch, 265 test xanh.
