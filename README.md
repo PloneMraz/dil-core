@@ -1,5 +1,7 @@
 ---
-license: mit
+license: other
+license_name: mit-0
+license_link: LICENSE
 language:
   - en
 pretty_name: DIL — Data Integration Loop
