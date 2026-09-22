@@ -8,6 +8,20 @@
     "type": "git",
     "url": "git+https://github.com/PloneMraz/dil-core.git"
   },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "dil": "./dist/cli.js"
   },
@@ -17,6 +31,7 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "tsc && node --test \"dist/**/*.test.js\"",
     "dev": "tsc --watch"
