@@ -1,0 +1,9 @@
+# Hai danh tính commit dưới đây là cùng một người: chủ repo, dùng tài khoản
+# phụ cho 77 commit đầu (30/06–07/07/2026) rồi chuyển sang tài khoản chính.
+#
+# File này chỉ đổi cách HIỂN THỊ — `git shortlog`, `git log`, biểu đồ đóng góp
+# của GitHub sẽ gộp về một tác giả. Nó KHÔNG sửa object commit: địa chỉ cũ vẫn
+# nằm trong lịch sử và `git log --format=%ae` vẫn đọc ra. Muốn gỡ thật thì phải
+# viết lại lịch sử VÀ yêu cầu GitHub thu gom rác — một lựa chọn đã cân nhắc và
+# không chọn, vì force-push chỉ bỏ tham chiếu chứ không xoá commit khỏi máy chủ.
+Plone Mraz <plone.mraz@gmail.com> shareacount777-cyber <share.acount.777@gmail.com>
