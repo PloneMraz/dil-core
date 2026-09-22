@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Data Integration Loop — dil-core",
   "type": "module",
-  "license": "MIT",
+  "license": "MIT-0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PloneMraz/dil-core.git"

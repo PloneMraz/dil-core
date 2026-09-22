@@ -15,7 +15,7 @@ authors:
     alias: "Plone Mraz"
     orcid: "https://orcid.org/0009-0009-0571-7151"
 repository-code: "https://github.com/PloneMraz/dil-core"
-license: MIT
+license: MIT-0
 version: "0.1.0"
 date-released: "2026-08-04"
 keywords:

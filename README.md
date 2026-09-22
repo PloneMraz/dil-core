@@ -242,7 +242,7 @@ Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (CFF 1.2.0) �
   title   = {dil-core: a reference implementation of the DIL (Data Integration Loop) protocol},
   year    = {2026},
   version = {0.1.0},
-  license = {MIT},
+  license = {MIT-0},
   url     = {https://github.com/PloneMraz/dil-core},
   note    = {ORCID: 0009-0009-0571-7151}
 }
@@ -254,4 +254,4 @@ To cite the **protocol** rather than this implementation, name the specification
 
 ## License
 
-[MIT](LICENSE) © Plone Mraz.
+[MIT-0](LICENSE) © Plone Mraz.
