@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-22
 
+### 16:44 — chore: để package import được như một thư viện
+**Commit:** `3f5bf47`
+
+[package.json](package.json) chỉ khai `bin` và không gì khác, nên `import ... from "dil-core"` **phân giải về rỗng** — Node không có điểm vào nào để nhìn. Gói này trên thực tế là một công cụ dòng lệnh tình cờ chứa một thư viện. Thêm `main`, `types` và bản đồ `exports` trỏ vào điểm vào đã biên dịch mà `tsc` vốn sinh ra từ [src/index.ts](src/index.ts); thêm `files` để bản publish mang theo `dist`; thêm script `prepare` để lần cài thẳng từ git tự build, vì `.gitignore` loại `dist/` nên bản clone không có sẵn. **Kiểm từ bên ngoài chứ không suy đoán:** một dự án ESM riêng đặt cạnh, `import` gói này, phân giải đủ **140 export** và gọi được vào chúng. `tsc --noEmit` sạch, 265 test xanh.
+
+---
+
 ### 16:12 — docs: ghi đúng tên model đang dùng trong Commit Format
 **Commit:** `917df25`
 
