@@ -6,6 +6,18 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 04:32 — ci: đổi nhánh mặc định sang `main`, và CI chạy theo nó
+**Commit:** `d7e1755`
+
+Nhánh mặc định đổi tên từ `master` thành `main`, cho khớp quy ước của mọi repo khác do tài khoản này tự tạo. Việc đổi tên làm trên GitHub, nên tên cũ được tự chuyển hướng và nhánh mặc định được cập nhật luôn.
+
+Chỗ phụ thuộc duy nhất vào tên nhánh là trigger của CI (`on: push: branches: [master]`), và đó là một cái bẫy **im lặng**: trigger trỏ tới một nhánh không còn tồn tại thì không báo lỗi, nó chỉ **không bao giờ chạy nữa**, trong khi pull request vẫn chạy bình thường. Nên trigger được sửa cùng lúc, và **chính lần đẩy bản sửa đó là phép kiểm chứng**: CI đã chạy trên `main` (run `35831990929`, `push`, **success**) thay vì được giả định là sẽ chạy.
+
+Các dòng nhắc `master` trong những mục CHANGELOG cũ là lịch sử, được giữ nguyên.
+
+---
+
+
 ### 04:10 — docs: ghi đúng tên model đang làm việc trong Commit Format
 **Commit:** `ed065dc`
 
