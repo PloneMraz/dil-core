@@ -6,6 +6,25 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 02:19 — feat: kênh đi LÊN của GLOB-MOD, và T8 đặt độ rộng chú ý
+**Commit:** `bff8987`
+
+INV-7 viết: *"**Every layer contributes** to it as one competing parameter; contributions blend, re-weighted each cycle, **never last-write-wins**."* Thực tế: **không tầng nào đóng góp được.** `process` nhận `field` và `emit`, hết; người gọi `glob.contribute` **duy nhất** trong toàn bộ bản cài đặt là **driver**, một lần mỗi chu kỳ, với một khóa cứng ở trọng số cứng.
+
+Với đúng một người đóng góp thì **mọi mệnh đề của câu đó đều rỗng**: *"every layer contributes"* — sai; *"one competing parameter"* — không có gì cạnh tranh; *"blend, never last-write-wins"* — vô nghĩa, vì **một** đóng góp đem trộn **chính là** lần ghi cuối. Cỗ máy blend đã tồn tại, đã có test, và **không ai với tới được**.
+
+`ContributeFn` là **chiều thứ ba** một tầng có thể chuyển động, đối xứng với hai chiều kia: `field` **xuống** như nền chỉ-đọc, `emit` **ra** vùng, `contribute` **lên** trường. Như emission, nó được `runLayer` **gắn vào chỉ số của chính tầng đó**, đệm lại, rồi trao cho driver — tầng không bao giờ tự khai chỉ số và không bao giờ chạm thẳng vào GLOB-MOD.
+
+Nó **không phá INV-3**, vốn chỉ chi phối meaning-channel. §5 nói rõ: *"when an upper layer alters GLOB-MOD it changes the field, which then conditions every layer from above"*, và việc điều kiện hóa vẫn chỉ xảy ra ở **N+1**. Có test khẳng định đúng thời điểm đó.
+
+**Rẻ hơn ước lượng:** TypeScript cho phép hàm ít tham số thỏa chữ ký nhiều tham số, nên **bảy tầng không cần `emit` lẫn `contribute` thì không phải đụng tới**. Chỉ các chỗ gọi thẳng `process()` trong test mới cần thêm đối số. (Ước lượng ban đầu — *"đụng cả 8 tầng"* — là sai và đã sửa.)
+
+**T8 là người dùng đầu tiên.** Nó là tầng duy nhất nhìn thấy **có bao nhiêu Other cùng lúc**, nên cũng là tầng duy nhất nói được chú ý đang bị **dàn mỏng tới đâu**: nó đóng góp `attentionGain` **nghịch với N**, vì *chú ý tới bốn thứ không phải là chú ý tới một thứ bốn lần*. T7 đọc con số đó thành "thực thể ở lại trong kỳ vọng bao lâu", nên **span không còn phải dò tay theo từng host**. Gain trơ nếu host không khai span hữu hạn — Infinity nhân gì cũng là Infinity — nên host im lặng vẫn giữ hành vi tham chiếu.
+
+Và một test **cuối cùng cũng chạy được** mệnh đề blend với **hai** người đóng góp cùng đặt một khóa: kết quả là **trung bình có trọng số**, không phải cái chạy sau. **310 test xanh.**
+
+---
+
 ### 01:52 — feat: chú ý trên tình huống — trường nâng sàn fit
 **Commit:** `bebc412`
 
