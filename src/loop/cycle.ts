@@ -120,6 +120,15 @@ export interface HostCycleInput {
   /** Observed changes after the emission; `id` is treated as the entity id. */
   readonly changes: readonly ObservedChange[];
   readonly interactions?: T8Input["interactions"];
+  /**
+   * Entity ids the region reports PRESENT this cycle — able to return if they
+   * are going to. T7 registers an absence only against these.
+   *
+   * Silence presupposes the chance to speak: an entity the region itself says is
+   * not there is not silent, it is simply not there. Omitting it keeps the
+   * original behaviour exactly.
+   */
+  readonly present?: ReadonlySet<string>;
 }
 
 /** The flow mode a cycle ran in (protocol §6, §13.3). */
@@ -285,7 +294,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t6.datum;
     logExit(6);
     channel.publish(6, t6.output);
-    const t7 = runLayer(layers.t7, gatherT7(channel), field, datum);
+    const t7 = runLayer(layers.t7, gatherT7(channel, host), field, datum);
     datum = t7.datum;
     logExit(7);
     channel.publish(7, t7.output);

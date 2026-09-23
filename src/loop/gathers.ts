@@ -80,7 +80,7 @@ export function gatherT6(ch: MeaningChannel): T6Input {
   };
 }
 
-export function gatherT7(ch: MeaningChannel): T7Input {
+export function gatherT7(ch: MeaningChannel, host: HostCycleInput): T7Input {
   const t5 = mustRead<T5Output>(ch, 7, 5);
   return {
     expectations: t5.results.map((r) => ({
@@ -88,6 +88,9 @@ export function gatherT7(ch: MeaningChannel): T7Input {
       predicted: r.expectation.predicted,
     })),
     observed: new Set(t5.results.map((r) => r.entity_id)),
+    // Host ingest, like T1's and T3's: which entities the region says are there
+    // this cycle. Not a channel read, so INV-3 is not in play.
+    present: host.present,
   };
 }
 

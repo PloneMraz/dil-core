@@ -124,7 +124,8 @@ test("fan-out is real: T6 and T7 both read T5's single published output", () => 
   ch.publish(2, t2out);
   ch.publish(5, t5out);
   const forT6 = gatherT6(ch);
-  const forT7 = gatherT7(ch);
+  // T7 also takes host ingest (the region's presence report), like T1 and T3.
+  const forT7 = gatherT7(ch, { signals: [], changes: [] });
   // the SAME published results object reached both consumers
   assert.equal(forT6.results, t5out.results);
   assert.ok(forT7.observed.has("e"));

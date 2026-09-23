@@ -51,6 +51,7 @@ export {
 } from "./t6.js";
 
 export {
+  ATTENTION_GAIN,
   createT7,
   type T7Input,
   type T7Output,
