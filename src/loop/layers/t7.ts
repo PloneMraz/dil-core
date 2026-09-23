@@ -106,13 +106,19 @@ export const SILENCE = "silence";
  * layer's constant. It is not: it is what the whole field holds. This reads the
  * facts each layer reported from its own vantage and composes them —
  *
- *   `otherCount`  (T6, accrued)  how many Others the loop is holding
- *   `strangeness` (T4, context)  the share of arrivals that bound to no entity
+ *   `otherCount`     (T6, accrued)  how many Others the loop is holding
+ *   `strangeness`    (T4, context)  arrivals that bound to no known entity
+ *   `contextNovelty` (T5's rule)    whether this SITUATION has been met before
  *
- * — so that attention narrows as the loop holds more, and widens again when what
- * arrives stops being attributable. A strange situation earns a longer look; a
- * crowded familiar one does not. Both inputs are facts from context and
- * environment rather than tuning knobs, which is the whole point.
+ * — so that attention narrows as the loop holds more, and widens again when
+ * either what arrives stops being attributable or the situation itself is new.
+ * A strange or unfamiliar moment earns a longer look; a crowded familiar one
+ * does not. Every input is a fact from context or environment rather than a
+ * tuning knob, which is the whole point.
+ *
+ * `strangeness` is ENTITY novelty and `contextNovelty` is SITUATION novelty; a
+ * host can have plenty of the second and none of the first, and one measured
+ * host does.
  *
  * The composition itself is declared and tunable. With an empty field it returns
  * 1, so a host that reports nothing keeps the reference behaviour exactly.
@@ -120,7 +126,8 @@ export const SILENCE = "silence";
 export function attentionWidth(params: Record<string, number>): number {
   const others = params[OTHER_COUNT_READ] ?? 0;
   const strangeness = params[STRANGENESS_READ] ?? 0;
-  return (1 + strangeness) / Math.max(1, others);
+  const novelty = params[CONTEXT_NOVELTY_READ] ?? 0;
+  return (1 + strangeness + novelty) / Math.max(1, others);
 }
 
 // Read-only names for the facts other layers report. Duplicated as string
@@ -128,6 +135,7 @@ export function attentionWidth(params: Record<string, number>): number {
 // T4 or T6 (INV-3): the field is the down-channel and carries no such tie.
 const OTHER_COUNT_READ = "otherCount";
 const STRANGENESS_READ = "strangeness";
+const CONTEXT_NOVELTY_READ = "contextNovelty";
 
 interface ExpectState {
   predicted: InfoUnit;

@@ -32,7 +32,7 @@
  * what the region returned ever enters the window.
  */
 
-import type { LayerSpec, Snapshottable } from "../layer.js";
+import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
@@ -69,11 +69,23 @@ export interface T5Options {
  * what it is being asked to predict, and using it would make the prediction
  * error self-scoring (INV-8). It may read the observation to identify WHICH
  * situation is being predicted — that is the question, not the answer.
+ *
+ * It also receives `contribute`, the up-channel into the field (INV-7), bound to
+ * T5. **Why a rule needs it.** Where a host puts a model, the model is the only
+ * thing that reads the situation closely enough to say anything about it, and a
+ * rule is not a layer: without this it can form an expectation and can report
+ * nothing, so its reading of its own situation is computed and thrown away.
+ * Measured on a live host, the field held two constants and three quantities
+ * that went flat by cycle 8 — it had almost no context to compose from, and the
+ * one thing that knew any was on the far side of this seam.
+ *
+ * A rule that has nothing to report omits the parameter.
  */
 export type PredictRule = (
   entityId: string,
   window: readonly InfoUnit[],
   observed: InfoUnit,
+  contribute: ContributeFn,
 ) => InfoUnit;
 
 /**
@@ -119,7 +131,9 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
 
         // The declared update law. Whatever the rule, what leaves here is an
         // expectation and never a choice.
-        const predicted = predict(id, window, observed);
+        // The rule may report upward into the field; the contribution is bound
+        // to T5, since it is T5's declared rule that made it.
+        const predicted = predict(id, window, observed, contribute);
         const confidence = Math.min(1, count / recurrence);
 
         const matched = contentEqual(observed, predicted);
