@@ -59,7 +59,7 @@ import type { GlobMod } from "./glob-mod.js";
 import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive, InfoUnit } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
-import { isStoreQuery, type T3Input, type T3Output } from "./layers/t3.js";
+import { isStoreQuery, storeQuery, type T3Input, type T3Output } from "./layers/t3.js";
 import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
 import type { T5Input, T5Output } from "./layers/t5.js";
@@ -120,6 +120,8 @@ export interface DriverState {
   readonly pendingReturns?: readonly Signal[];
   /** Every datum ever recalled from the store — they return only when asked. */
   readonly recalled?: readonly string[];
+  /** Actions layers emitted laterally last cycle, for T2 to read (§6.4). */
+  readonly lastLateral?: readonly unknown[];
 }
 
 /** What the host supplies for one cycle. */
@@ -187,6 +189,8 @@ export function createCycle(deps: CycleDeps): Cycle {
   let lastEmission = deps.resume?.lastEmission ?? deps.initialEmission;
   /** Store query-returns awaiting ingestion at the next cycle's T1 (§6.4). */
   let pending: Signal[] = [...(deps.resume?.pendingReturns ?? [])];
+  /** What layers emitted laterally last cycle — readable by T2 now (§6.4 rule 3). */
+  let lastLateral: readonly unknown[] = deps.resume?.lastLateral ?? [];
   /** Every datum ever recalled; each returns only on a cycle it was asked for. */
   const recalled = new Set<string>(deps.resume?.recalled ?? []);
   /** Recalled data not arriving this cycle — no absence is owed by them (T7). */
@@ -227,7 +231,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     logExit(1);
     const t2 = runLayer(
       layers.t2,
-      { env: t1.output, emitted: lastEmission, changes: host.changes },
+      { env: t1.output, emitted: lastEmission, changes: host.changes, lateral: lastLateral },
       field,
       datum,
     );
@@ -298,7 +302,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t1.datum;
     logExit(1);
     channel.publish(1, t1.output);
-    const t2 = runLayer(layers.t2, gatherT2(channel, host, lastEmission), field, datum);
+    const t2 = runLayer(layers.t2, gatherT2(channel, host, lastEmission, lastLateral), field, datum);
     datum = t2.datum;
     logExit(2);
     channel.publish(2, t2.output);
@@ -346,6 +350,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       lastEmission,
       pendingReturns: [...pending],
       recalled: [...recalled],
+      lastLateral: [...lastLateral],
     }),
     run(regionInput): CycleResult {
       const field = glob.current();
@@ -361,10 +366,25 @@ export function createCycle(deps: CycleDeps): Cycle {
       const arriving = new Set(returned.map((s) => (s.raw_payload as StoreReturn).entity));
       for (const id of arriving) recalled.add(id);
       unasked = new Set([...recalled].filter((id) => !arriving.has(id)));
+      // Each return is also a change the agent's own query produced: its value
+      // is the query that asked, so T2 matches it to that emission and tags it
+      // SELF_WRITTEN — §6.4's closure, "emit → region returns → T1 ingests → T2
+      // matches". The datum's CONTENT is still not the agent's own; agency and
+      // provenance are two different questions.
       const host: HostCycleInput =
         returned.length === 0
           ? regionInput
-          : { ...regionInput, signals: [...regionInput.signals, ...returned] };
+          : {
+              ...regionInput,
+              signals: [...regionInput.signals, ...returned],
+              changes: [
+                ...regionInput.changes,
+                ...returned.map((s) => {
+                  const r = s.raw_payload as StoreReturn;
+                  return { id: r.entity, value: storeQuery(r.cue) };
+                }),
+              ],
+            };
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";
       cycleT = now(); // the host server clock at this cycle (epoch-ms), for [event] timestamps
 
@@ -607,8 +627,10 @@ export function createCycle(deps: CycleDeps): Cycle {
       glob.contribute(5, { resistance: totalResistance }, 1);
       glob.advance(cycle + 1);
 
-      // Feedback + accrual: the response becomes the next cycle's emission.
+      // Feedback + accrual: the response becomes the next cycle's emission, and
+      // every lateral emission of this cycle is readable by T2 next cycle too.
       lastEmission = response;
+      lastLateral = pass.emissions.map((e) => e.action);
       cycle += 1;
 
       return {

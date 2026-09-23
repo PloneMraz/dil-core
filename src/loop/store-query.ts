@@ -25,6 +25,8 @@ export interface StoreReturn {
   readonly payload: unknown;
   readonly fixed: TaggedDatum["fixed"];
   readonly open: TaggedDatum["open"];
+  /** The cue this return answers — so T2 can match it to the query that asked. */
+  readonly cue: Description;
 }
 
 /** Whether a datum's open tags carry every pair of the cue. */
@@ -43,6 +45,7 @@ export function answerQuery(data: DataStore, cue: Description, t: number): Signa
       payload: datum.payload,
       fixed: datum.fixed,
       open: datum.open,
+      cue: { ...cue },
     };
     out.push({ source_id: STORE_CHANNEL, raw_payload: ret, t });
   }

@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { createCycle, type Layers } from "./cycle.js";
 import { createGlobMod } from "./glob-mod.js";
 import { createT1 } from "./layers/t1.js";
-import { createT2 } from "./layers/t2.js";
+import { createT2, type T2Output } from "./layers/t2.js";
 import { createT3, STORE_CHANNEL, type ChannelTransducer } from "./layers/t3.js";
 import { createT4 } from "./layers/t4.js";
 import { createT5 } from "./layers/t5.js";
@@ -256,4 +256,56 @@ test("what T3 has asked, and what is still in flight, survive a snapshot", () =>
   resumed.run({ signals: [status(2)], changes: [] });
   assert.equal(moves(events, DIRECTIVE).length, 1, "the answer in flight still arrived");
   assert.deepEqual(t3.snapshot(), { asked: [JSON.stringify([["object", "region-status"]])] });
+});
+
+// ── agency closure (§6.4 rule 3) ──
+
+test("what a query brought back is matched to the query and tagged SELF_WRITTEN (§6.4, INV-6)", () => {
+  // "emit → region returns → T1 ingests → T2 matches." The return is a change
+  // the agent's own query produced; T2 must be able to read that query as an
+  // action just emitted, or it could only call the return ENV_PUSHED.
+  const data = seededStore();
+  const events = createEventLog();
+  const inner = createT2({ stabilityThreshold: 1 });
+  const seen: T2Output[] = [];
+  const t2: Layers["t2"] = {
+    ...inner,
+    process(input, field, emit, contribute) {
+      const out = inner.process(input, field, emit, contribute);
+      seen.push(out);
+      return out;
+    },
+  };
+  const layers: Layers = {
+    t1: createT1(), t2, t3: createT3({ status: describedStatus }), t4: createT4(),
+    t5: createT5(), t6: createT6(), t7: createT7(), t8: createT8(),
+  };
+  const cycle = createCycle({
+    layers, glob: createGlobMod({ appraisalGain: 1 }, 0), data, events,
+    initialEmission: { action: "boot" },
+  });
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+
+  const recalled = seen[1]!.tagged.find((t) => t.change.id === DIRECTIVE);
+  assert.ok(recalled, "the return is an observed change");
+  assert.equal(recalled!.agency, "SELF_WRITTEN");
+});
+
+// ── one arrival, several things it is about ──
+
+test("an arrival about several things asks about each, and each is recalled", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const both: ChannelTransducer = (s) => ({
+    infoType: "status",
+    value: s.raw_payload,
+    describe: [{ object: "region-status" }, { object: "things" }],
+  });
+  const cycle = cycleOver(data, events, { status: both });
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+  assert.equal(queries(events).length, 2);
+  assert.equal(data.get(DIRECTIVE)!.fixed.provenance, "running");
+  assert.equal(data.get(UNRELATED)!.fixed.provenance, "running");
 });

@@ -49,11 +49,13 @@ export function gatherT2(
   ch: MeaningChannel,
   host: HostCycleInput,
   emitted: Emission,
+  lateral: readonly unknown[] = [],
 ): T2Input {
   return {
     env: mustRead<ActivityEnvironment>(ch, 2, 1),
     emitted,
     changes: host.changes,
+    lateral,
   };
 }
 

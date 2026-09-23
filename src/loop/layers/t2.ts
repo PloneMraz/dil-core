@@ -42,6 +42,14 @@ export interface T2Input {
   readonly env: ActivityEnvironment;
   readonly emitted: Emission;
   readonly changes: readonly ObservedChange[];
+  /**
+   * The actions layers emitted laterally last cycle (§6.4) — a T3 query, a T5
+   * test. The contract says every emission "MUST be readable by T2 at the next
+   * cycle as 'the action just emitted'", not only the cycle's committed
+   * response; without these, what a query brought back could never be matched
+   * to the query, and the agency-gate could not classify it (INV-6).
+   */
+  readonly lateral?: readonly unknown[];
 }
 
 export interface T2Output {
@@ -96,6 +104,7 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
 
       // Accrue this cycle's emission into the bounded matching window.
       recentEmissions.push(input.emitted.action);
+      for (const a of input.lateral ?? []) recentEmissions.push(a);
       while (recentEmissions.length > window) recentEmissions.shift();
       cyclesRun += 1;
 

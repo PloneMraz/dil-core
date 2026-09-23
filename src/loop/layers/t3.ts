@@ -33,9 +33,11 @@ export type ChannelTransducer = (signal: Signal) => {
   readonly value: unknown;
   /**
    * What the arrival is, on the implementation's declared open-tag dimensions.
-   * Absent or empty: T3 has nothing to ask the store with, and does not ask.
+   * One description, or several when one arrival is about several things (a
+   * status report that carries a state, a count and what may be done next is
+   * about all three). Absent or empty: T3 has nothing to ask with, and does not.
    */
-  readonly describe?: Description;
+  readonly describe?: Description | readonly Description[];
 };
 
 /** Default transducer: pass the payload through, typed as "raw". */
@@ -59,6 +61,11 @@ export interface StoreQuery {
   readonly kind: "query";
   readonly channel: typeof STORE_CHANNEL;
   readonly cue: Description;
+}
+
+/** The query T3 emits for a cue — also what a return names as its cause (T2). */
+export function storeQuery(cue: Description): StoreQuery {
+  return { kind: "query", channel: STORE_CHANNEL, cue: { ...cue } };
 }
 
 export function isStoreQuery(action: unknown): action is StoreQuery {
@@ -108,12 +115,16 @@ export function createT3(
         const transduce = transducers[signal.source_id] ?? defaultTransducer;
         const { infoType, value, describe } = transduce(signal);
 
-        if (signal.source_id !== STORE_CHANNEL && describe && Object.keys(describe).length > 0) {
-          const key = cueKey(describe);
-          if (!asked.has(key)) {
+        if (signal.source_id !== STORE_CHANNEL && describe !== undefined) {
+          const cues: readonly Description[] = Array.isArray(describe)
+            ? (describe as readonly Description[])
+            : [describe as Description];
+          for (const cue of cues) {
+            if (Object.keys(cue).length === 0) continue;
+            const key = cueKey(cue);
+            if (asked.has(key)) continue;
             asked.add(key);
-            const query: StoreQuery = { kind: "query", channel: STORE_CHANNEL, cue: { ...describe } };
-            emit(query);
+            emit(storeQuery(cue));
           }
         }
 
