@@ -37,7 +37,7 @@ import {
   recordExpectation,
   recordResistanceReading,
 } from "../store/resist-event.js";
-import { CONTEXT_ANCHOR_DEPTH, H_COUNT } from "../store/decisions.js";
+import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
 import type { ContextAnchor } from "../store/resist-event.js";
@@ -390,7 +390,13 @@ export function createCycle(deps: CycleDeps): Cycle {
       // No material (cold start) → it stays running and, on collision, reflexes
       // straight to scar (§5/§8.7). This is a CONDITION on the road, not a
       // scheduled step; which road the datum takes depends on the situation.
-      const material = pass.t5.results.filter((r) => r.expectation.confidence > 0);
+      // Attention over situations (INV-7): the field raises the floor a
+      // situation's fit must clear before the loop builds from it. The default
+      // floor is 0, which is what the loop always did. Nothing here skips an
+      // expectation or alters a recorded confidence — see FIT_FLOOR for why
+      // both of those are unsafe.
+      const fitFloor = field.params[FIT_FLOOR_PARAM] ?? FIT_FLOOR;
+      const material = pass.t5.results.filter((r) => r.expectation.confidence > fitFloor);
       let forwardBuilt = false;
       let projectedUnits: readonly InfoUnit[] = [];
       if (material.length > 0) {
