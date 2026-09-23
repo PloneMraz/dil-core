@@ -6,6 +6,35 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 03:12 — feat: chú ý là TỔ HỢP của những gì trường đang giữ, không phải công thức của một tầng
+**Commit:** `5ade036`
+
+T6 tính `1/N` rồi đóng góp **câu trả lời** — điều đó biến chú ý thành **hằng số của một tầng đơn lẻ**. Nó không phải vậy: chú ý là **thứ cả trường đang giữ**, tổ hợp từ những **sự việc** mà từng tầng báo lại từ chỗ đứng của riêng nó.
+
+Nên mỗi tầng giờ góp **đúng sự việc chỉ nó thấy được**, **trọng số 1 đều nhau**, và **không quyết định gì** về hệ quả:
+
+| Tầng | Khóa | Sự việc |
+|---|---|---|
+| T3 | `channelActivity` | vùng vừa nói bao nhiêu trong chu kỳ này |
+| T4 | `strangeness` | tỉ lệ thứ đến mà **không buộc được** vào thực thể nào |
+| T5 | `surprise` | vùng lệch khỏi kỳ vọng bao xa, **ngay lúc này** |
+| T6 | `otherCount` | đang **GIỮ** bao nhiêu Other (tích lũy) |
+| T7 | `silence` | bao nhiêu thứ được chờ mà không tới |
+
+Rồi T7 **đọc độ rộng ra từ tổ hợp** chứ không đọc một con số ai đó đưa sẵn:
+
+```
+attentionWidth = (1 + strangeness) / max(1, otherCount)
+```
+
+Chú ý **hẹp lại khi vòng lặp giữ nhiều hơn**, và **rộng ra khi thứ đến thôi quy được về đâu** — tình huống lạ xứng một cái nhìn dài hơn, tình huống đông mà quen thì không. **Cả hai đầu vào đều là sự việc từ ngữ cảnh và môi trường, không phải núm điều chỉnh** — đó là toàn bộ điểm của thay đổi này.
+
+Tổ hợp vẫn là khai báo được và chỉnh được, và **trường rỗng tổ hợp ra 1**, nên host không báo gì thì hành vi tham chiếu không đổi. `ATTENTION_GAIN` vẫn nhân thêm cho host nào muốn nói thẳng.
+
+T7 đọc hai khóa kia bằng **hằng chuỗi cục bộ** chứ không import từ T4 và T6, nên nó **không tạo phụ thuộc meaning-channel** lên chúng (INV-3): trường là kênh xuống và không mang ràng buộc kiểu đó. **313 test xanh.**
+
+---
+
 ### 02:41 — fix: độ rộng chú ý do T6 đặt, không phải T8
 **Commit:** `8c22b10`
 
