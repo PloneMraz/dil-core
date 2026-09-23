@@ -6,6 +6,17 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 16:22 — fix: T2 đọc mọi emission, nên kết quả của một query khép vòng về đúng nó
+**Commit:** `9b0bbdf`
+
+§6.4 luật 3: mọi hành động đã phát *"MUST be readable by T2 at the next cycle as 'the action just emitted', closing the path: emit → region returns → T1 ingests → T2 matches"*. T2 trước giờ **chỉ thấy nước đi cuối chu kỳ**, nên một query của T3 không bao giờ được đọc lại, và thứ nó mang về chỉ có thể bị xếp là do môi trường đẩy vào.
+
+Giờ T2 nhận thêm các hành động mà các tầng đã phát phụ ở chu kỳ trước. Mỗi kết quả trả về từ store đến như một thay đổi quan sát được, **có giá trị là chính query đã gọi nó**. T2 khớp hai thứ đó và xếp kết quả là `SELF_WRITTEN`: chính query của tác tử đã tạo ra nó. Nội dung thì **vẫn không phải của tác tử**. Agency và provenance là hai câu hỏi khác nhau.
+
+Transducer giờ cũng có thể mô tả một tín hiệu là **nói về nhiều thứ** (một danh sách mô tả). T3 hỏi về từng mô tả mà nó chưa hỏi. **328 test xanh.**
+
+---
+
 ### 16:08 — feat: T3 hỏi store của chính tác tử, và một `prior` được gọi lại thì chạy
 **Commit:** `5bb031a`
 
