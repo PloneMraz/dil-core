@@ -6,6 +6,25 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 03:38 — feat: luật dự đoán báo được lên trường
+**Commit:** `ece454d`
+
+Chỗ nào host đặt model, thì **model là thứ duy nhất đọc tình huống đủ gần để nói được điều gì về nó** — mà **một luật không phải một tầng**, nên nó hình thành được kỳ vọng và **không báo được gì**. Lý giải của nó về tình huống của chính nó bị **tính rồi vứt đi**.
+
+`PredictRule` giờ nhận `contribute`, kênh đi lên trường, **gắn vào T5** vì chính luật do T5 khai đã tạo ra đóng góp đó. Luật không có gì để báo thì **bỏ tham số**, nên `persistence` không đổi.
+
+`attentionWidth` giờ tổ hợp **sự việc thứ ba**:
+
+```
+(1 + strangeness + contextNovelty) / max(1, otherCount)
+```
+
+`strangeness` là **cái mới của THỰC THỂ**, `contextNovelty` là **cái mới của TÌNH HUỐNG** — một host có thể có đầy cái thứ hai và **không có** cái thứ nhất, và host đã đo đúng là như vậy: nó **luôn biết** mình vừa dùng affordance nào, nên `strangeness` bằng 0 **mãi mãi**, còn cái mới của tình huống thì biến thiên.
+
+Động cơ là **một phép đo, không phải sự đối xứng**: truy vết trên game sống, trường giữ **hai hằng số và ba đại lượng phẳng từ chu kỳ 8**. Nó gần như không có ngữ cảnh để tổ hợp, và **thứ duy nhất biết ngữ cảnh thì nằm ở phía bên kia khe này**. **313 test xanh.**
+
+---
+
 ### 03:12 — feat: chú ý là TỔ HỢP của những gì trường đang giữ, không phải công thức của một tầng
 **Commit:** `5ade036`
 
