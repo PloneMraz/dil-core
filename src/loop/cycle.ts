@@ -43,7 +43,7 @@ import type { EventLog } from "../store/event-log.js";
 import type { ContextAnchor } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 
-import { runLayer, type LayerSpec, type LayerEmission } from "./layer.js";
+import { runLayer, type LayerContribution, type LayerEmission, type LayerSpec } from "./layer.js";
 import { appraise } from "./appraisal.js";
 import { createMeaningChannel } from "./meaning-channel.js";
 import {
@@ -167,6 +167,8 @@ interface LayerPass {
   readonly crystallized: boolean;
   /** Lateral emissions raised by any layer during this pass (§6.4), each bound to its issuer. */
   readonly emissions: readonly LayerEmission[];
+  /** Field contributions declared by any layer during this pass (INV-7), each bound to its issuer. */
+  readonly contributions: readonly LayerContribution[];
 }
 
 export function createCycle(deps: CycleDeps): Cycle {
@@ -255,7 +257,15 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t8.datum;
     logExit(8);
     const emissions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.emissions);
-    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized, emissions };
+    const contributions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.contributions);
+    return {
+      datum,
+      t5: t5.output,
+      t7: t7.output,
+      crystallized: t2.output.crystallized,
+      emissions,
+      contributions,
+    };
   }
 
   /**
@@ -303,7 +313,15 @@ export function createCycle(deps: CycleDeps): Cycle {
     logExit(8);
     channel.publish(8, t8.output);
     const emissions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.emissions);
-    return { datum, t5: t5.output, t7: t7.output, crystallized: t2.output.crystallized, emissions };
+    const contributions = [t1, t2, t3, t4, t5, t6, t7, t8].flatMap((r) => r.contributions);
+    return {
+      datum,
+      t5: t5.output,
+      t7: t7.output,
+      crystallized: t2.output.crystallized,
+      emissions,
+      contributions,
+    };
   }
 
   return {
@@ -516,7 +534,14 @@ export function createCycle(deps: CycleDeps): Cycle {
       // Persist the cycle datum in [data] (mutable working memory).
       data.put(`cycle-${cycle}`, datum);
 
-      // ── GLOB-MOD: contribute this cycle's resistance, advance to N+1 (INV-7) ──
+      // ── GLOB-MOD: the cycle's contributions blend, and take effect at N+1 ──
+      // INV-7: "Every layer contributes to it as one competing parameter;
+      // contributions blend, re-weighted each cycle, never last-write-wins."
+      // Each layer's own contributions go in first, bound to its index by
+      // `runLayer`; the driver adds the cycle's total resistance last, as it
+      // always did. With more than one contributor the blend is finally doing
+      // what its name says.
+      for (const c of pass.contributions) glob.contribute(c.layer, c.params, c.weight);
       const totalResistance = predErrs.reduce((s, e) => s + e.delta, 0);
       glob.contribute(5, { resistance: totalResistance }, 1);
       glob.advance(cycle + 1);

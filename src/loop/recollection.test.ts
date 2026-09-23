@@ -50,6 +50,7 @@ function logWithScar(received: unknown) {
 
 const EMPTY_FIELD = { params: {}, t: 0 };
 const NO_EMIT = () => undefined;
+const NO_CONTRIBUTE = () => undefined;
 
 // ── the store answers ──
 
@@ -152,6 +153,7 @@ test("the record enters the expectation slot and never the observation slot", ()
     { bound: [{ unit: unit("hall", "open"), entity_id: "door" }] },
     EMPTY_FIELD,
     NO_EMIT,
+    NO_CONTRIBUTE,
   );
 
   const r = out.results[0]!;
@@ -180,6 +182,7 @@ test("read, expectation, the region answers, mismatch, scar", () => {
     { bound: [{ unit: unit("hall", "locked"), entity_id: "door" }] },
     EMPTY_FIELD,
     NO_EMIT,
+    NO_CONTRIBUTE,
   );
   assert.equal(agreeing.results[0]!.predErr.delta, 0);
 
@@ -188,6 +191,7 @@ test("read, expectation, the region answers, mismatch, scar", () => {
     { bound: [{ unit: unit("hall", "open"), entity_id: "door" }] },
     EMPTY_FIELD,
     NO_EMIT,
+    NO_CONTRIBUTE,
   );
   assert.equal(contradicting.results[0]!.predErr.delta, 1);
 });
@@ -198,6 +202,7 @@ test("with no rule declared the reference behaviour is unchanged", () => {
     { bound: [{ unit: observed, entity_id: "door" }] },
     EMPTY_FIELD,
     NO_EMIT,
+    NO_CONTRIBUTE,
   );
   // A fresh entity predicts itself, exactly as persistence always did.
   assert.equal(out.results[0]!.predErr.delta, 0);

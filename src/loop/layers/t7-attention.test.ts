@@ -21,6 +21,7 @@ const unit = (v: string): InfoUnit => ({
 });
 
 const NO_EMIT = () => undefined;
+const NO_CONTRIBUTE = () => undefined;
 const field = (params: Record<string, number> = {}): ModField => ({ params, t: 0 });
 
 /** One cycle in which `seen` returned and nothing else did. */
@@ -39,18 +40,18 @@ const absent = (out: { absences: readonly { entity_id: string }[] }) =>
 
 test("with nothing declared, everything ever seen is expected back for ever", () => {
   const t7 = createT7();
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  t7.process(cycleOf(["b"]), field(), NO_EMIT);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
   // `a` has not returned since cycle 1 and is still demanded back.
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
 });
 
 test("flat expectation is why N entities returning one at a time make N-1 absences", () => {
   // The shape measured on a real host: four affordances, one used per cycle.
   const t7 = createT7();
-  for (const id of ["a", "b", "c", "d"]) t7.process(cycleOf([id]), field(), NO_EMIT);
-  assert.deepEqual(absent(t7.process(cycleOf(["a"]), field(), NO_EMIT)), ["b", "c", "d"]);
+  for (const id of ["a", "b", "c", "d"]) t7.process(cycleOf([id]), field(), NO_EMIT, NO_CONTRIBUTE);
+  assert.deepEqual(absent(t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["b", "c", "d"]);
 });
 
 test("attention thins that flood without silencing absence altogether", () => {
@@ -64,23 +65,23 @@ test("attention thins that flood without silencing absence altogether", () => {
   // would fail C3 by construction. Attention narrows expectation; it must not
   // abolish it.
   const t7 = createT7({ attentionSpan: 1 });
-  for (const id of ["a", "b", "c", "d"]) t7.process(cycleOf([id]), field(), NO_EMIT);
-  assert.deepEqual(absent(t7.process(cycleOf(["a"]), field(), NO_EMIT)), ["d"]);
+  for (const id of ["a", "b", "c", "d"]) t7.process(cycleOf([id]), field(), NO_EMIT, NO_CONTRIBUTE);
+  assert.deepEqual(absent(t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["d"]);
 });
 
 // ── the region's word ──
 
 test("an entity the region says is not there is not registered absent", () => {
   const t7 = createT7();
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  const out = t7.process(cycleOf(["b"], new Set(["b"])), field(), NO_EMIT);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  const out = t7.process(cycleOf(["b"], new Set(["b"])), field(), NO_EMIT, NO_CONTRIBUTE);
   assert.deepEqual(absent(out), []);
 });
 
 test("an entity the region says IS there, and which stays silent, is registered absent", () => {
   const t7 = createT7();
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  const out = t7.process(cycleOf(["b"], new Set(["a", "b"])), field(), NO_EMIT);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  const out = t7.process(cycleOf(["b"], new Set(["a", "b"])), field(), NO_EMIT, NO_CONTRIBUTE);
   assert.deepEqual(absent(out), ["a"]);
 });
 
@@ -88,19 +89,19 @@ test("an entity the region says IS there, and which stays silent, is registered 
 
 test("out of attention, an entity is no longer demanded back", () => {
   const t7 = createT7({ attentionSpan: 2 });
-  t7.process(cycleOf(["a"]), field(), NO_EMIT); // tick 1: a seen
-  t7.process(cycleOf(["b"]), field(), NO_EMIT); // tick 2: a is 1 behind
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"], "2 behind: still attended");
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), [], "3 behind: out of attention");
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE); // tick 1: a seen
+  t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE); // tick 2: a is 1 behind
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"], "2 behind: still attended");
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), [], "3 behind: out of attention");
 });
 
 test("a returning entity comes back into attention", () => {
   const t7 = createT7({ attentionSpan: 1 });
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  t7.process(cycleOf(["b"]), field(), NO_EMIT);
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), [], "a has drifted out");
-  t7.process(cycleOf(["a"]), field(), NO_EMIT); // a returns: attended again
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), [], "a has drifted out");
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE); // a returns: attended again
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
 });
 
 test("the same accrued state under a different field expects different things", () => {
@@ -109,19 +110,19 @@ test("the same accrued state under a different field expects different things", 
   const narrow = createT7({ attentionSpan: 4 });
   const wide = createT7({ attentionSpan: 4 });
   for (const t7 of [narrow, wide]) {
-    t7.process(cycleOf(["a"]), field(), NO_EMIT);
-    for (let i = 0; i < 3; i++) t7.process(cycleOf(["b"]), field(), NO_EMIT);
+    t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+    for (let i = 0; i < 3; i++) t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
   }
   // Identical histories. Only the field differs.
-  assert.deepEqual(absent(narrow.process(cycleOf(["b"]), field({ [ATTENTION_GAIN]: 0.5 }), NO_EMIT)), []);
-  assert.deepEqual(absent(wide.process(cycleOf(["b"]), field({ [ATTENTION_GAIN]: 2 }), NO_EMIT)), ["a"]);
+  assert.deepEqual(absent(narrow.process(cycleOf(["b"]), field({ [ATTENTION_GAIN]: 0.5 }), NO_EMIT, NO_CONTRIBUTE)), []);
+  assert.deepEqual(absent(wide.process(cycleOf(["b"]), field({ [ATTENTION_GAIN]: 2 }), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
 });
 
 test("the gain is read as background and the layer never writes it", () => {
   const t7 = createT7({ attentionSpan: 1 });
   const f = field({ [ATTENTION_GAIN]: 3 });
-  t7.process(cycleOf(["a"]), f, NO_EMIT);
-  t7.process(cycleOf(["b"]), f, NO_EMIT);
+  t7.process(cycleOf(["a"]), f, NO_EMIT, NO_CONTRIBUTE);
+  t7.process(cycleOf(["b"]), f, NO_EMIT, NO_CONTRIBUTE);
   assert.deepEqual(f.params, { [ATTENTION_GAIN]: 3 }, "INV-7: down-channel only");
 });
 
@@ -131,28 +132,28 @@ test("an unattended entity that returns is still registered", () => {
   // §8.2: a loop that "lets the external returns go unregistered" is pure
   // Mode-A. Attention lowers expectation; it must never lower registration.
   const t7 = createT7({ attentionSpan: 1 });
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  for (let i = 0; i < 5; i++) t7.process(cycleOf(["b"]), field(), NO_EMIT);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  for (let i = 0; i < 5; i++) t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
 
   // `a` is long out of attention. It returns.
-  const out = t7.process(cycleOf(["a", "b"]), field(), NO_EMIT);
+  const out = t7.process(cycleOf(["a", "b"]), field(), NO_EMIT, NO_CONTRIBUTE);
   assert.deepEqual(absent(out), [], "nothing missing");
   // Its return was accrued: it is expected again next cycle.
-  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
+  assert.deepEqual(absent(t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
 });
 
 // ── §9 snapshot surface ──
 
 test("attention state survives a snapshot round trip", () => {
   const t7 = createT7({ attentionSpan: 2 });
-  t7.process(cycleOf(["a"]), field(), NO_EMIT);
-  t7.process(cycleOf(["b"]), field(), NO_EMIT);
+  t7.process(cycleOf(["a"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  t7.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
   const snap = t7.snapshot();
 
   const resumed = createT7({ attentionSpan: 2 });
   resumed.restore(snap);
-  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
-  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT)), []);
+  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
+  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), []);
 });
 
 test("a snapshot taken before attention existed resumes still attending", () => {
@@ -163,8 +164,8 @@ test("a snapshot taken before attention existed resumes still attending", () => 
   // passing, not handed out by a restore.
   const resumed = createT7({ attentionSpan: 2 });
   resumed.restore({ expected: [["a", { predicted: unit("a"), seen: 3 }]] });
-  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT)), ["a"]);
+  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), ["a"]);
   // It then ages out on the ordinary schedule.
-  resumed.process(cycleOf(["b"]), field(), NO_EMIT);
-  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT)), []);
+  resumed.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE);
+  assert.deepEqual(absent(resumed.process(cycleOf(["b"]), field(), NO_EMIT, NO_CONTRIBUTE)), []);
 });

@@ -55,6 +55,8 @@ export {
   validateLayerSpec,
   runLayer,
   isSnapshottable,
+  type ContributeFn,
+  type LayerContribution,
   type LayerSpec,
   type LayerRun,
   type Snapshottable,

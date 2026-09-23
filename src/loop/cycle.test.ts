@@ -153,9 +153,14 @@ test("a layer's lateral emission is recorded in [event] with its issuing layer (
   const base = createT3();
   const emittingT3 = {
     ...base,
-    process(input: Parameters<typeof base.process>[0], field: Parameters<typeof base.process>[1], emit: Parameters<typeof base.process>[2]) {
+    process(
+      input: Parameters<typeof base.process>[0],
+      field: Parameters<typeof base.process>[1],
+      emit: Parameters<typeof base.process>[2],
+      contribute: Parameters<typeof base.process>[3],
+    ) {
       emit({ kind: "query", channel: "ch" }); // a T3 query (§6.4)
-      return base.process(input, field, emit);
+      return base.process(input, field, emit, contribute);
     },
   };
   const data = createDataStore();
