@@ -128,8 +128,25 @@ test("the field narrows as the loop meets more Others", () => {
   cycle.run({ signals: [sig("a", 1)], changes: [] });
   cycle.run({ signals: [sig("a", 1), sig("b", 1)], changes: [] });
   cycle.run({ signals: [sig("a", 1), sig("b", 1), sig("c", 1), sig("d", 1)], changes: [] });
-  const gain = glob.current().params[ATTENTION_GAIN_PARAM]!;
-  assert.ok(gain < 1, `attention narrowed to ${gain}`);
+  assert.equal(glob.current().params[ATTENTION_GAIN_PARAM], attentionGainFor(4));
+});
+
+test("the width is set from ACCRUED Others, not from this cycle's returns", () => {
+  // The bug this pins. The job sat on T8 first, which ranks the Others PRESENT
+  // this cycle — so in a host where one entity returns per cycle T8 saw N = 1
+  // every time and the width never moved. Measured on a live run: the gain sat
+  // at 1.0 for all 80 cycles. T6 is the layer that ACCRUES Others, so it is the
+  // one that knows how many the loop is holding.
+  const { cycle, glob } = freshCycle();
+  // Four entities, but only ever one returning per cycle.
+  for (const id of ["a", "b", "c", "d"]) {
+    cycle.run({ signals: [sig(id, 1)], changes: [] });
+  }
+  assert.equal(
+    glob.current().params[ATTENTION_GAIN_PARAM],
+    attentionGainFor(4),
+    "four Others held, though only one returned in any cycle",
+  );
 });
 
 test("contributions blend rather than last-write-win", () => {

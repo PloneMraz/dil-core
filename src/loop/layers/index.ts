@@ -44,6 +44,8 @@ export {
 } from "./t5.js";
 
 export {
+  ATTENTION_GAIN_PARAM,
+  attentionGainFor,
   createT6,
   type IndependenceEvidence,
   type T6Input,
@@ -59,8 +61,6 @@ export {
 } from "./t7.js";
 
 export {
-  ATTENTION_GAIN_PARAM,
-  attentionGainFor,
   createT8,
   type T8Input,
   type T8Output,
