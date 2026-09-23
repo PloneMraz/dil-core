@@ -6,6 +6,32 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 01:26 — feat: chú ý ở T7 — vòng lặp thôi đòi lại mọi thứ
+**Commit:** `3134990`
+
+Kỳ vọng trước nay **phẳng**. Mọi thực thể từng thấy đều bị kỳ vọng trở về mỗi chu kỳ, **vĩnh viễn**, vì không chỗ nào trong vòng lặp có khái niệm *đang chú ý tới cái gì*. Với một thực thể thì điều đó vô hình; với N thực thể mà mỗi chu kỳ chỉ một cái trở về thì đó là **N−1 vắng mặt giả mỗi chu kỳ**. Đo trên host thật: **444 trong 481 vết sẹo** là loại vắng mặt đó. Vòng lặp không phân biệt nổi *"đã im lặng"* với *"đang không được chú ý"*.
+
+Hành vi cũ giờ được **ghi thành test** thay vì giả định, gồm cả vòng tròn bốn thực thể sinh ra ba vắng mặt mỗi chu kỳ.
+
+Hai cổng, **cả hai cộng thêm và có mặc định**, nên host không khai gì thì hành vi tham chiếu không đổi:
+
+- **`T7Input.present` — lời của vùng.** Thực thể mà vùng nói là không có ở đó thì không im lặng, chỉ là không có mặt. *Im lặng giả định phải có cơ hội lên tiếng.* Được luồn từ `HostCycleInput` qua `gatherT7` như **host ingest**, giống T1 và T3, nên INV-3 không dính vào. (Port ngược từ `dil-arc3`, vì lỗi nằm ở thượng nguồn.)
+- **`attentionSpan`, nhân với `attentionGain` của trường — lời của trường.** Thực thể mà vòng lặp không còn hướng tới thì không bị chờ đợi.
+
+**Đây là tầng ĐẦU TIÊN trong dil-core thật sự đọc trường điều biến.** Trước đó mọi `process()` đều *nhận* `field` và **không tầng nào dùng** — T4 và T5 còn không khai tham số — nên lý do của INV-7 chỉ đúng tại bước appraisal. Một test cho thấy hai T7 có **lịch sử tích lũy giống hệt nhau** lại kỳ vọng khác nhau dưới hai trường khác nhau, đúng nghĩa câu *"Same data plus a different field yields different meaning."*
+
+**Lằn ranh chú ý không được vượt** là của §8.2: vòng lặp *"lets the external returns go unregistered"* chính là Mode-A thuần, và một cổng chú ý chặn hồi đáp sẽ **là** thất bại đó, được cài đặt có chủ ý. Nên cổng này chỉ chạm vào **cái bị ĐÒI LẠI**. Có test giữ: thực thể ra khỏi chú ý năm chu kỳ, khi trở về **vẫn được đăng ký**, và được kỳ vọng lại ngay chu kỳ sau.
+
+**Khai rõ, rút từ phép đo:** `span = 0` sẽ xóa sạch cơn lũ, và **cố ý không chọn**. §8.1 **C3** đòi phát ra missing-InfoUnit khi một sự kiện được kỳ vọng không xảy ra, mà vòng lặp không kỳ vọng gì thì **trượt C3 do cấu tạo**. `span = 1` cắt vòng tròn từ ba vắng mặt xuống một. **Chú ý thu hẹp kỳ vọng; nó không được thủ tiêu kỳ vọng.**
+
+Cũng là lựa chọn có chủ ý: snapshot cũ (chưa có `lastSeen`) phục hồi thành **vẫn đang chú ý**, không phải ngoài chú ý — phục hồi không được lặng lẽ thu hẹp cái vòng lặp kỳ vọng.
+
+`tsc --noEmit` sạch, **294 test xanh** (282 → 294).
+
+---
+
+## [Unreleased] — 2026-09-23 (tiếp)
+
 ### 00:41 — feat: kênh truy hồi kháng lực — cuối cùng thì kho cũng trả lời
 **Commit:** `8455418`
 
