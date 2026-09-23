@@ -6,6 +6,16 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 04:10 — docs: ghi đúng tên model đang làm việc trong Commit Format
+**Commit:** `ed065dc`
+
+Trailer đồng tác giả trong [AGENTS.md](AGENTS.md) ghi `Claude Opus 5 (1M context)`. Model làm việc đã chuyển sang **Opus 5.5**, mà trailer là một **khẳng định về ai đã viết mã** — ghi sai model, dù chênh lệch nhỏ, vẫn là ghi sai tác giả. Giờ dòng đó ghi `Claude Opus 5.5`.
+
+Mục CHANGELOG cũ ghi lại lần sửa trước (Opus 4.8 → Opus 5) là **lịch sử**, được giữ nguyên như đã viết.
+
+---
+
+
 ### 03:38 — feat: luật dự đoán báo được lên trường
 **Commit:** `ece454d`
 
