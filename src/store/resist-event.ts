@@ -11,7 +11,7 @@
  */
 
 import type { CONTEXT_ANCHOR_DEPTH } from "./decisions.js";
-import type { TaggedDatum, Provenance } from "./tags.js";
+import type { TaggedDatum, Provenance, FixedTags, OpenTags } from "./tags.js";
 import type { LayerIndex } from "../invariants/types.js";
 
 /** The kind of mismatch a ResistEvent registers. */
@@ -76,6 +76,26 @@ export interface ActivityEvent {
   /** Collisions recorded as scars this cycle. */
   readonly scars: number;
   readonly t: number;
+  /**
+   * The full tag set of every datum recalled from the store that ran this
+   * cycle (§6.4 T3 query) — as it stands after running. TAGS ONLY, NO CONTENT.
+   *
+   * §9: the open layer exists so "the `[event]` log [is] auditable by data
+   * class", and §13.6 asks a third party to confirm "host data entered only via
+   * the tagging-gate" from the trace — neither is possible while a recalled
+   * datum's tags live only in mutable `[data]`. The content stays out: an
+   * activity record is trace, not experience, and §9 keeps the trail complete
+   * "without letting uncontested information into the agent's memory".
+   * Absent when nothing was recalled, so every other record is byte-identical.
+   */
+  readonly recalled?: readonly RecalledTags[];
+}
+
+/** One recalled datum's tag set, as the activity record carries it. */
+export interface RecalledTags {
+  readonly datumId: string;
+  readonly fixed: FixedTags;
+  readonly open: OpenTags;
 }
 
 /**

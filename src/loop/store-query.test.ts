@@ -25,11 +25,15 @@ import { answerQuery, matchesCue } from "./store-query.js";
 import { createDataStore, type DataStore } from "../store/data-store.js";
 import { createEventLog, type EventLog } from "../store/event-log.js";
 import { admitHostData } from "../store/tagging-gate.js";
-import type {
-  CycleSealActivity,
-  EmissionActivity,
-  ProvenanceActivity,
+import {
+  recordProvenance,
+  type CycleSealActivity,
+  type EmissionActivity,
+  type LayerExitActivity,
+  type ProvenanceActivity,
 } from "../store/resist-event.js";
+import { deserializeEventRecord, serializeEventRecord } from "../store/event-sink.js";
+import { checkConformance } from "../conformance/checker.js";
 import type { Signal } from "./types.js";
 
 const DIRECTIVE = "prior:directive";
@@ -308,4 +312,87 @@ test("an arrival about several things asks about each, and each is recalled", ()
   assert.equal(queries(events).length, 2);
   assert.equal(data.get(DIRECTIVE)!.fixed.provenance, "running");
   assert.equal(data.get(UNRELATED)!.fixed.provenance, "running");
+});
+
+// ── the recalled datum's own trace (§9, §13.6) ──
+
+function sealOf(events: EventLog, cycle: number): CycleSealActivity {
+  return events
+    .all()
+    .find(
+      (r): r is CycleSealActivity =>
+        (r as CycleSealActivity).activityKind === "cycle-seal" &&
+        (r as CycleSealActivity).activity.cycle === cycle,
+    )!;
+}
+
+test("a recalled datum's own path is in the log: it exits T1..T8 in the cycle it runs (§9)", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleOver(data, events);
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+  const exits = events
+    .all()
+    .filter(
+      (r): r is LayerExitActivity =>
+        (r as LayerExitActivity).activityKind === "layer-exit" &&
+        (r as LayerExitActivity).datumId === DIRECTIVE,
+    );
+  assert.deepEqual(exits.map((e) => [e.cycleMark, e.layer]), [1, 2, 3, 4, 5, 6, 7, 8].map((l) => [1, l]));
+  assert.equal(data.get(DIRECTIVE)!.fixed.floorTag, 8, "its floor-tag names the layer it just exited");
+});
+
+test("the activity record carries a recalled datum's tag set, and never its content", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleOver(data, events);
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+  const recalled = sealOf(events, 1).activity.recalled;
+  assert.equal(recalled?.length, 1);
+  assert.equal(recalled![0]!.datumId, DIRECTIVE);
+  assert.deepEqual(recalled![0]!.open, { domain: "rules", kind: "directive", object: "region-status" });
+  assert.equal(recalled![0]!.fixed.provenance, "running");
+  assert.equal(recalled![0]!.fixed.cycleMark, 1);
+  assert.equal(JSON.stringify(sealOf(events, 1)).includes("Your goal is to win"), false,
+    "uncontested content stays out of the agent's memory (§9)");
+  assert.equal("recalled" in sealOf(events, 0).activity, false,
+    "a cycle that recalled nothing writes the record exactly as before");
+});
+
+test("the recalled tag set survives the durable form", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleOver(data, events);
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+  const seal = sealOf(events, 1);
+  const back = deserializeEventRecord(JSON.parse(JSON.stringify(serializeEventRecord(seal)))) as CycleSealActivity;
+  assert.deepEqual(back.activity.recalled, seal.activity.recalled);
+});
+
+test("the checker reads the recalled path and the gate from the trace (§13.3, §13.6)", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleOver(data, events);
+  for (let t = 1; t <= 4; t++) cycle.run({ signals: [status(t)], changes: [] });
+  const report = checkConformance(events);
+  const c3 = report.results.find((r) => r.id === "3")!;
+  const c6 = report.results.find((r) => r.id === "6")!;
+  assert.ok(c3.claims.some((c) => c.claim.startsWith("every recalled datum's path") && c.verdict === "pass"));
+  assert.ok(c6.claims.some((c) => c.claim.startsWith("host data entered only via the tagging-gate") && c.verdict === "pass"));
+});
+
+test("a datum that ran from prior with no tag set in the trace is caught (§13.6)", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleOver(data, events);
+  cycle.run({ signals: [status(1)], changes: [] });
+  // A datum appears in the trace leaving `prior`, but no activity record shows
+  // its tags: it came in by a door the log cannot see.
+  events.append(recordProvenance("side-door", 0, "prior", "running", 1));
+  const c6 = checkConformance(events).results.find((r) => r.id === "6")!;
+  assert.equal(c6.verdict, "fail");
+  assert.match(c6.detail, /side-door/);
 });

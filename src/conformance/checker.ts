@@ -35,6 +35,7 @@ import type {
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
+import { invalidOpenTagReason, type OpenTags as OpenTagsLike } from "../store/tags.js";
 import type { GateResult } from "../precondition/gate.js";
 import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
 import {
@@ -343,8 +344,22 @@ export function checkConformance(
     const badEmission = emissions.find(
       (e) => e.register !== "↔" || !(e.issuingLayer >= 1 && e.issuingLayer <= 8),
     );
+    // A datum recalled from the store runs the layers with the cycle datum, and
+    // its exits are recorded under its own id and that cycle's mark (§9).
+    const recalledRuns = cycleSeals.flatMap((r) =>
+      (r.activity.recalled ?? []).map((t) => ({ datumId: t.datumId, cycle: r.activity.cycle })),
+    );
+    const recalledPathGap = recalledRuns.find(({ datumId, cycle }) => {
+      const layers = new Set(
+        layerExits.filter((le) => le.datumId === datumId && le.cycleMark === cycle).map((le) => le.layer),
+      );
+      return !coversAllLayers(layers);
+    });
     const claims: ClaimCheck[] = [
       claim("every cycle datum's path covers T1→T8 (from layer-exit lines)", "trace", incomplete ? "fail" : "pass"),
+      ...(recalledRuns.length > 0
+        ? [claim("every recalled datum's path covers T1→T8 in the cycle it ran", "trace", recalledPathGap ? "fail" : "pass")]
+        : []),
       claim("recorded flow mode matches cycle-mark (0 single-threaded, 1+ multi-stream)", "trace", flowInconsistent ? "fail" : "pass"),
       claim("every emission carries register ↔ and a valid issuing layer (1–8)", "trace", badEmission ? "fail" : "pass"),
       claim("the six links close back on themselves (INV-1 topology)", "structural", "pass"),
@@ -491,11 +506,27 @@ export function checkConformance(
       if (r.from === "prior") priorEntries.set(r.datumId, (priorEntries.get(r.datumId) ?? 0) + 1);
     }
     const doubleEntry = [...priorEntries.entries()].find(([, n]) => n > 1);
+    // §13.6: "host data entered only via the tagging-gate". Every datum that
+    // leaves `prior` must show, in that cycle's activity record, a tag set the
+    // gate would have admitted: the cycle datum embedded whole, a recalled datum
+    // by its tags. A datum that ran from `prior` with no tag set in the trace
+    // came in by a door the log cannot see.
+    const tagsSeen = new Map<string, OpenTagsLike>();
+    for (const r of cycleSeals) {
+      tagsSeen.set(`${r.datumId}@${r.activity.cycle}`, r.datum.open);
+      for (const t of r.activity.recalled ?? []) tagsSeen.set(`${t.datumId}@${r.activity.cycle}`, t.open);
+    }
+    const unseenEntry = provenanceLines.find((r) => {
+      if (r.from !== "prior") return false;
+      const open = tagsSeen.get(`${r.datumId}@${r.cycleMark}`);
+      return open === undefined || invalidOpenTagReason(open) !== null;
+    });
     const claims: ClaimCheck[] = [
       claim("every record well-formed — 4 fixed + ≥3 open tags incl domain + anchor", "trace", firstProblem ? "fail" : "pass"),
       claim("every cycle left an activity record (contiguous coverage)", "trace", coverageGap !== null ? "fail" : "pass"),
       claim("provenance moves only along the §9 graph edges", "trace", badEdge ? "fail" : "pass"),
       claim("`prior` entered once, never re-entered (§9)", "trace", doubleEntry ? "fail" : "pass"),
+      claim("host data entered only via the tagging-gate — every datum leaving `prior` shows its gate-admissible tag set in the trace (§13.6)", "trace", unseenEntry ? "fail" : "pass"),
     ];
     push(
       "6",
@@ -509,6 +540,8 @@ export function checkConformance(
             ? `illegal provenance move in the trace: ${badEdge.from} → ${badEdge.to} (${badEdge.datumId})`
             : doubleEntry
               ? `datum ${doubleEntry[0]} entered \`prior\` more than once; prior is a one-way entry (§9)`
+              : unseenEntry
+                ? `datum ${unseenEntry.datumId} left \`prior\` at cycle ${unseenEntry.cycleMark} with no gate-admissible tag set in the trace (§13.6)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior entered once); all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
     );
   }

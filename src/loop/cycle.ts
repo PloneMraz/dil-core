@@ -26,7 +26,7 @@
  */
 
 import { admitHostData } from "../store/tagging-gate.js";
-import { toRunning, toScar, toSimulated, toProjected } from "../store/data-store.js";
+import { stampLayer, toRunning, toScar, toSimulated, toProjected } from "../store/data-store.js";
 import {
   recordScar,
   recordActivity,
@@ -40,7 +40,7 @@ import {
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
-import type { ContextAnchor } from "../store/resist-event.js";
+import type { ContextAnchor, RecalledTags } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 
 import { runLayer, type LayerContribution, type LayerEmission, type LayerSpec } from "./layer.js";
@@ -200,9 +200,16 @@ export function createCycle(deps: CycleDeps): Cycle {
 
   /** The id the cycle datum takes in `[data]`; also its key in the `[event]` path. */
   const datumId = (): string => `cycle-${cycle}`;
-  /** Log one `layer-exit` line as the cycle datum leaves a layer (§9: path in [event]). */
+  /**
+   * Data recalled from the store that run this cycle. They pass the layers with
+   * the cycle datum, so each exit is theirs too: "every layer a datum exits
+   * MUST be recorded" (§9), and there are no pass-through layers.
+   */
+  let runningRecalled: readonly string[] = [];
+  /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
     events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
+    for (const id of runningRecalled) events.append(recordLayerExit(id, cycle, layer, cycleT));
   }
   /**
    * Emission — link 5 as a lateral capability (§6.4). The one sink through which
@@ -417,12 +424,27 @@ export function createCycle(deps: CycleDeps): Cycle {
           events.append(recordProvenance(id, cycle, "prior", "running", cycleT));
         }
       }
+      runningRecalled = returned
+        .map((s) => (s.raw_payload as StoreReturn).entity)
+        .filter((id) => data.has(id));
 
       const pass =
         flow === "single-threaded"
           ? passSingleThreaded(host, field, admitted)
           : passMultiStream(host, field, admitted);
       let datum = pass.datum;
+
+      // Each recalled datum left T8 with the cycle datum: its floor-tag names the
+      // layer it just exited (§9 fixed layer). Its tag set — never its content —
+      // goes into this cycle's activity record, so the trace shows what class of
+      // data entered and that it came through the gate (§9 open layer, §13.6).
+      const recalledTags: RecalledTags[] = [];
+      for (const id of runningRecalled) {
+        const ran = stampLayer(data.get(id)!, 8);
+        data.put(id, ran);
+        recalledTags.push({ datumId: id, fixed: ran.fixed, open: ran.open });
+      }
+      runningRecalled = [];
 
       // ── §7 crystallization: T2 drew the self/environment distinction ──
       // The one-time act where the from-within standpoint begins (T2 of cycle-0).
@@ -607,6 +629,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             observed: pass.t5.results.map((r) => r.entity_id),
             scars,
             t: cycleT,
+            ...(recalledTags.length > 0 ? { recalled: recalledTags } : {}),
           },
           anchor,
         ),
