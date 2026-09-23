@@ -37,6 +37,18 @@ export {
 
 export { MultiStreamError } from "./gathers.js";
 
+// The resistance-retrieval channel (§10): the store answering, as an
+// expectation and as nothing else.
+export {
+  createLogRecollection,
+  recollecting,
+  DEFAULT_MAX_SCAN,
+  RECOLLECTION_LAYER,
+  type Recollection,
+  type RecollectionOptions,
+  type RecalledFrom,
+} from "./recollection.js";
+
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 
 export {

@@ -35,6 +35,8 @@ export {
 
 export {
   createT5,
+  persistence,
+  type PredictRule,
   type T5Result,
   type T5Input,
   type T5Output,

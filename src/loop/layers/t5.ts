@@ -6,11 +6,30 @@
  * what the region returned enters as a signed PredErr — the precursor of a
  * ResistEvent (the cycle driver decides whether it holds into a scar, 4e).
  *
- * Update law (DECIDE@IMPL, declared): persistence — predict the most recent
- * observation for the entity. This satisfies C2: against a stable entity the
- * prediction matches and PredErr falls to zero with repetition. State accrues
- * per entity across cycles (INV-5); the window is bounded by BASELINE_WINDOW and
- * confidence ramps over SUFFICIENT_RECURRENCE.
+ * Update law (DECIDE@IMPL, declared): persistence by default — predict the most
+ * recent observation for the entity — and host-declarable through `PredictRule`.
+ * This satisfies C2: against a stable entity the prediction matches and PredErr
+ * falls to zero with repetition. State accrues per entity across cycles (INV-5);
+ * the window is bounded by BASELINE_WINDOW and confidence ramps over
+ * SUFFICIENT_RECURRENCE.
+ *
+ * WHY THE RULE IS A SEAM. §9 makes the store the seat of experience — "the self
+ * accrues from scars" — and §10 requires a private store to carry the
+ * resistance-retrieval channel. Until now nothing in the loop could read the
+ * store at all, so those clauses were satisfied nowhere: scars were written and
+ * never returned. This seam is the retrieval channel. A rule may consult the
+ * `[event]` log and answer "what did the region give, last time, here"; see
+ * `store/recollection.ts`.
+ *
+ * WHICH SLOT THE RECORD ENTERS, AND WHY IT MATTERS. The record supplies the
+ * EXPECTATION; the region supplies the OBSERVATION. It must not be the other way
+ * round. `recurrence` counts observations, and §13.4 reads a climbing
+ * confidence-with-recurrence as the signature that separates an accruing self
+ * from "a reloading impostor [that] cannot make either climb". Let recollections
+ * in through the observation slot and an agent inflates its own confidence by
+ * re-reading its own log — becoming precisely the impostor that signature exists
+ * to catch. Through the expectation slot nothing of the sort is possible: only
+ * what the region returned ever enters the window.
  */
 
 import type { LayerSpec, Snapshottable } from "../layer.js";
@@ -35,7 +54,33 @@ export interface T5Output {
 export interface T5Options {
   readonly baselineWindow?: number;
   readonly sufficientRecurrence?: number;
+  /** The declared update law. Defaults to `persistence`. */
+  readonly predict?: PredictRule;
 }
+
+/**
+ * Builds the expectation for one entity (DECIDE@IMPL, host-declared).
+ *
+ * It receives the entity, the accrued window for that entity, and this cycle's
+ * observation. It MUST NOT read the observation's content as the answer: that is
+ * what it is being asked to predict, and using it would make the prediction
+ * error self-scoring (INV-8). It may read the observation to identify WHICH
+ * situation is being predicted — that is the question, not the answer.
+ */
+export type PredictRule = (
+  entityId: string,
+  window: readonly InfoUnit[],
+  observed: InfoUnit,
+) => InfoUnit;
+
+/**
+ * The reference update law: predict the most recent observation, or the
+ * observation itself when the entity is fresh.
+ *
+ * Stays the default, so a host that declares no rule behaves exactly as before.
+ */
+export const persistence: PredictRule = (_entityId, window, observed) =>
+  window.length > 0 ? window[window.length - 1]! : observed;
 
 function contentEqual(a: InfoUnit, b: InfoUnit): boolean {
   return JSON.stringify(a.content) === JSON.stringify(b.content);
@@ -44,6 +89,7 @@ function contentEqual(a: InfoUnit, b: InfoUnit): boolean {
 export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & Snapshottable {
   const windowSize = opts.baselineWindow ?? BASELINE_WINDOW;
   const recurrence = opts.sufficientRecurrence ?? SUFFICIENT_RECURRENCE;
+  const predict = opts.predict ?? persistence;
 
   // Accruing per-entity state (INV-5): accumulated, never reloaded.
   const windows = new Map<string, InfoUnit[]>();
@@ -68,8 +114,9 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         const window = windows.get(id) ?? [];
         const count = counts.get(id) ?? 0;
 
-        // Persistence: predict the most recent observation (or self if fresh).
-        const predicted = window.length > 0 ? window[window.length - 1]! : observed;
+        // The declared update law. Whatever the rule, what leaves here is an
+        // expectation and never a choice.
+        const predicted = predict(id, window, observed);
         const confidence = Math.min(1, count / recurrence);
 
         const matched = contentEqual(observed, predicted);

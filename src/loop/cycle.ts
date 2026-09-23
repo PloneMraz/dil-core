@@ -78,6 +78,8 @@ export interface Layers {
   readonly t8: LayerSpec<T8Input, T8Output>;
 }
 
+import type { RecalledFrom } from "./recollection.js";
+
 export interface CycleDeps {
   readonly layers: Layers;
   readonly glob: GlobMod;
@@ -94,6 +96,16 @@ export interface CycleDeps {
   readonly now?: () => number;
   /** RECOVERY-ONLY: resume the driver from a §9 snapshot instead of cycle-0. */
   readonly resume?: DriverState;
+  /**
+   * The host's resistance-retrieval channel (§10), if one is declared.
+   *
+   * The driver does not call it — T5 does, through its declared PredictRule. The
+   * driver only asks which scars it returned, so their return can be recorded in
+   * `[event]` (§9: every transition along a provenance edge is recorded as it
+   * occurs). Without this, `scar → running` could never fire and the store would
+   * stay write-only.
+   */
+  readonly recollection?: { drain(): readonly RecalledFrom[] };
 }
 
 /** The cycle driver's own accrued state (part of the §9 snapshot). */
@@ -353,6 +365,14 @@ export function createCycle(deps: CycleDeps): Cycle {
         events.append(
           recordResistanceReading(datumId(), cycle, "region", a.entity_id, "absence", a.recurrence, a.delta, "-", cycleT),
         );
+      }
+
+      // ── Scars that returned as material (§9, `scar → running`) ──
+      // A recalled scar is "data in use"; §9 is explicit that a scar is not a
+      // resting place. The datum key is the recalled scar's own (`cycle-N`), not
+      // this cycle's: it is that datum which moved, not this one.
+      for (const r of deps.recollection?.drain() ?? []) {
+        events.append(recordProvenance(`cycle-${r.cycle}`, cycle, "scar", "running", cycleT));
       }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──
