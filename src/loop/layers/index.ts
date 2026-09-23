@@ -19,8 +19,12 @@ export {
 
 export {
   CHANNEL_ACTIVITY,
+  STORE_CHANNEL,
   createT3,
+  isStoreQuery,
   type ChannelTransducer,
+  type Description,
+  type StoreQuery,
   type T3Input,
   type T3Output,
 } from "./t3.js";

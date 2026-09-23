@@ -49,6 +49,10 @@ export {
   type RecalledFrom,
 } from "./recollection.js";
 
+// The T3 query answered from the agent's own store (§6.4, §9 open layer): the
+// character recalls on a cue; the store never pours into the loop.
+export { answerQuery, matchesCue, type StoreReturn } from "./store-query.js";
+
 export { createGlobMod, GlobModError, type GlobMod } from "./glob-mod.js";
 
 export {

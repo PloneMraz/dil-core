@@ -106,7 +106,16 @@ export const STORE_REPRESENTATION =
 
 /** DECIDE@IMPL tag F — index keys. */
 export const INDEX_KEYS = ["source_id", "provenance"] as const;
-/** Rationale: the two access paths the loop and an auditor actually need. */
+/**
+ * Rationale: the two access paths the loop and an auditor actually need.
+ *
+ * `[data]` is also searched by its OPEN tags, when T3 queries the store
+ * (§6.4): a datum answers a cue when its open tags carry every pair of it
+ * (loop/store-query.ts). That is not a third key declared here but the open
+ * layer used as §9 already requires it to be usable — each key denoting the same
+ * dimension wherever it appears. Which keys a host describes its arrivals with is
+ * the open-tag registry below.
+ */
 
 /** DECIDE@IMPL tag F — [event] durability. */
 export const EVENT_DURABILITY =

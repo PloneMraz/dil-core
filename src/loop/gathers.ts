@@ -80,7 +80,11 @@ export function gatherT6(ch: MeaningChannel): T6Input {
   };
 }
 
-export function gatherT7(ch: MeaningChannel, host: HostCycleInput): T7Input {
+export function gatherT7(
+  ch: MeaningChannel,
+  host: HostCycleInput,
+  unasked?: ReadonlySet<string>,
+): T7Input {
   const t5 = mustRead<T5Output>(ch, 7, 5);
   return {
     expectations: t5.results.map((r) => ({
@@ -91,6 +95,8 @@ export function gatherT7(ch: MeaningChannel, host: HostCycleInput): T7Input {
     // Host ingest, like T1's and T3's: which entities the region says are there
     // this cycle. Not a channel read, so INV-3 is not in play.
     present: host.present,
+    // Driver-supplied: recalled data not asked for this cycle (§6.4 T3 query).
+    unasked,
   };
 }
 

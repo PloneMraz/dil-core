@@ -59,7 +59,8 @@ import type { GlobMod } from "./glob-mod.js";
 import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive, InfoUnit } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
-import type { T3Input, T3Output } from "./layers/t3.js";
+import { isStoreQuery, type T3Input, type T3Output } from "./layers/t3.js";
+import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
 import type { T5Input, T5Output } from "./layers/t5.js";
 import type { T6Input, T6Output } from "./layers/t6.js";
@@ -112,6 +113,13 @@ export interface CycleDeps {
 export interface DriverState {
   readonly cycle: number;
   readonly lastEmission: Emission;
+  /**
+   * Store query-returns answered at the close of the last cycle and not yet
+   * ingested (§6.4 T3 query). They arrive at T1 of the next cycle.
+   */
+  readonly pendingReturns?: readonly Signal[];
+  /** Every datum ever recalled from the store — they return only when asked. */
+  readonly recalled?: readonly string[];
 }
 
 /** What the host supplies for one cycle. */
@@ -177,6 +185,12 @@ export function createCycle(deps: CycleDeps): Cycle {
   const now = deps.now ?? ((): number => Date.now());
   let cycle = deps.resume?.cycle ?? 0;
   let lastEmission = deps.resume?.lastEmission ?? deps.initialEmission;
+  /** Store query-returns awaiting ingestion at the next cycle's T1 (§6.4). */
+  let pending: Signal[] = [...(deps.resume?.pendingReturns ?? [])];
+  /** Every datum ever recalled; each returns only on a cycle it was asked for. */
+  const recalled = new Set<string>(deps.resume?.recalled ?? []);
+  /** Recalled data not arriving this cycle — no absence is owed by them (T7). */
+  let unasked: ReadonlySet<string> = new Set();
   /** Wall-clock (host server clock, epoch-ms) of the cycle currently running. */
   let cycleT = 0;
 
@@ -242,6 +256,7 @@ export function createCycle(deps: CycleDeps): Cycle {
           predicted: r.expectation.predicted,
         })),
         observed: new Set(t5.output.results.map((r) => r.entity_id)),
+        unasked,
       },
       field,
       datum,
@@ -304,7 +319,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t6.datum;
     logExit(6);
     channel.publish(6, t6.output);
-    const t7 = runLayer(layers.t7, gatherT7(channel, host), field, datum);
+    const t7 = runLayer(layers.t7, gatherT7(channel, host, unasked), field, datum);
     datum = t7.datum;
     logExit(7);
     channel.publish(7, t7.output);
@@ -326,9 +341,30 @@ export function createCycle(deps: CycleDeps): Cycle {
 
   return {
     cycleCount: () => cycle,
-    snapshot: () => ({ cycle, lastEmission }),
-    run(host): CycleResult {
+    snapshot: () => ({
+      cycle,
+      lastEmission,
+      pendingReturns: [...pending],
+      recalled: [...recalled],
+    }),
+    run(regionInput): CycleResult {
       const field = glob.current();
+
+      // ── Query-returns join what the region returned (§6, link 1) ──
+      // "Input channels: query returns, messages from an Other, event streams,
+      // the result of a prior action." What T3 asked the store for last cycle
+      // arrives now, at T1, and runs every layer like anything else that
+      // arrives. A return is present on the cycle it arrives, and only then: a
+      // memory that was not recalled is not silent, it was not asked.
+      const returned = pending;
+      pending = [];
+      const arriving = new Set(returned.map((s) => (s.raw_payload as StoreReturn).entity));
+      for (const id of arriving) recalled.add(id);
+      unasked = new Set([...recalled].filter((id) => !arriving.has(id)));
+      const host: HostCycleInput =
+        returned.length === 0
+          ? regionInput
+          : { ...regionInput, signals: [...regionInput.signals, ...returned] };
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";
       cycleT = now(); // the host server clock at this cycle (epoch-ms), for [event] timestamps
 
@@ -347,6 +383,20 @@ export function createCycle(deps: CycleDeps): Cycle {
       );
       // prior → running: the admitted host datum has run this cycle (a lean line).
       events.append(recordProvenance(datumId(), cycle, "prior", "running", cycleT));
+
+      // prior → running, for each recalled datum that had not run before (§9):
+      // "Host data, once admitted and once it has run, bears a cycle-mark." It
+      // runs now, so it takes this cycle's mark, and the move is recorded as it
+      // occurs. `prior` is a one-way entry: a datum already in circulation is
+      // returned as it is, and no edge is recorded for being read.
+      for (const s of returned) {
+        const id = (s.raw_payload as StoreReturn).entity;
+        const held = data.get(id);
+        if (held !== undefined && held.fixed.provenance === "prior") {
+          data.put(id, toRunning(held, cycle));
+          events.append(recordProvenance(id, cycle, "prior", "running", cycleT));
+        }
+      }
 
       const pass =
         flow === "single-threaded"
@@ -370,6 +420,17 @@ export function createCycle(deps: CycleDeps): Cycle {
       // minimal scripted host no layer emits (no live region to push to) — the
       // capability is afforded, not fabricated; the buffer is then empty.
       for (const e of pass.emissions) emit(e.issuingLayer, e.action);
+
+      // ── The store answers T3's queries (§6.4, §9 open layer) ──
+      // Answered now, ingested at T1 next cycle. Answering changes nothing in
+      // `[data]`; the datum moves only when it runs.
+      for (const e of pass.emissions) {
+        if (!isStoreQuery(e.action)) continue;
+        for (const s of answerQuery(data, e.action.cue, cycleT)) {
+          const id = (s.raw_payload as StoreReturn).entity;
+          if (!pending.some((p) => (p.raw_payload as StoreReturn).entity === id)) pending.push(s);
+        }
+      }
 
       // ── Expectation readings: the observable signature of accumulation (INV-5) ──
       // One lean line per observed entity: its prediction confidence and the
