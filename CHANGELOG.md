@@ -6,6 +6,17 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 17:33 — fix: datum được gọi lại để lại đường đi và bộ tag của chính nó trong log
+**Commit:** `d358902`
+
+Đọc log của một lượt chạy thật: **960 dòng layer-exit, và cả 960 đều thuộc datum chu kỳ.** Một datum được gọi lại từ store đã đi T1..T8 mà không để lại dòng nào. Floor-tag của nó đứng yên ở tầng nhận vào, và tag của nó chỉ nằm trong `[data]`, thứ sửa được. §9 đòi *"every layer a datum exits MUST be recorded"* và không có tầng đi xuyên. §13.6 đòi bên thứ ba xác nhận từ dấu vết rằng *"host data entered only via the tagging-gate"*.
+
+Giờ mỗi lần datum được gọi lại rời một tầng, log ghi một dòng dưới id của chính nó, và floor-tag của nó được đóng theo tầng vừa rời. Activity record của chu kỳ mang **bộ tag đầy đủ** của nó (fixed và open): **chỉ tag, không bao giờ có nội dung**. Activity record là dấu vết, không phải trải nghiệm, và §9 giữ dấu vết đầy đủ *"without letting uncontested information into the agent's memory"*. Chu kỳ không gọi lại gì thì ghi y hệt trước.
+
+Bộ kiểm đọc được cả hai điều. Đường đi của datum được gọi lại phải phủ T1..T8 trong chu kỳ nó chạy (C3). Mọi datum rời `prior` phải có một bộ tag hợp lệ với gate trong activity record của chu kỳ đó (C6, §13.6). Datum nào rời `prior` mà trong log không có tag thì bị đánh fail. **333 test xanh.**
+
+---
+
 ### 16:22 — fix: T2 đọc mọi emission, nên kết quả của một query khép vòng về đúng nó
 **Commit:** `9b0bbdf`
 
