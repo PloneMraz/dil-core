@@ -6,6 +6,28 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 02:41 — fix: độ rộng chú ý do T6 đặt, không phải T8
+**Commit:** `8c22b10`
+
+T8 nhận việc này trước, và **nó không chạy**. T8 xếp hạng các Other **có mặt trong chu kỳ này**, mà `input.others` chỉ mang đúng những cái đó — nên ở host mà mỗi chu kỳ chỉ một thực thể trở về, T8 thấy **N = 1 mọi lần** và độ rộng không bao giờ nhúc nhích. Đo trên lượt chạy `ls20` thật: **gain đứng yên ở 1.0 suốt cả 80 chu kỳ** trong khi bốn affordance đang được giữ. Thiết kế sai, và **phép đo là thứ bắt được nó** — không phải suy luận.
+
+"Vòng lặp đang giữ bao nhiêu Other" là kiến thức **tích lũy**, và T6 là tầng tích lũy nó: nó chính là Other-Model Synthesis, toàn bộ trạng thái của nó là một map các Other đã gặp. Nên đóng góp chuyển về đó và đọc `state.size`.
+
+Có test ghim: bốn thực thể, mỗi chu kỳ **chỉ một cái** trở về, và gain ra `1/4` chứ không phải `1`. Docstring của T8 giờ ghi lại **vì sao nó không phải tầng đúng**, để việc này không trôi ngược về.
+
+Đo lại sau khi sửa, trên `ls20` (T6 tích lũy 5 thực thể → gain 0.2):
+
+| span khai báo | hiệu dụng | absence | kháng lực thật |
+|---|---|---|---|
+| ∞ | ∞ | 225 | 2 |
+| 8 | 1.6 | 76 | 2 |
+| **4** | **0.8** | **3** | **2** |
+| 2 | 0.4 | 1 | 2 |
+
+**225 → 3** ở span khai báo bằng 4, C3 vẫn sống, và cột kháng lực thật **vẫn không đổi ở mọi mức**. **311 test xanh.**
+
+---
+
 ### 02:19 — feat: kênh đi LÊN của GLOB-MOD, và T8 đặt độ rộng chú ý
 **Commit:** `bff8987`
 
