@@ -37,6 +37,9 @@ import type { Expectation, InfoUnit, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 
+/** Mean prediction error over this cycle's entities (INV-7, up-channel). */
+export const SURPRISE = "surprise";
+
 export interface T5Result {
   readonly entity_id: string;
   readonly expectation: Expectation;
@@ -107,7 +110,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       counts.clear();
       for (const [k, v] of s.counts) counts.set(k, v);
     },
-    process(input): T5Output {
+    process(input, _field, _emit, contribute): T5Output {
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;
         const observed = b.unit;
@@ -143,6 +146,13 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
 
         return { entity_id: id, expectation, predErr };
       });
+      // A FACT T5 can see: how far the region fell from expectation, right now.
+      // Reported as it is; what follows from it is not T5's to say.
+      const surprise =
+        results.length > 0
+          ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
+          : 0;
+      contribute({ [SURPRISE]: surprise });
       return { results };
     },
     // INV-4: predicted and observed are InfoUnits leaving the layer.

@@ -33,6 +33,9 @@ export interface BoundInfo {
   readonly entity_id: string;
 }
 
+/** The share of arriving units that bound to STRANGER (INV-7, up-channel). */
+export const STRANGENESS = "strangeness";
+
 export interface T4Input {
   readonly units: readonly InfoUnit[];
 }
@@ -47,11 +50,16 @@ export function createT4(
   return {
     index: 4,
     consumes: [3],
-    process(input): T4Output {
+    process(input, _field, _emit, contribute): T4Output {
       const bound = input.units.map((unit): BoundInfo => ({
         unit,
         entity_id: resolve(unit),
       }));
+      // A FACT T4 can see and no other layer can: how much of what arrived could
+      // not be attributed to a known entity. Context novelty, reported and not
+      // interpreted — T4 does not decide what follows from it.
+      const strangers = bound.filter((b) => b.entity_id === STRANGER).length;
+      contribute({ [STRANGENESS]: bound.length > 0 ? strangers / bound.length : 0 });
       return { bound };
     },
     infoUnits: (out) => out.bound.map((b) => b.unit),

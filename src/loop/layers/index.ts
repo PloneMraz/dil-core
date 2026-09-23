@@ -18,6 +18,7 @@ export {
 } from "./t2.js";
 
 export {
+  CHANNEL_ACTIVITY,
   createT3,
   type ChannelTransducer,
   type T3Input,
@@ -25,6 +26,7 @@ export {
 } from "./t3.js";
 
 export {
+  STRANGENESS,
   createT4,
   STRANGER,
   type ContextResolver,
@@ -34,6 +36,7 @@ export {
 } from "./t4.js";
 
 export {
+  SURPRISE,
   createT5,
   persistence,
   type PredictRule,
@@ -44,8 +47,7 @@ export {
 } from "./t5.js";
 
 export {
-  ATTENTION_GAIN_PARAM,
-  attentionGainFor,
+  OTHER_COUNT,
   createT6,
   type IndependenceEvidence,
   type T6Input,
@@ -54,6 +56,8 @@ export {
 
 export {
   ATTENTION_GAIN,
+  SILENCE,
+  attentionWidth,
   createT7,
   type T7Input,
   type T7Output,

@@ -94,6 +94,41 @@ export interface T7Options {
 /** The field parameter that scales the attention span (INV-7, down-channel). */
 export const ATTENTION_GAIN = "attentionGain";
 
+/** How many expected entities stayed silent this cycle (INV-7, up-channel). */
+export const SILENCE = "silence";
+
+/**
+ * How wide attention is, read off the field (DECIDE@IMPL, tunable and NOT
+ * derived).
+ *
+ * ATTENTION IS A COMPOSITION, NOT A FORMULA IN ONE LAYER. An earlier version had
+ * T6 compute `1/N` and contribute the answer, which made attention a lone
+ * layer's constant. It is not: it is what the whole field holds. This reads the
+ * facts each layer reported from its own vantage and composes them —
+ *
+ *   `otherCount`  (T6, accrued)  how many Others the loop is holding
+ *   `strangeness` (T4, context)  the share of arrivals that bound to no entity
+ *
+ * — so that attention narrows as the loop holds more, and widens again when what
+ * arrives stops being attributable. A strange situation earns a longer look; a
+ * crowded familiar one does not. Both inputs are facts from context and
+ * environment rather than tuning knobs, which is the whole point.
+ *
+ * The composition itself is declared and tunable. With an empty field it returns
+ * 1, so a host that reports nothing keeps the reference behaviour exactly.
+ */
+export function attentionWidth(params: Record<string, number>): number {
+  const others = params[OTHER_COUNT_READ] ?? 0;
+  const strangeness = params[STRANGENESS_READ] ?? 0;
+  return (1 + strangeness) / Math.max(1, others);
+}
+
+// Read-only names for the facts other layers report. Duplicated as string
+// constants rather than imported, so T7 takes no meaning-channel dependency on
+// T4 or T6 (INV-3): the field is the down-channel and carries no such tie.
+const OTHER_COUNT_READ = "otherCount";
+const STRANGENESS_READ = "strangeness";
+
 interface ExpectState {
   predicted: InfoUnit;
   seen: number;
@@ -128,7 +163,7 @@ export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> & S
       for (const [k, v] of s.expected) expected.set(k, { ...v, lastSeen: v.lastSeen ?? 0 });
       tick = s.tick ?? 0;
     },
-    process(input, field: ModField): T7Output {
+    process(input, field: ModField, _emit, contribute): T7Output {
       tick += 1;
       // Accrue this cycle's expectations into memory.
       for (const e of input.expectations) {
@@ -142,8 +177,11 @@ export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> & S
       // The attention span in force this cycle: the declared span under the
       // field's gain (INV-7, read as read-only background; T7 never reaches up
       // into the field).
-      const gain = field?.params?.[ATTENTION_GAIN] ?? 1;
-      const span = baseSpan * gain;
+      // The span in force this cycle: the declared span, narrowed or widened by
+      // what the field holds, and finally scaled by any explicit gain a host has
+      // set. INV-7 down-channel — read as background, never written.
+      const params = field?.params ?? {};
+      const span = baseSpan * attentionWidth(params) * (params[ATTENTION_GAIN] ?? 1);
       // Register absence for expected entities that did not return, naming which
       // entity fell silent and how many times it had been expected (recurrence),
       // so the absent source's resistance is readable per-source in the trace.
@@ -167,6 +205,9 @@ export function createT7(opts: T7Options = {}): LayerSpec<T7Input, T7Output> & S
           signed: "-", // absence is negative
         });
       }
+      // A FACT T7 can see: how much of what the loop was waiting for did not
+      // arrive. Reported, not interpreted.
+      contribute({ [SILENCE]: absences.length });
       return { absences };
     },
     // INV-4: the predicted unit of each absence is an InfoUnit.

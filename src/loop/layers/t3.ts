@@ -23,6 +23,9 @@ const defaultTransducer: ChannelTransducer = (signal) => ({
   value: signal.raw_payload,
 });
 
+/** How many signals the region delivered this cycle (INV-7, up-channel). */
+export const CHANNEL_ACTIVITY = "channelActivity";
+
 export interface T3Input {
   readonly signals: readonly Signal[];
 }
@@ -37,7 +40,10 @@ export function createT3(
   return {
     index: 3,
     consumes: [1],
-    process(input): T3Output {
+    process(input, _field, _emit, contribute): T3Output {
+      // A FACT T3 can see and no other layer can: how much the region said this
+      // cycle. Not a policy number — T3 does not decide what follows from it.
+      contribute({ [CHANNEL_ACTIVITY]: input.signals.length });
       const units = input.signals.map((signal): InfoUnit => {
         const transduce = transducers[signal.source_id] ?? defaultTransducer;
         const { infoType, value } = transduce(signal);
