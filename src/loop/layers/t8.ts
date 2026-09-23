@@ -42,11 +42,21 @@ function resistancesOf(other: OtherModel): number {
   return typeof ev?.resistances === "number" ? ev.resistances : 0;
 }
 
+/** How many Other↔Other interactions T8 recorded this cycle (INV-7, up-channel). */
+export const INTERACTIONS = "interactions";
+
+/**
+ * The share of all resistance held by the most-resisting Other (INV-7,
+ * up-channel). 1 means one Other is doing all the resisting; 1/N means it is
+ * spread evenly; 0 means nothing has resisted yet.
+ */
+export const RESISTANCE_CONCENTRATION = "resistanceConcentration";
+
 export function createT8(): LayerSpec<T8Input, T8Output> {
   return {
     index: 8,
     consumes: [6],
-    process(input): T8Output {
+    process(input, _field, _emit, contribute): T8Output {
       // RelValue exists only when N ≥ 2.
       let relValues: RelValue[] = [];
       if (input.others.length >= 2) {
@@ -71,6 +81,20 @@ export function createT8(): LayerSpec<T8Input, T8Output> {
         tag: "INFO",
         register: "↔",
         note: "T8 multi-entity abstraction",
+      });
+
+      // T8 CLOSES BACK INTO THE LOOP (INV-1, §6.2: "T8 closes back into the
+      // loop, not into a sink"). Nothing read T8's output: relValues and
+      // socialEdges were produced and dropped, so the top of the meaning-channel
+      // was a dead branch. The meaning-channel cannot carry them back down —
+      // INV-3 forbids it — but the field can, and does from N+1. So T8 reports
+      // what only it can see: the relative picture of the Others, and how many
+      // of them met each other.
+      const resistances = input.others.map(resistancesOf);
+      const total = resistances.reduce((a, b) => a + b, 0);
+      contribute({
+        [INTERACTIONS]: socialEdges.length,
+        [RESISTANCE_CONCENTRATION]: total > 0 ? Math.max(...resistances) / total : 0,
       });
 
       return { relValues, socialEdges };

@@ -18,6 +18,8 @@ import { createCycle, type Layers } from "./cycle.js";
 import { createGlobMod } from "./glob-mod.js";
 import {
   CHANNEL_ACTIVITY,
+  INTERACTIONS,
+  RESISTANCE_CONCENTRATION,
   OTHER_COUNT,
   STRANGENESS,
   SURPRISE,
@@ -199,4 +201,33 @@ test("the driver's own resistance contribution still lands alongside the layers'
   const params = glob.current().params;
   assert.ok("resistance" in params, "the driver's key");
   assert.ok(OTHER_COUNT in params, "and a layer's");
+});
+
+
+// ── T8 closes back into the loop (INV-1) ──
+
+test("T8's output re-enters the loop through the field, not into a sink", () => {
+  // §6.2: "T8 closes back into the loop, not into a sink". Nothing read T8's
+  // relValues or socialEdges; the field is the one path back that INV-3 allows.
+  const { cycle, glob } = freshCycle();
+  cycle.run({ signals: [sig("a", 1), sig("b", 1)], changes: [] });
+  const params = glob.current().params;
+  assert.ok(INTERACTIONS in params, "T8 reported the interactions it saw");
+  assert.ok(RESISTANCE_CONCENTRATION in params, "and the relative picture");
+});
+
+test("interactions reported are the Other-to-Other ones the host supplied", () => {
+  const { cycle, glob } = freshCycle();
+  cycle.run({
+    signals: [sig("a", 1), sig("b", 1)],
+    changes: [],
+    interactions: [{ a_id: "a", b_id: "b", observed_interaction: "contact-made" }],
+  });
+  assert.equal(glob.current().params[INTERACTIONS], 1);
+});
+
+test("with nothing resisting yet, concentration is 0 rather than undefined", () => {
+  const { cycle, glob } = freshCycle();
+  cycle.run({ signals: [sig("a", 1)], changes: [] });
+  assert.equal(glob.current().params[RESISTANCE_CONCENTRATION], 0);
 });

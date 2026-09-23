@@ -65,6 +65,8 @@ export {
 } from "./t7.js";
 
 export {
+  INTERACTIONS,
+  RESISTANCE_CONCENTRATION,
   createT8,
   type T8Input,
   type T8Output,
