@@ -6,6 +6,18 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 05:02 — fix: T8 đóng vòng trở lại thay vì đổ vào bồn chứa
+**Commit:** `a1914f3`
+
+**Không ai đọc đầu ra của T8.** `relValues` và `socialEdges` được sinh ra mỗi chu kỳ rồi bị bỏ, nên đỉnh của meaning-channel là một **nhánh chết** — trái INV-1 (*"every layer output MUST have a path back to some layer's input"*) và trái §6.2, vốn nói thẳng *"T8 closes back into the loop, **not into a sink**"*.
+
+Meaning-channel không mang đầu ra của T8 xuống được — INV-3 cấm. **Trường thì mang được**, và có hiệu lực từ N+1. Nên T8 giờ góp hai sự việc **chỉ nó thấy**: có bao nhiêu tương tác Other↔Other nó ghi nhận (`interactions`), và kháng lực **dồn tới đâu** giữa các Other nó xếp hạng (`resistanceConcentration`) — bằng 1 khi một Other làm toàn bộ việc kháng cự, bằng 1/N khi trải đều, bằng 0 khi chưa có gì kháng cự.
+
+Đây là **lần thứ năm** cùng một khuôn trong bản cài đặt này: một kênh có mặt trong topology mà không ai rút điện. **316 test xanh.**
+
+---
+
+
 ### 04:32 — ci: đổi nhánh mặc định sang `main`, và CI chạy theo nó
 **Commit:** `d7e1755`
 
