@@ -6,6 +6,17 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 16:08 — feat: T3 hỏi store của chính tác tử, và một `prior` được gọi lại thì chạy
+**Commit:** `5bb031a`
+
+**Dữ liệu `prior` được nhận vào rồi không ai hỏi tới.** Dữ liệu host qua tagging-gate được đóng tag `prior` rồi nằm yên trong `[data]`, nên không bao giờ chạy và không bao giờ đi cạnh `prior → running` mà §9 định nghĩa. Đây là **lần thứ sáu** cùng một khuôn: một kênh có mặt trong topology mà không ai rút điện.
+
+Cơ chế đã có sẵn trong đặc tả. §6.4: *"T3 emits a query: it opens or calls a channel to ingest actively"*, và §6 liệt kê *query returns* trong đầu vào của T1. Giờ T3 làm đúng việc đó. Transducer của một kênh có thể mô tả thứ vừa đến theo các chiều open tag mà host khai (§9 lớp open, tag F). T3 hỏi store bằng chính mô tả ấy, **mỗi mô tả chỉ hỏi một lần**. Store trả về mọi datum có open tag mang đủ các cặp của cue. Câu trả lời vào ở T1 chu kỳ sau và đi qua đủ các tầng như mọi thứ khác. Datum được gọi lại đi `prior → running` đúng lúc đó, nhận cycle-mark của chu kỳ ấy, và bước đi được ghi vào `[event]`. **Index chính là lớp open tag**, dùng đúng như §9 đã đòi; không thêm gì vào tag schema.
+
+Trí nhớ được **gọi lại theo gợi ý, không tràn vào**: thứ không cue nào khớp thì nằm yên, cue đã hỏi thì không hỏi lại. T7 cũng thôi ghi vắng mặt cho datum được gọi lại ở những chu kỳ không ai hỏi nó. Đo trước khi sửa: host không báo presence thì datum ấy bị ghi vắng mặt mọi chu kỳ từ chu kỳ thứ hai. Host không mô tả gì thì hành vi giữ nguyên. **326 test xanh.**
+
+---
+
 ### 05:02 — fix: T8 đóng vòng trở lại thay vì đổ vào bồn chứa
 **Commit:** `a1914f3`
 
