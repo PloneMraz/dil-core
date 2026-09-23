@@ -6,6 +6,22 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-23
 
+### 01:52 — feat: chú ý trên tình huống — trường nâng sàn fit
+**Commit:** `bebc412`
+
+Nửa sau của chú ý, và là **nửa an toàn**. Forward-building trước nay lấy **bất cứ thứ gì kho ủng hộ** (`confidence > 0`) làm vật liệu. Giờ trường nâng được sàn đó lên, nên vòng lặp chỉ dựng từ cái nó **được ủng hộ mạnh** — chính là việc chọn lọc mà `H_COUNT` vốn đã làm, nay có thêm **sàn dưới** bên cạnh **trần trên**.
+
+Hai cách đọc hiển nhiên hơn của *"gác kỳ vọng bằng ngưỡng confidence"* **đều không an toàn**, và em xác định bằng cách kiểm mã chứ không bằng trực giác:
+
+- **Cho trường co giãn `Expectation.confidence`** sẽ **phá §13.4**. Con số đó được ghi vào `[event]`, và bộ kiểm tra conformance **đánh trượt** lượt chạy nào có *"confidence did not rise though recurrence climbed"*, gọi đó là **chữ ký kẻ nạp lại** của INV-5. Một gain chú ý đang co lại sẽ khiến một vòng lặp tích lũy **lành mạnh** bị báo là giả mạo. Có test khẳng định chuỗi `(recurrence, confidence)` ghi ra **giống hệt nhau** dưới sàn cao và sàn thấp, và rằng nó **thật sự là một đường dốc lên**.
+- **Bỏ qua thực thể có confidence thấp ở T5** nghĩa là không có kỳ vọng → không có `PredErr` → **kháng lực của hồi đáp đó không được đăng ký**, đúng định nghĩa Mode-A thuần của §8.2, cài đặt có chủ ý. Có test khẳng định: dưới một sàn cao đủ để chặn sạch forward-building, một hồi đáp trái ngược **vẫn sinh ra vết sẹo** gắn đúng thực thể đã kháng cự.
+
+Nên sàn chỉ chạm vào **cái được DỰNG TIẾP từ đó**. Mọi thực thể vẫn có kỳ vọng, mọi hồi đáp vẫn gặp kỳ vọng của nó, mọi lệch vẫn được đăng ký, và `confidence` vẫn là **hàm thuần của tích lũy**.
+
+`FIT_FLOOR` mặc định 0, nên hành vi tham chiếu không đổi. **300 test xanh.**
+
+---
+
 ### 01:26 — feat: chú ý ở T7 — vòng lặp thôi đòi lại mọi thứ
 **Commit:** `3134990`
 
