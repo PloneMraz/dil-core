@@ -4,6 +4,29 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-09-23
+
+### 00:41 — feat: kênh truy hồi kháng lực — cuối cùng thì kho cũng trả lời
+**Commit:** `8455418`
+
+§9 đặt kho làm chỗ ngồi của kinh nghiệm — *"The self accrues from scars"* — và §10 buộc kho riêng phải mang kênh truy hồi kháng lực, *"otherwise drift is certain"*. **Cả hai điều khoản trước nay không được thỏa ở đâu cả.** Không thành phần nào trong vòng lặp đọc kho: [cycle.ts](src/loop/cycle.ts) gọi `data.put` một lần mỗi chu kỳ và không bao giờ đọc lại, nên sẹo được ghi ra rồi không bao giờ trở về, và ba cạnh §9 định nghĩa cho sự trở về đó — `scar → running`, `scar → simulated`, `scar → projected` — **không thể phát**. Đo trên một lượt chạy thật: cả ba đều 0 lần.
+
+Luật cập nhật của [T5](src/loop/layers/t5.ts) trở thành khe khai báo được, với `persistence` làm mặc định nên hành vi tham chiếu không đổi khi host không khai gì. [recollection.ts](src/loop/recollection.ts) là kênh đó: nó nhận `ReadableEventLog` và **không gì khác**, nên *"Mode-B returns; it does not write"* (§8.4) đúng **do kiểu dữ liệu**, không phải do kỷ luật.
+
+Chú ý §10 gọi tên cái gì: truy hồi **kháng lực**, không phải truy hồi dữ liệu. Nên đầu ra duy nhất của log là **một kỳ vọng**: đọc `[event]` → kỳ vọng → vùng trả lời → mismatch → sẹo. Không gì khác đi qua.
+
+**Kỳ vọng vào khe nào là chỗ chịu lực.** Bản ghi cấp **kỳ vọng**, không bao giờ cấp quan sát. `recurrence` đếm quan sát, và §13.4 đọc *confidence leo cùng recurrence* làm dấu hiệu phân biệt tác tử tích lũy thật với *"a reloading impostor [that] cannot make either climb"*. Cho hồi tưởng vào khe quan sát thì tác tử tự thổi phồng độ tin cậy bằng cách đọc lại log của chính mình — **thành đúng kẻ mạo danh mà dấu hiệu đó sinh ra để bắt**. Một test ghim điều này: một lần chạm thế giới được tích, không phải hai.
+
+Hồi tưởng khóa theo **tình huống** qua hàm khóa do host cấp, nên bản ghi trả lời về *nơi tác tử đang đứng* chứ không phải về thực thể nói chung. Chỉ **sẹo** mới rút ra được, giữ đúng ranh giới §9 vạch giữa kinh nghiệm và dấu vết. Sẹo absence bị bỏ qua: nó ghi rằng *không có gì trở về*, nên trong đó không có gì để nhớ lại.
+
+Driver ghi `scar → running` cho mỗi vết sẹo được rút ra, **theo khóa datum của chính vết sẹo đó** chứ không phải của chu kỳ hiện tại — có test khẳng định, vì ghi nhầm sang datum chu kỳ sẽ biến cạnh ấy thành trang trí.
+
+**Khai rõ những gì chưa làm:** `scar → simulated` và `scar → projected` vẫn chưa phát, vì chỉ `scar → running` có cơ chế thật đứng sau; và bản thân `[data]` vẫn chưa được đọc. **Giới hạn khai rõ:** bản ghi được viết bởi chính lăng kính giờ đang đọc nó, nên cái này bắt được trôi dạt *theo thời gian*, không bắt được thiên lệch *đứng yên*. Nó yếu hơn một người đọc ngoại lai và không thay thế reflection của §8.4.
+
+`tsc --noEmit` sạch, **282 test xanh** (265 cũ + 17 mới).
+
+---
+
 ## [Unreleased] — 2026-09-22
 
 ### 16:44 — chore: để package import được như một thư viện
