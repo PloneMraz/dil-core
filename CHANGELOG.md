@@ -6,6 +6,19 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 18:50 — fix: scar được gợi lại chuyển trên đúng datum mà record nêu tên, và chỉ một lần
+**Commit:** `dc7a9a7`
+
+Lỗi này có từ `276f30a`, lúc scar được chuyển sang nằm trên datum phản hồi. Khi kênh `recollection` gợi lại một scar, driver vẫn ghi `scar → running` cho `cycle-N`. Nó ghi lại **mỗi lần gợi lại**, kể cả khi datum đã `running` rồi, và không hề cập nhật `[data]`.
+
+Cách sửa:
+- `RecalledFrom` giờ mang datum mà record nêu tên, và chỉ dùng `cycle-N` khi record không nêu datum nào.
+- Driver chỉ chuyển datum khi nó thật sự đang là `scar`, và cập nhật `[data]` cùng lúc với dòng log.
+
+Test của recollection giờ gieo cả `[data]` như một store thật vẫn giữ. Thêm 1 test: scar nằm trên datum phản hồi, chuyển trên đúng datum đó, và chỉ một lần. **358 test xanh.**
+
+---
+
 ### 18:30 — fix: cycle datum chỉ thành scar khi thứ nó mang theo va chạm
 **Commit:** `6c74f0c`
 
