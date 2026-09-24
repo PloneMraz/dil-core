@@ -206,12 +206,15 @@ test("a collision is recorded as a scar in the [event] log", () => {
   assert.notEqual(rec.event.received, null); // a value was received (not absence)
 });
 
-test("the [event] record inherits the cycle datum's domain tag (auditable)", () => {
-  const { cycle, events } = freshCycle();
+test("the [event] record inherits the tags of the datum that collided (auditable)", () => {
+  const { cycle, data, events } = freshCycle();
   cycle.run({ signals: [weather("sun")], changes: [] });
   cycle.run({ signals: [weather("rain")], changes: [] });
   const scar = events.all().find((x): x is import("../store/resist-event.js").EventRecord => x.kind === "scar")!;
-  assert.equal(scar.scar.open.domain, "cycle");
+  // What collided is the region's return, and the record names it.
+  assert.equal(scar.datumId, "signal-1-0");
+  assert.equal(scar.scar.open.domain, "region");
+  assert.deepEqual(scar.scar.open, data.get("signal-1-0")!.open);
 });
 
 test("the response feeds back as the next cycle's emission (INV-1)", () => {

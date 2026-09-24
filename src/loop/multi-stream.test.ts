@@ -96,13 +96,16 @@ test("both modes record the identical T1→T8 layer-exit path in [event]", () =>
 });
 
 test("behaviour is unchanged across the switch: a multi-stream collision still scars", () => {
-  const { cycle, events } = freshCycle();
+  const { cycle, data, events } = freshCycle();
   cycle.run({ signals: [weather("sun")], changes: [] }); // cycle-0, single-threaded
   const r1 = cycle.run({ signals: [weather("rain")], changes: [] }); // multi-stream mismatch
   assert.equal(r1.flow, "multi-stream");
   assert.ok(r1.scars >= 1);
   const scar = events.all().find((x): x is import("../store/resist-event.js").EventRecord => x.kind === "scar")!;
-  assert.equal(scar.scar.open.flow, "multi-stream"); // the scar carries the mode
+  assert.equal(scar.scar.fixed.cycleMark, 1);
+  // The mode is the cycle's, carried by the cycle datum, which stands for the cycle's collision.
+  assert.equal(data.get("cycle-1")!.open.flow, "multi-stream");
+  assert.equal(data.get("cycle-1")!.fixed.provenance, "scar");
 });
 
 // ── Consumption, not dispatch ───────────────────────────────────────────────

@@ -42,10 +42,11 @@ function freshCycle() {
 }
 
 /** Count provenance transitions (`from→to`) recorded in the [event] log. */
+/** The cycle datum's moves: forward-building is the road the cycle datum takes. */
 function transitions(events: EventLog): Record<string, number> {
   const c: Record<string, number> = {};
   for (const r of events.all()) {
-    if (r.kind === "activity" && r.activityKind === "provenance") {
+    if (r.kind === "activity" && r.activityKind === "provenance" && r.datumId.startsWith("cycle-")) {
       const key = `${r.from}→${r.to}`;
       c[key] = (c[key] ?? 0) + 1;
     }

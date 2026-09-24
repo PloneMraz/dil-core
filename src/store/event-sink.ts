@@ -51,7 +51,7 @@ export interface SerializedDatumRecord {
   readonly floorTag: LayerIndex;
   readonly open: OpenTags;
   readonly payload: unknown;
-  readonly datumId?: string; // cycle-seal
+  readonly datumId?: string; // cycle-seal; a scar's collided datum
   readonly event?: ResistEvent; // scar
   readonly activity?: ActivityEvent; // cycle-seal
   readonly anchor: ContextAnchor;
@@ -166,7 +166,11 @@ function datumForm(
 /** Project a LogRecord into its serialized form (tags in fixed order where present). */
 export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
   if (rec.kind === "scar") {
-    return datumForm("scar", rec.scar, { event: rec.event, anchor: rec.anchor });
+    return datumForm("scar", rec.scar, {
+      event: rec.event,
+      ...(rec.datumId !== undefined ? { datumId: rec.datumId } : {}),
+      anchor: rec.anchor,
+    });
   }
   if (rec.kind === "manifest") {
     return { form: "manifest", protocol: rec.protocol, schemaVersion: rec.schemaVersion, decisions: rec.decisions, t: rec.t };
@@ -472,7 +476,13 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
     open: rec.open,
   };
   return rec.form === "scar"
-    ? { kind: "scar", event: rec.event!, scar: datum, anchor: rec.anchor }
+    ? {
+        kind: "scar",
+        event: rec.event!,
+        scar: datum,
+        anchor: rec.anchor,
+        ...(rec.datumId !== undefined ? { datumId: rec.datumId } : {}),
+      }
     : {
         kind: "activity",
         activityKind: "cycle-seal",

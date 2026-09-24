@@ -25,7 +25,7 @@
  * runs one cycle correctly; it makes no self-continuity claim.
  */
 
-import { admitHostData } from "../store/tagging-gate.js";
+import { admitHostData, type HostDatum } from "../store/tagging-gate.js";
 import { stampLayer, toRunning, toScar, toSimulated, toProjected } from "../store/data-store.js";
 import {
   recordScar,
@@ -107,6 +107,44 @@ export interface CycleDeps {
    * stay write-only.
    */
   readonly recollection?: { drain(): readonly RecalledFrom[] };
+  /**
+   * How a return from the region enters `[data]`: its payload and open tags,
+   * or null to keep that one out (§10: selective-write is `DECIDE@IMPL`).
+   * Defaults to `admitReturn`, which keeps every one. See `AdmitPolicy`.
+   */
+  readonly admit?: AdmitPolicy;
+}
+
+/**
+ * What the region returns is data. An expectation is compared against it, and a
+ * `scar` is the datum that "collided with resistance and held" (§3, §9): if the
+ * return is not a datum, there is nothing for the tag to be on, and the mismatch
+ * does not say what it was a mismatch with. So each return enters `[data]`
+ * through the tagging-gate like any host data (§9: T1 ingests "`Signal[]` from
+ * the host's existing data"), runs as `running`, leaves a line at every layer it
+ * exits, and — when the expectation about it fails — is itself the datum that
+ * moves to `scar`, the scar record naming it.
+ *
+ * The policy says which open tags a return carries (§12 tag F: the vocabulary is
+ * the host's), or returns null to keep one out.
+ */
+export type AdmitPolicy = (signal: Signal) => HostDatum | null;
+
+/**
+ * The reference admission: every return, described by what the driver can see
+ * of it without interpreting it — that it came from the region, by which
+ * channel, in what form. A host with a vocabulary of its own declares its own.
+ */
+export const admitReturn: AdmitPolicy = (signal) => ({
+  payload: signal.raw_payload,
+  admittingLayer: 1,
+  open: { domain: "region", source: signal.source_id, format: formatOf(signal.raw_payload) },
+});
+
+function formatOf(value: unknown): string {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
 }
 
 /** The cycle driver's own accrued state (part of the §9 snapshot). */
@@ -179,6 +217,8 @@ interface LayerPass {
   readonly emissions: readonly LayerEmission[];
   /** Field contributions declared by any layer during this pass (INV-7), each bound to its issuer. */
   readonly contributions: readonly LayerContribution[];
+  /** T3's units, one per signal in the signals' order: how a T5 observation finds its datum. */
+  readonly units: readonly InfoUnit[];
 }
 
 export function createCycle(deps: CycleDeps): Cycle {
@@ -206,10 +246,15 @@ export function createCycle(deps: CycleDeps): Cycle {
    * MUST be recorded" (§9), and there are no pass-through layers.
    */
   let runningRecalled: readonly string[] = [];
+  /** The region's returns admitted this cycle; they pass the layers with the cycle datum too. */
+  let runningAdmitted: readonly string[] = [];
+  const admit = deps.admit ?? admitReturn;
   /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
     events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
-    for (const id of runningRecalled) events.append(recordLayerExit(id, cycle, layer, cycleT));
+    for (const id of [...runningRecalled, ...runningAdmitted]) {
+      events.append(recordLayerExit(id, cycle, layer, cycleT));
+    }
   }
   /**
    * Emission — link 5 as a lateral capability (§6.4). The one sink through which
@@ -291,6 +336,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       crystallized: t2.output.crystallized,
       emissions,
       contributions,
+      units: t3.output.units,
     };
   }
 
@@ -347,6 +393,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       crystallized: t2.output.crystallized,
       emissions,
       contributions,
+      units: t3.output.units,
     };
   }
 
@@ -428,6 +475,22 @@ export function createCycle(deps: CycleDeps): Cycle {
         .map((s) => (s.raw_payload as StoreReturn).entity)
         .filter((id) => data.has(id));
 
+      // prior → running, for each return from the region (see `AdmitPolicy`).
+      // It enters through the tagging-gate and runs now, so it takes this
+      // cycle's mark. The region's signals come first in `host.signals`, so
+      // signal i is T3's unit i.
+      const admittedAt = new Map<number, string>();
+      regionInput.signals.forEach((signal, i) => {
+        const declared = admit(signal);
+        if (declared === null) return;
+        const id = `signal-${cycle}-${i}`;
+        data.put(id, toRunning(admitHostData(declared, cycleT), cycle));
+        events.append(recordProvenance(id, cycle, "prior", "running", cycleT));
+        admittedAt.set(i, id);
+      });
+      runningAdmitted = [...admittedAt.values()];
+      const admittedNow = new Set(runningAdmitted);
+
       const pass =
         flow === "single-threaded"
           ? passSingleThreaded(host, field, admitted)
@@ -446,6 +509,23 @@ export function createCycle(deps: CycleDeps): Cycle {
       }
       runningRecalled = [];
 
+      // The same for each return admitted this cycle: it left T8 with the cycle
+      // datum, and its tag set — never its content — goes into the record.
+      const admittedTags: RecalledTags[] = [];
+      for (const id of runningAdmitted) {
+        const ran = stampLayer(data.get(id)!, 8);
+        data.put(id, ran);
+        admittedTags.push({ datumId: id, fixed: ran.fixed, open: ran.open });
+      }
+      runningAdmitted = [];
+      // Which admitted datum each observation came from, by the unit itself:
+      // T4 and T5 carry T3's units through unchanged.
+      const datumOf = new Map<InfoUnit, string>();
+      for (const [i, id] of admittedAt) {
+        const unit = pass.units[i];
+        if (unit !== undefined) datumOf.set(unit, id);
+      }
+
       // ── §7 crystallization: T2 drew the self/environment distinction ──
       // The one-time act where the from-within standpoint begins (T2 of cycle-0).
       // Recorded as a lean trace line — the ACT of distinguishing self from
@@ -463,13 +543,16 @@ export function createCycle(deps: CycleDeps): Cycle {
       // capability is afforded, not fabricated; the buffer is then empty.
       for (const e of pass.emissions) emit(e.issuingLayer, e.action);
 
-      // ── The store answers T3's queries (§6.4, §9 open layer) ──
+      // ── The store answers the queries raised this cycle (§6.4, §9 open layer) ──
       // Answered now, ingested at T1 next cycle. Answering changes nothing in
-      // `[data]`; the datum moves only when it runs.
+      // `[data]`; the datum moves only when it runs. Memory is what the store
+      // held before the cycle that asks: what arrived this cycle is already
+      // running in it, and answering with it would recall what is being seen.
       for (const e of pass.emissions) {
         if (!isStoreQuery(e.action)) continue;
         for (const s of answerQuery(data, e.action.cue, cycleT)) {
           const id = (s.raw_payload as StoreReturn).entity;
+          if (admittedNow.has(id)) continue;
           if (!pending.some((p) => (p.raw_payload as StoreReturn).entity === id)) pending.push(s);
         }
       }
@@ -587,9 +670,21 @@ export function createCycle(deps: CycleDeps): Cycle {
           recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", cycleT),
         );
         for (const { source_id, e } of collisions) {
+          // What collided is the return the expectation was compared against:
+          // that datum moves to `scar` (§9 `running → scar`), and the record
+          // embeds and names it. An absence has no return, so the cycle datum
+          // stands for it.
+          const collidedId = e.observed !== null ? datumOf.get(e.observed) : undefined;
+          let collided = scarDatum;
+          if (collidedId !== undefined) {
+            const held = data.get(collidedId)!;
+            collided = toScar(held, true);
+            data.put(collidedId, collided);
+            events.append(recordProvenance(collidedId, cycle, held.fixed.provenance, "scar", cycleT));
+          }
           events.append(
             recordScar(
-              scarDatum,
+              collided,
               {
                 source_id,
                 expected: e.predicted.content,
@@ -598,6 +693,7 @@ export function createCycle(deps: CycleDeps): Cycle {
                 t: cycleT,
               },
               anchor,
+              collidedId,
             ),
           );
           collisionSources.add(source_id);
@@ -630,6 +726,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             scars,
             t: cycleT,
             ...(recalledTags.length > 0 ? { recalled: recalledTags } : {}),
+            ...(admittedTags.length > 0 ? { admitted: admittedTags } : {}),
           },
           anchor,
         ),

@@ -59,6 +59,12 @@ export interface EventRecord {
   /** The `[data]` datum that collided and held (provenance `scar`); its tags are the event's tags. */
   readonly scar: TaggedDatum;
   readonly anchor: ContextAnchor;
+  /**
+   * The `[data]` id of the datum that collided: the region's return the
+   * expectation was compared against. Absent when the cycle datum stands for
+   * the collision instead — an absence, where the region returned nothing.
+   */
+  readonly datumId?: string;
 }
 
 /**
@@ -89,6 +95,14 @@ export interface ActivityEvent {
    * Absent when nothing was recalled, so every other record is byte-identical.
    */
   readonly recalled?: readonly RecalledTags[];
+  /**
+   * The full tag set of every region return that entered `[data]` this cycle,
+   * as it stands after running. What the region returns is data: it is what an
+   * expectation is compared against, so without it a `scar` would name nothing
+   * that collided. Tags only, never content, for the same reason as `recalled`.
+   * Absent when nothing was admitted.
+   */
+  readonly admitted?: readonly RecalledTags[];
 }
 
 /** One recalled datum's tag set, as the activity record carries it. */
@@ -419,11 +433,12 @@ export function recordScar(
   scar: TaggedDatum,
   event: ResistEvent,
   anchor: ContextAnchor,
+  datumId?: string,
 ): EventRecord {
   if (scar.fixed.provenance !== "scar") {
     throw new EventRecordError(
       `datum is "${scar.fixed.provenance}", not a scar; only collision-and-hold reaches [event]`,
     );
   }
-  return { kind: "scar", event, scar, anchor };
+  return { kind: "scar", event, scar, anchor, ...(datumId !== undefined ? { datumId } : {}) };
 }

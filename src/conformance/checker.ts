@@ -331,7 +331,10 @@ export function checkConformance(
     const incomplete = cycleSeals.find(
       (r) => !coversAllLayers(layersByDatum.get(r.datumId) ?? new Set<number>()),
     );
-    const flowRecorded = datumBearing.every((r) => typeof datumOf(r).open.flow === "string");
+    // The flow mode is the cycle's, so it is on the cycle datum each seal
+    // embeds. A scar embeds the datum that collided — a return from the region,
+    // which ran in a flow mode but does not carry one as a dimension of its own.
+    const flowRecorded = cycleSeals.every((r) => typeof r.datum.open.flow === "string");
     const flowInconsistent = datumBearing.find((r) => {
       const flow = datumOf(r).open.flow;
       const mark = datumOf(r).fixed.cycleMark;
@@ -355,10 +358,23 @@ export function checkConformance(
       );
       return !coversAllLayers(layers);
     });
+    // So does every return the region gave that entered `[data]`.
+    const admittedRuns = cycleSeals.flatMap((r) =>
+      (r.activity.admitted ?? []).map((t) => ({ datumId: t.datumId, cycle: r.activity.cycle })),
+    );
+    const admittedPathGap = admittedRuns.find(({ datumId, cycle }) => {
+      const layers = new Set(
+        layerExits.filter((le) => le.datumId === datumId && le.cycleMark === cycle).map((le) => le.layer),
+      );
+      return !coversAllLayers(layers);
+    });
     const claims: ClaimCheck[] = [
       claim("every cycle datum's path covers T1→T8 (from layer-exit lines)", "trace", incomplete ? "fail" : "pass"),
       ...(recalledRuns.length > 0
         ? [claim("every recalled datum's path covers T1→T8 in the cycle it ran", "trace", recalledPathGap ? "fail" : "pass")]
+        : []),
+      ...(admittedRuns.length > 0
+        ? [claim("every region return's path covers T1→T8 in the cycle it arrived", "trace", admittedPathGap ? "fail" : "pass")]
         : []),
       claim("recorded flow mode matches cycle-mark (0 single-threaded, 1+ multi-stream)", "trace", flowInconsistent ? "fail" : "pass"),
       claim("every emission carries register ↔ and a valid issuing layer (1–8)", "trace", badEmission ? "fail" : "pass"),
@@ -514,7 +530,9 @@ export function checkConformance(
     const tagsSeen = new Map<string, OpenTagsLike>();
     for (const r of cycleSeals) {
       tagsSeen.set(`${r.datumId}@${r.activity.cycle}`, r.datum.open);
-      for (const t of r.activity.recalled ?? []) tagsSeen.set(`${t.datumId}@${r.activity.cycle}`, t.open);
+      for (const t of [...(r.activity.recalled ?? []), ...(r.activity.admitted ?? [])]) {
+        tagsSeen.set(`${t.datumId}@${r.activity.cycle}`, t.open);
+      }
     }
     const unseenEntry = provenanceLines.find((r) => {
       if (r.from !== "prior") return false;
