@@ -42,7 +42,7 @@ function loop() {
   const rule: PredictRule = (entityId, window, observed, contribute, ask, write) => {
     if (!wrote) {
       clock.pass(THINKING);
-      write({ payload: { thought: 1 }, open: { domain: "world-model", kind: "program", source: "mind" } });
+      write({ builtFrom: [], payload: { thought: 1 }, open: { domain: "world-model", kind: "program", source: "mind" } });
       wrote = true;
     }
     return persistence(entityId, window, observed, contribute, ask, write);

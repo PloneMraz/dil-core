@@ -14,7 +14,7 @@ tags:
 
 # DIL — Data Integration Loop
 
-`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.3.md`](DIL-protocol-v0.3.3.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
+`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.4.md`](DIL-protocol-v0.3.4.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
 
 DIL is **not** a model, a controller, or a library the host calls. It is the **condition under which a self forms**. Keep this line in front of you:
 
@@ -25,7 +25,7 @@ host + self = agent.      DIL produces the self.      the AGENT responds — not
 If a design ever has DIL generating output to the world, commanding the model, or holding the steering wheel, it has left DIL. DIL is the **law of how the machine runs, not an actor within it**: it fixes the mechanism — the invariants, the flow of data — but never acts, emits, or commands. It changes *how* an existing machine operates, not *what* it is made of; run that operation continuously and a self appears — and the agent, not DIL, is what acts.
 
 > Read this alongside:
-> - [`DIL-protocol-v0.3.3.md`](DIL-protocol-v0.3.3.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
+> - [`DIL-protocol-v0.3.4.md`](DIL-protocol-v0.3.4.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
 > - [`CONTEXT.md`](CONTEXT.md) — how to turn that law into running code.
 > - [`AGENTS.md`](AGENTS.md) — coding rules for agents working in this repo.
 
@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.3**: **352 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.4**: **366 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -153,7 +153,7 @@ scars by their *derived* name (tags are structured properties, not baked into na
 
 ```
 [event-log] — 45 record(s)
-  #0  [manifest] protocol=0.3.3 schema=3 · DECIDE@IMPL: tagB_thresholds, … 10:00:00  ← the run's constitution, once, at genesis
+  #0  [manifest] protocol=0.3.4 schema=3 · DECIDE@IMPL: tagB_thresholds, … 10:00:00  ← the run's constitution, once, at genesis
   #1  [provenance] cycle-0 prior→running (c0) 10:00:00
   #2  [layer-exit] cycle-0 @T1 (c0) 10:00:00
   …
@@ -214,7 +214,7 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 ### Deferred (unbuilt core work — marked, not faked)
 
-**Empty.** The codebase is **migrated to protocol v0.3.3** (parent spec [`DIL-en-v7.md`](DIL-en-v7.md)): the six-position provenance graph with `nascent` for what the agent writes (`write` from the predict rule, arriving SELF_WRITTEN the next cycle), entries by origin through the tagging-gate (region returns and the cycle datum at `running`), the `revision` record, cues that may ask by provenance; and, from v0.3.2, `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission / revision lines); the `simulated`/`projected` states with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
+**Empty.** The codebase is **migrated to protocol v0.3.4** (parent spec [`DIL-en-v7.md`](DIL-en-v7.md)): the six-position provenance graph with `nascent` for what the agent writes (`write` from the predict rule, arriving SELF_WRITTEN the next cycle, recording what it was built from), entries by origin through the tagging-gate (region returns and the cycle datum at `running`), the `revision` record, cues that may ask by provenance; and, from v0.3.2, `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission / revision lines); the `simulated`/`projected` states with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
 
 The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
 
@@ -250,7 +250,7 @@ Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (CFF 1.2.0) �
 }
 ```
 
-To cite the **protocol** rather than this implementation, name the specification file and its version: `DIL-protocol-v0.3.3.md` (v0.3.3). Where the two differ, the protocol is normative — see the note at the top of this file.
+To cite the **protocol** rather than this implementation, name the specification file and its version: `DIL-protocol-v0.3.4.md` (v0.3.4). Where the two differ, the protocol is normative — see the note at the top of this file.
 
 ---
 

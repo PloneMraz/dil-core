@@ -131,6 +131,13 @@ export interface WriteRequest {
   readonly payload: unknown;
   /** Required for a datum written anew; for a revision, replaces its open tags when given. */
   readonly open?: OpenTags;
+  /**
+   * What it was built from (v0.3.4 §9): the observations the rule drew on — units
+   * from its window or the one in front of it — and data it recalled, by id. The
+   * driver records the ids, never the content. An empty list says nothing held
+   * in the store went into it.
+   */
+  readonly builtFrom: readonly (InfoUnit | string)[];
 }
 
 /** Writing from the rule into `[data]`, through the driver (v0.3.3). */

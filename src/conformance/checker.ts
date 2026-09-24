@@ -583,6 +583,15 @@ export function checkConformance(
     const noEntry =
       layerExits.find((le) => !entered.has(le.datumId) || entered.get(le.datumId)! > le.cycleMark) ??
       revisions.find((rv) => !entered.has(rv.datumId) || entered.get(rv.datumId)! > rv.cycleMark);
+    // v0.3.4 §9: a datum the agent writes records what it was built from — the
+    // ids of data whose entry the trace shows, by the cycle it was written in.
+    const unbuilt = cycleSeals
+      .flatMap((r) => (r.activity.written ?? []).map((w) => ({ w, cycle: r.activity.cycle })))
+      .find(
+        ({ w, cycle }) =>
+          !Array.isArray(w.builtFrom) ||
+          w.builtFrom.some((id) => !entered.has(id) || entered.get(id)! > cycle),
+      );
     const claims: ClaimCheck[] = [
       claim("every record well-formed — 4 fixed + ≥3 open tags incl domain + anchor", "trace", firstProblem ? "fail" : "pass"),
       claim("every cycle left an activity record (contiguous coverage)", "trace", coverageGap !== null ? "fail" : "pass"),
@@ -590,6 +599,7 @@ export function checkConformance(
       claim("`prior` and `nascent` each entered once, never re-entered (§9)", "trace", doubleEntry ? "fail" : "pass"),
       claim("host data entered only via the tagging-gate — every datum leaving `prior` or `nascent` shows its gate-admissible tag set in the trace (§13.6)", "trace", unseenEntry ? "fail" : "pass"),
       claim("every datum that ran or was revised shows its entry, with its tag set, in the trace (§9)", "trace", noEntry ? "fail" : "pass"),
+      claim("every datum the agent wrote says what it was built from, each a datum whose entry the trace shows (§9)", "trace", unbuilt ? "fail" : "pass"),
     ];
     push(
       "6",
@@ -607,6 +617,8 @@ export function checkConformance(
                 ? `datum ${unseenEntry.datumId} left \`${unseenEntry.from}\` at cycle ${unseenEntry.cycleMark} with no gate-admissible tag set in the trace (§13.6)`
               : noEntry
                 ? `datum ${noEntry.datumId} appears at cycle ${noEntry.cycleMark} with no recorded entry before it (§9)`
+              : unbuilt
+                ? `datum ${unbuilt.w.datumId}, written at cycle ${unbuilt.cycle}, does not say what it was built from, or names data with no recorded entry (§9)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior and nascent each entered once); every datum that ran shows its entry; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
     );
   }

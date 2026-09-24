@@ -112,7 +112,7 @@ function seal(events: EventLog, cycle: number): CycleSealActivity {
 test("a datum written anew enters at nascent, with the cycle that wrote it, and its tags in that cycle's record", () => {
   const data = createDataStore();
   const events = createEventLog();
-  step(cycleOver(data, events, writingRule(new Map([[0, { payload: { code: "v1" }, open: MODEL_TAGS }]]), [])), 0);
+  step(cycleOver(data, events, writingRule(new Map([[0, { builtFrom: [], payload: { code: "v1" }, open: MODEL_TAGS }]]), [])), 0);
 
   const d = data.get("written-0-0")!;
   assert.deepEqual(d.payload, { code: "v1" });
@@ -130,7 +130,7 @@ test("the next cycle it arrives, T2 reads it as the agent's own, it runs every l
   const events = createEventLog();
   const met: unknown[] = [];
   const agency: T2Output[] = [];
-  const cycle = cycleOver(data, events, writingRule(new Map([[0, { payload: { code: "v1" }, open: MODEL_TAGS }]]), met), agency);
+  const cycle = cycleOver(data, events, writingRule(new Map([[0, { builtFrom: [], payload: { code: "v1" }, open: MODEL_TAGS }]]), met), agency);
   step(cycle, 0);
   step(cycle, 1);
 
@@ -150,8 +150,8 @@ test("a revision changes the content, not the provenance, and leaves a bare revi
   const events = createEventLog();
   const agency: T2Output[] = [];
   const plan = new Map<number, WriteRequest>([
-    [0, { payload: { code: "v1" }, open: MODEL_TAGS }],
-    [2, { datumId: "written-0-0", payload: { code: "v2" } }],
+    [0, { builtFrom: [], payload: { code: "v1" }, open: MODEL_TAGS }],
+    [2, { builtFrom: [], datumId: "written-0-0", payload: { code: "v2" } }],
   ]);
   const cycle = cycleOver(data, events, writingRule(plan, []), agency);
   for (let t = 0; t < 4; t++) step(cycle, t);
@@ -172,17 +172,17 @@ test("a revision changes the content, not the provenance, and leaves a bare revi
 });
 
 test("a datum written anew must carry its tags, and only a held datum can be revised", () => {
-  const noTags = cycleOver(createDataStore(), createEventLog(), writingRule(new Map([[0, { payload: 1 }]]), []));
+  const noTags = cycleOver(createDataStore(), createEventLog(), writingRule(new Map([[0, { builtFrom: [], payload: 1 }]]), []));
   assert.throws(() => step(noTags, 0), TaggingGateError);
 
   const verdict = cycleOver(
     createDataStore(),
     createEventLog(),
-    writingRule(new Map([[0, { payload: 1, open: { domain: "x", kind: "y", quality: "good" } }]]), []),
+    writingRule(new Map([[0, { builtFrom: [], payload: 1, open: { domain: "x", kind: "y", quality: "good" } }]]), []),
   );
   assert.throws(() => step(verdict, 0), TaggingGateError);
 
-  const unknown = cycleOver(createDataStore(), createEventLog(), writingRule(new Map([[0, { datumId: "nope", payload: 1 }]]), []));
+  const unknown = cycleOver(createDataStore(), createEventLog(), writingRule(new Map([[0, { builtFrom: [], datumId: "nope", payload: 1 }]]), []));
   assert.throws(() => step(unknown, 0), /no datum "nope" to revise/);
 });
 
@@ -200,8 +200,8 @@ test("a cue may ask by provenance: what collided", () => {
 test("a run that writes and revises leaves a trace the checker accepts, and the new records survive the sink", () => {
   const events = createEventLog();
   const plan = new Map<number, WriteRequest>([
-    [0, { payload: { code: "v1" }, open: MODEL_TAGS }],
-    [2, { datumId: "written-0-0", payload: { code: "v2" } }],
+    [0, { builtFrom: [], payload: { code: "v1" }, open: MODEL_TAGS }],
+    [2, { builtFrom: [], datumId: "written-0-0", payload: { code: "v2" } }],
   ]);
   const cycle = cycleOver(createDataStore(), events, writingRule(plan, []));
   for (let t = 0; t < 4; t++) step(cycle, t, t % 2 ? "sun" : "rain");
@@ -233,7 +233,7 @@ test("a datum with no recorded entry is caught, whether it runs or is revised", 
 test("what was written survives a snapshot: resumed, it still arrives", () => {
   const data = createDataStore();
   const events = createEventLog();
-  const first = cycleOver(data, events, writingRule(new Map([[0, { payload: { code: "v1" }, open: MODEL_TAGS }]]), []));
+  const first = cycleOver(data, events, writingRule(new Map([[0, { builtFrom: [], payload: { code: "v1" }, open: MODEL_TAGS }]]), []));
   step(first, 0);
 
   const layers: Layers = {

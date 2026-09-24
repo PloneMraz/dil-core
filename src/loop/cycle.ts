@@ -42,7 +42,7 @@ import {
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
-import type { ContextAnchor, RecalledTags } from "../store/resist-event.js";
+import type { ContextAnchor, RecalledTags, WrittenTags } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 
 import { runLayer, type LayerContribution, type LayerEmission, type LayerSpec } from "./layer.js";
@@ -273,6 +273,12 @@ export function createCycle(deps: CycleDeps): Cycle {
   let runningAdmitted: readonly string[] = [];
   /** Data the rule wrote last cycle, running now: their exits are theirs too. */
   let runningWritten: readonly string[] = [];
+  /**
+   * The datum each observation unit came from, for as long as anything holds the
+   * unit — T5 keeps a window of them per entity — so that what a written datum
+   * was built from can be recorded by id (v0.3.4 §9).
+   */
+  const unitDatum = new WeakMap<InfoUnit, string>();
   const admit = deps.admit ?? admitReturn;
   /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
@@ -576,7 +582,16 @@ export function createCycle(deps: CycleDeps): Cycle {
       const datumOf = new Map<InfoUnit, string>();
       for (const [i, id] of admittedAt) {
         const unit = pass.units[i];
-        if (unit !== undefined) datumOf.set(unit, id);
+        if (unit !== undefined) {
+          datumOf.set(unit, id);
+          unitDatum.set(unit, id);
+        }
+      }
+      // What came back from the store, recalled or written, is a datum too.
+      for (let i = regionInput.signals.length; i < host.signals.length; i++) {
+        const unit = pass.units[i];
+        const entity = (host.signals[i]!.raw_payload as { entity?: unknown }).entity;
+        if (unit !== undefined && typeof entity === "string") unitDatum.set(unit, entity);
       }
 
       // ── §7 crystallization: T2 drew the self/environment distinction ──
@@ -617,10 +632,25 @@ export function createCycle(deps: CycleDeps): Cycle {
       // recorded. Either way the datum's tags go into this cycle's record, and it
       // arrives at T1 next cycle, where T2 reads the write as the agent's own.
       // Taken after the store has answered: what is written now is not memory yet.
-      const writtenTags: RecalledTags[] = [];
+      const writtenTags: WrittenTags[] = [];
       const writeActions: WriteAction[] = [];
       let anew = 0;
       for (const w of pass.t5.writes ?? []) {
+        // What it was built from, by id: every unit must be one that came from a
+        // datum, every id a datum the store holds.
+        if (!Array.isArray(w.builtFrom)) {
+          throw new Error("write: a datum written must say what it was built from (builtFrom; [] for nothing held)");
+        }
+        const builtFrom: string[] = [];
+        for (const source of w.builtFrom) {
+          const sourceId = typeof source === "string" ? source : unitDatum.get(source);
+          if (sourceId === undefined || !data.has(sourceId)) {
+            throw new Error(
+              `write: builtFrom names ${typeof source === "string" ? `"${source}", which is no datum` : "a unit that came from no datum"}`,
+            );
+          }
+          if (!builtFrom.includes(sourceId)) builtFrom.push(sourceId);
+        }
         let id: string;
         if (w.datumId !== undefined) {
           const held = data.get(w.datumId);
@@ -645,7 +675,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         const action: WriteAction = { kind: "write", datum: id };
         const idx = writtenTags.findIndex((t) => t.datumId === id);
         if (idx >= 0) writtenTags.splice(idx, 1);
-        writtenTags.push({ datumId: id, fixed: d.fixed, open: d.open });
+        writtenTags.push({ datumId: id, fixed: d.fixed, open: d.open, builtFrom });
         if (!writeActions.some((a) => a.datum === id)) writeActions.push(action);
         pendingWrites = pendingWrites.filter((p) => p.action.datum !== id);
         pendingWrites.push({

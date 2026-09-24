@@ -115,9 +115,10 @@ export interface ActivityEvent {
    * (entering at `nascent`) or revised (its provenance unchanged) — as it stands
    * once written (v0.3.3). Tags only, never content: what a revised datum held
    * is read from the commit snapshot, not the log. Each of these arrives at T1
-   * the next cycle and runs every layer. Absent when nothing was written.
+   * the next cycle and runs every layer. Absent when nothing was written. Each
+   * also says what it was built from (v0.3.4).
    */
-  readonly written?: readonly RecalledTags[];
+  readonly written?: readonly WrittenTags[];
 }
 
 /** One recalled datum's tag set, as the activity record carries it. */
@@ -125,6 +126,16 @@ export interface RecalledTags {
   readonly datumId: string;
   readonly fixed: FixedTags;
   readonly open: OpenTags;
+}
+
+/**
+ * A datum the agent wrote, as the activity record carries it (v0.3.4 §9): its
+ * tag set, and the ids of the data it was built from — never their content, as
+ * an Expectation carries `built_from` and a Directive its Appraisals (§6.1). An
+ * empty list says it was built from nothing held in the store.
+ */
+export interface WrittenTags extends RecalledTags {
+  readonly builtFrom: readonly string[];
 }
 
 /**
