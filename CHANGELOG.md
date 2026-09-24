@@ -6,6 +6,35 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 17:40 — feat: migrate code lên protocol v0.3.3: `nascent`, cửa vào theo nguồn, `write`, `revision`
+**Commit:** `44309b7`
+
+**Rule dự đoán có thêm hàm `write`:**
+- **Viết mới** (không kèm `datumId`): datum đi qua tagging-gate, vào ở `nascent` và mang cycle-mark của cycle viết ra nó.
+- **Sửa** (kèm `datumId`): nội dung đổi, provenance giữ nguyên, và `[event]` có một dòng `revision` không mang nội dung.
+
+Trong cả hai trường hợp:
+- bộ tag của datum được ghi vào activity record, mục `written`;
+- sang cycle sau, datum đến qua T1, T2 đọc lần viết là của chính agent (SELF_WRITTEN), và datum chạy hết các tầng;
+- với datum `nascent`, lúc đó nó chuyển `nascent → running` và giữ nguyên cycle-mark.
+
+**Phản hồi của môi trường và cycle datum** vào thẳng `running` qua `admitArrival`, nên không còn dòng `prior → running` cho chúng.
+
+**Cue có thể mang `provenance`,** nên rule hỏi được "những gì đã va chạm", ví dụ `{kind: frame, provenance: scar}`.
+
+**Checker:**
+- chấp nhận cạnh `nascent → running`;
+- mỗi cửa vào chỉ được đi qua một lần;
+- datum rời `nascent` phải có tag trong record của cycle đã viết nó;
+- datum được viết phải chạy đủ T1 tới T8 ở cycle sau;
+- **datum nào chạy hoặc bị sửa mà không có dấu vết lúc vào thì fail.**
+
+**Phiên bản:** tag schema 2 → 3, protocol claim 0.3.2 → 0.3.3. Substrate đòi `protocol` khớp chính xác, nên store claim dưới 0.3.2 bị từ chối. Riêng việc tăng schema thì substrate vẫn chấp nhận: lúc lập kế hoạch em đã nói nhầm chỗ này.
+
+7 test cũ được sửa theo ý định ban đầu của chúng. Một ví dụ: test "vào `prior` hai lần" trước đây dựa vào dòng `prior → running` sẵn có của cycle datum, nên giờ phải tự chèn đủ hai dòng. Thêm 8 test trong `write.test.ts`. Đã thử 2 đột biến (bỏ hành động write khỏi thứ T2 đọc; tắt phép kiểm dấu vết lúc vào), và cả hai đều bị test bắt. **352 test xanh.**
+
+---
+
 ### 16:55 — docs: protocol v0.3.3 và đặc tả v7: `nascent`, cửa vào theo nguồn, sửa datum
 **Commit:** `f8230de`
 
