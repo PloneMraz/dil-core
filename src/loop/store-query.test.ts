@@ -15,9 +15,9 @@ import { createCycle, type Layers } from "./cycle.js";
 import { createGlobMod } from "./glob-mod.js";
 import { createT1 } from "./layers/t1.js";
 import { createT2, type T2Output } from "./layers/t2.js";
-import { createT3, STORE_CHANNEL, type ChannelTransducer } from "./layers/t3.js";
+import { createT3, STORE_CHANNEL, storeQuery, type ChannelTransducer } from "./layers/t3.js";
 import { createT4 } from "./layers/t4.js";
-import { createT5 } from "./layers/t5.js";
+import { createT5, persistence, type PredictRule } from "./layers/t5.js";
 import { createT6 } from "./layers/t6.js";
 import { createT7 } from "./layers/t7.js";
 import { createT8 } from "./layers/t8.js";
@@ -395,4 +395,90 @@ test("a datum that ran from prior with no tag set in the trace is caught (§13.6
   const c6 = checkConformance(events).results.find((r) => r.id === "6")!;
   assert.equal(c6.verdict, "fail");
   assert.match(c6.detail, /side-door/);
+});
+
+// ── the rule asks: thinking chooses what to read (§6.4) ──
+
+/** A cycle whose T3 describes nothing, so any query is the rule's own. */
+function cycleWithRule(data: DataStore, events: EventLog, predict: PredictRule) {
+  const layers: Layers = {
+    t1: createT1(),
+    t2: createT2(),
+    t3: createT3({}),
+    t4: createT4(),
+    t5: createT5({ predict }),
+    t6: createT6(),
+    t7: createT7(),
+    t8: createT8(),
+  };
+  return createCycle({
+    layers,
+    glob: createGlobMod({ appraisalGain: 1 }, 0),
+    data,
+    events,
+    initialEmission: { action: "boot" },
+  });
+}
+
+/** Asks about the world once, the first time it meets anything; records what it met. */
+function askingRule(met: unknown[]): PredictRule {
+  let asked = false;
+  return (entityId, window, observed, contribute, ask) => {
+    met.push(observed.content);
+    if (!asked) {
+      asked = true;
+      ask({ kind: "world" });
+    }
+    return persistence(entityId, window, observed, contribute, ask);
+  };
+}
+
+function emissionsFrom(events: EventLog, layer: number): EmissionActivity[] {
+  return events
+    .all()
+    .filter(
+      (r): r is EmissionActivity =>
+        (r as EmissionActivity).activityKind === "emission" &&
+        (r as EmissionActivity).issuingLayer === layer,
+    );
+}
+
+test("the rule asks the store, and the query is traced to T5 with register ↔ (§6.4)", () => {
+  const events = createEventLog();
+  cycleWithRule(seededStore(), events, askingRule([])).run({ signals: [status(1)], changes: [] });
+
+  assert.equal(queries(events).length, 0, "T3 described nothing, so it asked nothing");
+  const q = emissionsFrom(events, 5);
+  assert.equal(q.length, 1);
+  assert.deepEqual(q[0]!.action, storeQuery({ kind: "world" }));
+  assert.equal(q[0]!.register, "↔");
+});
+
+test("what the rule asked for arrives at T1 next cycle and reaches the rule; nothing else is recalled", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const met: unknown[] = [];
+  const cycle = cycleWithRule(data, events, askingRule(met));
+
+  cycle.run({ signals: [status(1)], changes: [] });
+  assert.equal(data.get(UNRELATED)!.fixed.provenance, "prior", "nothing arrives in the cycle that asks");
+
+  cycle.run({ signals: [status(2)], changes: [] });
+  assert.ok(observedAt(events, 1).includes(UNRELATED), "the answer ran the layers up to T5");
+  assert.ok(
+    met.some((c) => JSON.stringify(c).includes("Something about something else.")),
+    "the rule met what it asked for",
+  );
+  assert.equal(data.get(UNRELATED)!.fixed.provenance, "running");
+  assert.equal(data.get(DIRECTIVE)!.fixed.provenance, "prior", "what was not asked for stays where it was");
+  assert.ok(!observedAt(events, 1).includes(DIRECTIVE));
+});
+
+test("a rule that asks leaves a trace the checker accepts", () => {
+  const events = createEventLog();
+  const cycle = cycleWithRule(seededStore(), events, askingRule([]));
+  for (let t = 1; t <= 3; t++) cycle.run({ signals: [status(t)], changes: [] });
+
+  const failed = checkConformance(events).results.filter((r) => r.verdict === "fail");
+  assert.deepEqual(failed.map((r) => `${r.id}: ${r.detail}`), []);
 });

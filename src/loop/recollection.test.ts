@@ -16,7 +16,7 @@ import { recordScar, type ContextAnchor } from "../store/resist-event.js";
 import { createEventLog } from "../store/event-log.js";
 import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import { createLogRecollection, recollecting } from "./recollection.js";
-import { createT5, persistence } from "./layers/t5.js";
+import { createT5, persistence, type AskFn } from "./layers/t5.js";
 import type { InfoUnit } from "./types.js";
 
 const TS_AT = Date.UTC(2026, 5, 30);
@@ -51,6 +51,8 @@ function logWithScar(received: unknown) {
 const EMPTY_FIELD = { params: {}, t: 0 };
 const NO_EMIT = () => undefined;
 const NO_CONTRIBUTE = () => undefined;
+/** A rule tested alone has no store to ask. */
+const NO_ASK: AskFn = () => {};
 
 // ── the store answers ──
 
@@ -123,7 +125,7 @@ test("the rule falls back when the record is silent", () => {
   const rule = recollecting(
     createLogRecollection(logWithScar({ where: "hall", outcome: "locked" }), { key: situationKey }),
   );
-  const predicted = rule("door", [unit("cellar", "dark")], unit("cellar", "x"), NO_CONTRIBUTE);
+  const predicted = rule("door", [unit("cellar", "dark")], unit("cellar", "x"), NO_CONTRIBUTE, NO_ASK);
   assert.deepEqual(predicted.content, { where: "cellar", outcome: "dark" });
 });
 
@@ -131,7 +133,7 @@ test("the record outranks persistence about a situation it holds", () => {
   const rule = recollecting(
     createLogRecollection(logWithScar({ where: "hall", outcome: "locked" }), { key: situationKey }),
   );
-  const predicted = rule("door", [unit("hall", "open")], unit("hall", "x"), NO_CONTRIBUTE);
+  const predicted = rule("door", [unit("hall", "open")], unit("hall", "x"), NO_CONTRIBUTE, NO_ASK);
   assert.deepEqual(predicted.content, { where: "hall", outcome: "locked" });
 });
 
@@ -207,7 +209,7 @@ test("with no rule declared the reference behaviour is unchanged", () => {
   // A fresh entity predicts itself, exactly as persistence always did.
   assert.equal(out.results[0]!.predErr.delta, 0);
   assert.deepEqual(
-    persistence("door", [], observed, NO_CONTRIBUTE).content,
+    persistence("door", [], observed, NO_CONTRIBUTE, NO_ASK).content,
     out.results[0]!.expectation.predicted.content,
   );
 });

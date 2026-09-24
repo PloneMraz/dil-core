@@ -161,7 +161,7 @@ export function recollecting(
   recollection: Recollection,
   fallback: PredictRule = persistence,
 ): PredictRule {
-  return (entityId, window, observed, contribute) =>
+  return (entityId, window, observed, contribute, ask) =>
     recollection.recall(entityId, observed) ??
-    fallback(entityId, window, observed, contribute);
+    fallback(entityId, window, observed, contribute, ask);
 }

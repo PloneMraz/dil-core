@@ -35,6 +35,7 @@
 import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
+import { storeQuery, type Description } from "./t3.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 
 /** Mean prediction error over this cycle's entities (INV-7, up-channel). */
@@ -80,13 +81,33 @@ export interface T5Options {
  * one thing that knew any was on the far side of this seam.
  *
  * A rule that has nothing to report omits the parameter.
+ *
+ * And it receives `ask`, the store query, issued from T5. **Why a rule needs
+ * it.** The rule is where the thinking is, and thinking that meets a problem goes
+ * to memory for what bears on it: the rule chooses what to read, and the store is
+ * not poured into it. §6.4 gives the means — "emission is a lateral capability
+ * any layer MAY invoke: when a layer's own work requires pushing to the region —
+ * to obtain what it lacks" — and names the query among the emissions a layer
+ * already presupposes. Before this, only T3 could ask, and only about what had
+ * just arrived; the part of the loop that knew what it was missing could not.
+ *
+ * `ask` takes a cue — the open-tag pairs to match (§9, tag F) — and can emit
+ * nothing but a query. Reading memory is the rule's; acting on the region is
+ * not, and an expectation never becomes a choice. The query is an emission like
+ * any other: register ↔, one activity record naming T5 as its issuing layer, and
+ * its answer arrives at T1 next cycle and runs every layer, so what the rule
+ * read is in the trace. Nothing counts or limits how often a rule asks.
  */
 export type PredictRule = (
   entityId: string,
   window: readonly InfoUnit[],
   observed: InfoUnit,
   contribute: ContributeFn,
+  ask: AskFn,
 ) => InfoUnit;
+
+/** A store query from the rule, by cue (§6.4, §9). It emits nothing else. */
+export type AskFn = (cue: Description) => void;
 
 /**
  * The reference update law: predict the most recent observation, or the
@@ -122,7 +143,9 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       counts.clear();
       for (const [k, v] of s.counts) counts.set(k, v);
     },
-    process(input, _field, _emit, contribute): T5Output {
+    process(input, _field, emit, contribute): T5Output {
+      // The rule's one road outward: a query to the store, issued from T5.
+      const ask: AskFn = (cue) => emit(storeQuery(cue));
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;
         const observed = b.unit;
@@ -132,8 +155,9 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The declared update law. Whatever the rule, what leaves here is an
         // expectation and never a choice.
         // The rule may report upward into the field; the contribution is bound
-        // to T5, since it is T5's declared rule that made it.
-        const predicted = predict(id, window, observed, contribute);
+        // to T5, since it is T5's declared rule that made it. It may also ask
+        // the store; the query is traced to T5 for the same reason.
+        const predicted = predict(id, window, observed, contribute, ask);
         const confidence = Math.min(1, count / recurrence);
 
         const matched = contentEqual(observed, predicted);
