@@ -6,6 +6,20 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 20:10 — feat: protocol v0.3.4, datum được viết ghi lại nó được dựng từ đâu
+**Commit:** `c2c0cd2`
+
+Plone duyệt hướng (2) và văn bản quy phạm. Mỗi datum mà agent viết, dù viết mới hay sửa, phải ghi **id của các datum mà nó được dựng từ**, không ghi nội dung. Đây là cùng một khái niệm protocol đã có ở `Expectation.built_from` và `Directive.built_from`.
+
+- **`WriteRequest.builtFrom` là bắt buộc.** Nó liệt kê unit trong cửa sổ T5, unit đang thấy, hoặc id của datum được gợi lại. Nếu không dựng từ gì thì ghi `[]`.
+- **Driver giữ một `WeakMap` nối unit với datum xuyên cycle.** Nó từ chối ngay id không tồn tại, unit không đến từ datum nào, hoặc lần viết không khai `builtFrom`.
+- **Id được ghi vào mục `written` của cycle-seal.**
+- **Checker (C6)** fail nếu datum được viết thiếu `builtFrom`, hoặc trỏ tới datum chưa có dấu vết lúc vào ở cycle đó.
+
+Protocol lên v0.3.4, bằng `git mv`; đặc tả v7 giữ nguyên. Substrate claim `0.3.4`. Đột biến tắt phép kiểm thì test log giả mạo fail. **366 test xanh.**
+
+---
+
 ### 19:15 — fix: mỗi record và mỗi datum lấy giờ đúng lúc nó xảy ra
 **Commit:** `9073ddf`
 
