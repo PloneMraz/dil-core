@@ -6,6 +6,23 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 18:30 — fix: cycle datum chỉ thành scar khi thứ nó mang theo va chạm
+**Commit:** `6c74f0c`
+
+Xử lý việc trong hàng chờ, theo bốn quy tắc Plone đã duyệt:
+1. Một outcome nó đã dự phóng va chạm: `projected → scar`.
+2. Có dự phóng nhưng outcome đã dự phóng không va chạm: `projected → running`, kể cả khi một phản hồi khác va chạm.
+3. Absence, tức va chạm không có datum phản hồi riêng: cycle datum đứng thay, `→ scar`.
+4. Không có dự phóng mà một phản hồi va chạm: cycle datum giữ `running`.
+
+Quy tắc 3 được áp dụng cho mọi va chạm không có datum phản hồi riêng, gồm absence, phản hồi host không nhận vào, và thứ đến từ store. Lý do là scar record phải chứa một datum mang tag `scar`.
+
+**Để ngỏ:** va chạm của thứ đến từ store (datum được gợi lại hoặc do agent viết) vẫn do cycle datum đứng thay, không nối với datum riêng. Nếu nối thì lần một datum được sửa quay về, lệch với kỳ vọng "không đổi" của persistence, sẽ bị gắn scar, dù đó là thay đổi SELF_WRITTEN.
+
+Số ResistEvent và scar record không đổi; chỉ provenance của cycle datum đổi. README không còn việc nào trong hàng chờ. Có 5 test mới trong `cycle-scar.test.ts`. Khi đột biến về quy tắc cũ, đúng 2 test ứng với quy tắc 2 và 4 fail. **357 test xanh.**
+
+---
+
 ### 17:40 — feat: migrate code lên protocol v0.3.3: `nascent`, cửa vào theo nguồn, `write`, `revision`
 **Commit:** `44309b7`
 
