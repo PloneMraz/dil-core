@@ -4,6 +4,19 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-09-25
+
+### 01:05 — fix: reflection là nhận định của người đọc, trỏ vào vết, không phải kể lại va chạm
+**Commit:** `3a186b4`
+
+Plone chỉ ra khi xem dil-arc3: một người đọc (peer) chỉ đưa lại cho agent **chính va chạm agent đã ghi** là "đơn thuần là kể lại". Ý của protocol là một khác biệt về góc nhìn: A không nghĩ mình đang vấp, B nghĩ A đang vấp và nói ra. Đó là nhận xét không có tính đúng-sai, và mismatch là giữa A và B.
+
+- **Trước:** `formReading` bắt reading phải trỏ vào một scar đã ghi, còn `collisionCoordinates` chỉ liệt kê scar. Người đọc chỉ có thể trả lại va chạm mà agent tự viết ra. Đó là nguồn chiều theo, agent tự diễn giải lại được (§8.3, §8.4), và mù với loại lệch mà agent không thấy (§8.2).
+- **Sau:** reading trỏ vào **một cycle mà vết của agent đã ghi**, có scar hay không đều được, và mang **nhận định riêng của người đọc**. Cycle mà vết chưa từng ghi thì bị từ chối. `traceCycles` thay `collisionCoordinates`.
+- Tag E được khai báo lại; README cập nhật. Câu "a collision read into coordinates" trong protocol §8.4 giữ nguyên. **365 test xanh** (4 test về tọa độ scar được thay bằng 3 test mới).
+
+---
+
 ## [Unreleased] — 2026-09-24
 
 ### 20:10 — feat: protocol v0.3.4, datum được viết ghi lại nó được dựng từ đâu
