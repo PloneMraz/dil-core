@@ -27,6 +27,8 @@ Test kiểm năm điều:
 
 **336 test xanh.**
 
+---
+
 ## [Unreleased] — 2026-09-23
 
 ### 17:33 — fix: datum được gọi lại để lại đường đi và bộ tag của chính nó trong log
