@@ -6,6 +6,27 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 19:15 — fix: mỗi record và mỗi datum lấy giờ đúng lúc nó xảy ra
+**Commit:** `9073ddf`
+
+Phát hiện khi chạy thật dil-arc3 với LLM nghĩ bên trong T5. Driver chỉ đọc đồng hồ **một lần mỗi cycle**, rồi đóng giờ đó lên mọi record và mọi datum trong cycle. Hệ quả:
+- 17 phút LLM nghĩ ở T5 **không hiện ở đâu** trong `[event]`, vì mọi dòng của cycle đều mang giờ lúc cycle bắt đầu;
+- chương trình được viết ở cuối cycle cũng mang giờ bắt đầu cycle.
+
+Trong khi §9 yêu cầu log ghi mỗi chuyển đổi *"as it occurs"*, và timestamp của datum là lúc nó *"is first stamped"*.
+
+Giờ các record sau lấy giờ **đúng lúc được ghi vào log**: layer-exit, provenance, emission, revision, expectation, resistance-reading, ResistEvent và directive. Phản hồi môi trường và datum được viết lấy giờ lúc vào `[data]`. Cycle datum giữ giờ bắt đầu cycle, và cycle-seal có thêm `closedAt`.
+
+Test dùng đồng hồ giả, mỗi lần đọc tăng 1. Nó kiểm:
+- thời gian nghĩ hiện ra giữa T4 và T5;
+- datum được viết mang giờ sau lúc nghĩ;
+- cycle-seal bao trọn các record của cycle;
+- giờ không đi lùi theo thứ tự log.
+
+Đã thử 2 đột biến đưa về giờ chung của cycle, và cả hai đều bị test bắt. **362 test xanh.**
+
+---
+
 ### 18:50 — fix: scar được gợi lại chuyển trên đúng datum mà record nêu tên, và chỉ một lần
 **Commit:** `dc7a9a7`
 
