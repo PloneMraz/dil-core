@@ -6,6 +6,23 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 16:55 — docs: protocol v0.3.3 và đặc tả v7: `nascent`, cửa vào theo nguồn, sửa datum
+**Commit:** `f8230de`
+
+Plone duyệt từng điểm. Hai file được đổi tên bằng `git mv` để giữ lịch sử.
+
+- **Thêm vị trí provenance `nascent`** cho datum mà agent viết mới hoàn toàn. Nó mang cycle-mark của cycle viết ra nó. Sang cycle sau, nó đến qua T1, được T2 gắn SELF_WRITTEN, chạy hết các tầng, rồi đi `nascent → running`. `prior` và `nascent` là hai cửa vào một chiều; bốn vị trí còn lại vẫn xoay vòng như cũ. Định nghĩa ghi rõ `nascent` nói về nguồn gốc của datum, không phải một phần của self (§7). Tên này được chọn để tránh nhầm với nhãn SELF_WRITTEN/ENV_PUSHED ở T2.
+- **`prior` được giữ đúng định nghĩa của nó:** dữ liệu host có sẵn trước khi vòng lặp chạy. Phản hồi của môi trường và cycle datum đi qua tagging-gate rồi vào thẳng `running`, và được phân biệt bằng `domain`. Mọi lần vào đều phải ghi bộ tag vào `[event]`.
+- **Sửa một datum đang giữ không phải là đưa datum mới vào:** nội dung đổi, provenance giữ nguyên. T2 gắn SELF_WRITTEN cho thay đổi đó, và `[event]` có một dòng ghi lại việc sửa, không mang nội dung. Nội dung cũ đọc từ snapshot của commit; độ mịn tùy nhịp commit, là `DECIDE@IMPL`.
+- **Hợp đồng T1** nói rõ phản hồi của môi trường vào store ở `running`.
+- **§6.4:** store trả lời một query bằng những gì nó đã có trước cycle đặt câu hỏi.
+- **§13 C6** áp dụng cho mọi lần vào và mọi lần sửa.
+- Mục `Changes-in-v0.3.3` yêu cầu: *"an implementation that versions its stored tag schema MUST bump that version"*.
+
+AGENTS.md, CONTEXT.md và README.md giờ trỏ tới file mới. Code vẫn theo v0.3.2 cho tới khi migrate xong; README đã ghi rõ điều này.
+
+---
+
 ### 16:20 — docs: ghi hàng chờ, cycle datum có còn thành scar không
 **Commit:** `c413f34`
 
