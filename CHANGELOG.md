@@ -6,6 +6,21 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-25
 
+### 02:10 — feat: protocol v0.3.5, mọi datum gặp mismatch đều mang scar
+**Commit:** `4f5da8f`
+
+Plone chốt: `scar` là tag, không phải chỗ giữ chỗ. Datum nào gặp mismatch thì sinh ResistEvent và gắn scar, nên store luôn có nhiều datum mang scar. Một mismatch có hai phía, cái được kỳ vọng và cái trả về. Trước đây chỉ phía trả về được gắn scar.
+
+- **`Expectation.held_by`**: kỳ vọng ghi những datum mà nó *là*. Với luật persistence, đó là lần quan sát nó lặp lại. Với rule khác, đó là datum rule tự khai, ví dụ chương trình mà mind viết và dùng để suy nghĩ.
+- **Khi kỳ vọng không khớp với dữ liệu region trả về**, mỗi datum trong `held_by` chuyển sang `scar`, mỗi datum một scar record mang cùng ResistEvent. Các bằng chứng khác trong cửa sổ không gặp mismatch, nên không bị gắn scar.
+- **Datum mang scar được dùng lại thì trở về `running`.** Vì thế một chương trình cứ sai lại sẽ đi vòng giữa hai trạng thái, và người ngoài đọc được từng vòng.
+- Rule khai tên không phải datum, hoặc unit không đến từ datum nào, thì bị từ chối. Dòng expectation trong `[event]` ghi `heldBy`.
+- **Mismatch với dữ liệu từ store quay về** (bản sửa của chính agent) **không gắn scar cho phía kỳ vọng**: hành động của chính agent không phải là region kháng cự.
+- **Checker C6** fail khi kỳ vọng nêu datum chưa có dấu vết vào store, hoặc datum không mang scar dù kỳ vọng đã va chạm với region.
+- Protocol lên v0.3.5 bằng `git mv`, substrate claim `0.3.5`. Các test trước đây ghim "một scar mỗi mismatch" nay ghim hai. Đột biến tắt phần gắn scar phía kỳ vọng thì test mới fail. **370 test xanh.**
+
+---
+
 ### 01:05 — fix: reflection là nhận định của người đọc, trỏ vào vết, không phải kể lại va chạm
 **Commit:** `3a186b4`
 
