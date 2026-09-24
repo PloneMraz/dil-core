@@ -35,8 +35,8 @@
  * that now reads it. A standing bias is recorded and returned and agrees with
  * itself, so recollection catches drift ACROSS time and not bias that never
  * moved. It is a genuine Mode-B channel and it is weaker than a foreign one;
- * §8.4's reflection — a third party reading a collision into coordinates — is a
- * different mechanism and is not replaced by this.
+ * §8.4's reflection — a third party's own view, pointed at a place in the trace
+ * — is a different mechanism and is not replaced by this.
  */
 
 import type { InfoUnit } from "./types.js";

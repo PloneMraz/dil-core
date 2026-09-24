@@ -1,20 +1,22 @@
 /**
  * Smoke test — reflection, the tag-E mechanism (protocol §8.4).
  *
- * Fixed checks: coordinates address REAL recorded collisions (a reading about a
- * collision that never happened is refused); the reading enters through T3 on a
- * declared channel (no side door), binds to the reader-as-Other at T4, and is
- * classified ENV_PUSHED by the agency-gate; a running daemon ingests a
- * reflection cycle without halting. No self-reflection faculty is exercised —
- * every reading here is formed by the test acting as the third party.
+ * Fixed checks: a reading points at a place the agent's trace recorded — any
+ * cycle, with or without a scar — and a place the trace never recorded is
+ * refused; it carries the reader's view, not the agent's collision retold; it
+ * enters through T3 on a declared channel (no side door), binds to the
+ * reader-as-Other at T4, and is classified ENV_PUSHED by the agency-gate; a
+ * running daemon ingests a reflection cycle without halting. No self-reflection
+ * faculty is exercised — every reading here is formed by the test acting as the
+ * third party.
  */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  collisionCoordinates,
   formReading,
+  traceCycles,
   reflectionSignal,
   reflectionTransducer,
   ReflectionError,
@@ -79,48 +81,37 @@ function daemonWithScar() {
   return { daemon, events };
 }
 
-test("collisionCoordinates addresses the real recorded collisions (scars only)", () => {
+test("traceCycles lists the cycles the trace recorded, each addressed by its seal", () => {
   const { events } = daemonWithScar();
-  const coords = collisionCoordinates(events);
-  assert.ok(coords.length >= 1);
-  // the index is the record's absolute position in the log — a stable address
-  assert.equal(events.all()[coords[0]!.index]!.kind, "scar");
-  assert.equal(coords[0]!.source_id, "weather");
-  assert.equal(coords[0]!.mismatch_kind, "value-mismatch");
+  const cycles = traceCycles(events);
+  assert.deepEqual(cycles.map((c) => c.cycle), [0, 1]);
+  for (const c of cycles) {
+    const rec = events.all()[c.index]!;
+    assert.ok(rec.kind === "activity" && rec.activityKind === "cycle-seal" && rec.activity.cycle === c.cycle);
+  }
 });
 
-test("a reading cannot address a non-scar record (manifest or activity, not a collision)", () => {
+test("a reading may point where the agent recorded no collision: the view is the reader's", () => {
   const { events } = daemonWithScar();
-  const recs = events.all();
-  // index 0 is the genesis manifest (the run's constitution), not a scar
-  assert.equal(recs[0]!.kind, "manifest");
-  assert.throws(() => formReading(events, 0, "reader-1", "note"), ReflectionError);
-  // and an activity record (trace, not experience) is equally not a collision
-  const activityIdx = recs.findIndex((r) => r.kind === "activity");
-  assert.ok(activityIdx >= 0);
-  assert.throws(() => formReading(events, activityIdx, "reader-1", "note"), ReflectionError);
-});
-
-test("a reading about a collision that never happened is refused", () => {
-  const { events } = daemonWithScar();
-  assert.throws(
-    () => formReading(events, 999, "reader-1", "you drifted"),
-    ReflectionError,
-  );
-});
-
-test("formReading copies the coordinate of the addressed record", () => {
-  const { events } = daemonWithScar();
-  const at = collisionCoordinates(events)[0]!.index;
-  const reading = formReading(events, at, "reader-1", "expectation built on dry-season data");
-  assert.equal(reading.about.index, at);
-  assert.equal(reading.about.source_id, "weather");
+  const scarred = new Set(events.all().flatMap((r) => (r.kind === "scar" ? [r.anchor.cycle] : [])));
+  assert.equal(scarred.has(0), false, "cycle 0 held, nothing collided");
+  const reading = formReading(events, 0, "reader-1", "you settled too early");
+  assert.equal(reading.about.cycle, 0);
   assert.equal(reading.reader_id, "reader-1");
+  assert.equal(reading.reading, "you settled too early");
+  assert.deepEqual(Object.keys(reading.about).sort(), ["cycle", "index", "t"],
+    "a place in the trace, not the agent's collision retold");
+});
+
+test("a reading cannot point at a place the trace never recorded", () => {
+  const { events } = daemonWithScar();
+  assert.throws(() => formReading(events, 999, "reader-1", "you drifted"), ReflectionError);
+  assert.throws(() => formReading(events, -1, "reader-1", "you drifted"), ReflectionError);
 });
 
 test("the reading enters through T3 on the declared channel, typed reflection", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
+  const reading = formReading(events, 1, "reader-1", "note");
   const signal = reflectionSignal(reading, "reflect", 9);
   const t3 = createT3({ reflect: reflectionTransducer });
   const out = runLayer(t3, { signals: [signal] }, field, datum());
@@ -134,7 +125,7 @@ test("the reading enters through T3 on the declared channel, typed reflection", 
 
 test("T4 binds the reading to the reader-as-Other", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
+  const reading = formReading(events, 1, "reader-1", "note");
   const t3 = createT3({ reflect: reflectionTransducer });
   const t3out = runLayer(t3, { signals: [reflectionSignal(reading, "reflect", 9)] }, field, datum());
   const t4out = runLayer(createT4(), { units: t3out.output.units }, field, datum());
@@ -143,7 +134,7 @@ test("T4 binds the reading to the reader-as-Other", () => {
 
 test("the agency-gate classifies a reading ENV_PUSHED (the agent never emitted it)", () => {
   const { events } = daemonWithScar();
-  const reading = formReading(events, collisionCoordinates(events)[0]!.index, "reader-1", "note");
+  const reading = formReading(events, 1, "reader-1", "note");
   const t2 = createT2({ stabilityThreshold: 1 });
   runLayer(t2, { env: envUnit(), emitted: { action: "boot" }, changes: [] }, field, datum());
   const out = runLayer(
@@ -166,8 +157,8 @@ function envUnit() {
 test("Mode-B returns, it does not write: the reflection reader holds a read-only view (§8.4)", () => {
   const { events } = daemonWithScar();
   const before = events.size();
-  const coords = collisionCoordinates(events); // reading the log
-  formReading(events, coords[0]!.index, "reader-1", "note"); // still only reading
+  traceCycles(events); // reading the log
+  formReading(events, 1, "reader-1", "note"); // still only reading
   assert.equal(events.size(), before); // reading never appended a record
 
   // type-level guarantee: the read-only view exposes no way to write the log
@@ -185,20 +176,19 @@ test("a Mode-B source (HostSource) has no store handle — it cannot write [data
   assert.ok(keys.includes("next") && keys.includes("deliver")); // only the E2 channel
 });
 
-test("the SAME running daemon ingests a reflection about its own scar without halting", () => {
+test("the SAME running daemon ingests a reading pointed at its own trace without halting", () => {
   const events = createEventLog();
-  // A live-ish source: the first two cycles collide; on the third request the
-  // third party (this test) reads the agent's own [event] log and returns the
-  // reading — reflection re-entering the same loop, not a fresh agent.
+  // A live-ish source: the second cycle collides; on the third request the
+  // third party (this test) points at a place in the agent's trace with its own
+  // view — reflection re-entering the same loop, not a fresh agent.
   let i = 0;
   const source = {
     next(): HostCycleInput | null {
       i += 1;
       if (i === 1) return { signals: [sig("weather", "sun")], changes: [] };
       if (i === 2) return { signals: [sig("weather", "rain")], changes: [] };
-      const coords = collisionCoordinates(events);
-      if (i === 3 && coords.length >= 1) {
-        const reading = formReading(events, coords[0]!.index, "reader-1", "history window skewed dry");
+      if (i === 3 && traceCycles(events).length >= 1) {
+        const reading = formReading(events, 0, "reader-1", "history window skewed dry");
         return {
           signals: [reflectionSignal(reading, "reflect", 9)],
           changes: [{ id: "reader-1", value: reading }],
@@ -224,5 +214,5 @@ test("the SAME running daemon ingests a reflection about its own scar without ha
   daemon.start();
   assert.doesNotThrow(() => daemon.run());
   assert.equal(daemon.cyclesRun(), 3); // the reflection cycle ran on the same daemon
-  assert.ok(events.size() >= 1); // the scar the reading was about
+  assert.ok(events.size() >= 1);
 });

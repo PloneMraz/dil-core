@@ -37,13 +37,13 @@ export {
 } from "./requisition.js";
 
 export {
-  collisionCoordinates,
   formReading,
   reflectionSignal,
   reflectionTransducer,
   ReflectionError,
-  type CollisionCoordinate,
+  traceCycles,
   type ReflectionReading,
+  type TraceCoordinate,
 } from "./reflection.js";
 
 export { takeSnapshot, restoreSnapshot, type SystemSnapshot } from "./commit.js";

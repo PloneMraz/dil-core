@@ -17,20 +17,23 @@ export const MODE_B_SOURCE = "host-source (live external input the agent does no
  * B-source rule, §8.4); the diversity monitor below flags its loss.
  */
 
-/** DECIDE@IMPL tag E — the read-collision-into-coordinates mechanism for reflection (§8.4). */
+/** DECIDE@IMPL tag E — the mechanism by which a third party's reading enters (§8.4). */
 export const REFLECTION_MECHANISM: string =
-  "event-coordinate reading (runtime/reflection.ts): a third party reads a recorded collision out of the [event] log into coordinates (collisionCoordinates/formReading) and returns it through a declared T3 channel (reflectionSignal + reflectionTransducer); the agency-gate classifies it ENV_PUSHED";
+  "trace-pointed reading (runtime/reflection.ts): a third party, from its own lens, points at a cycle the agent's [event] trace recorded (traceCycles/formReading) with its view of where the agent drifted, and returns it through a declared T3 channel (reflectionSignal + reflectionTransducer); the agency-gate classifies it ENV_PUSHED. The reading is the reader's view, not the agent's recorded collision retold";
 /**
- * Rationale: the coordinate system is the [event] log itself — the one trace a
- * third party already reads (§13); a coordinate addresses one recorded
- * collision (index, cycle, source, mismatch kind). formReading refuses a
- * coordinate that references no real record: a reflection cannot be fabricated
- * about a collision that never happened. WHO reads (a user, another agent, a
- * critic service — which may itself consult external data such as the web)
- * stays deliberately deployment-open, like tag D. No internal self-reflection
- * faculty exists, per §8.4 ("it cannot self-reflect on call"). Typed `string`
- * (not a literal) so the conformance checker's "is it still DEFERRED?"
- * comparison stays a genuine runtime read.
+ * Rationale: the coordinate system is the agent's [event] trace — the one trace
+ * a third party already reads (§13) — and a coordinate is a cycle it recorded.
+ * formReading refuses a cycle the trace never recorded: a reader cannot point
+ * at a place that is not there. The place need not hold a scar: a collision the
+ * agent recorded is one it already authored, and a source relaying it back is
+ * compliant and re-authorable (§8.3, §8.4); the drift a reader is for is the
+ * kind the agent does not see (§8.2). When a reading collides, the mismatch is
+ * between the agent and the reader. The reading carries no verdict (§9). WHO
+ * reads (a user, another agent, a critic service, a piece of code judging the
+ * agent's behaviour) and with what lens stays deliberately deployment-open,
+ * like tag D. No internal self-reflection faculty exists, per §8.4 ("it cannot
+ * self-reflect on call"). Typed `string` (not a literal) so the conformance
+ * checker's "is it still DEFERRED?" comparison stays a genuine runtime read.
  */
 
 /** DECIDE@IMPL — diversity-loss monitor window and minimum source count (§11). */
