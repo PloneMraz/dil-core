@@ -52,8 +52,14 @@ export const RECOLLECTION_LAYER = 5 as const;
  */
 export interface RecalledFrom {
   readonly entityId: string;
-  /** The cycle the recalled scar was recorded at; its `[data]` key is `cycle-N`. */
+  /** The cycle the recalled scar was recorded at. */
   readonly cycle: number;
+  /**
+   * The `[data]` key of the recalled scar: the datum the record names — the
+   * region's return that collided — or, where it names none (an absence), the
+   * cycle datum `cycle-N` that stood for it.
+   */
+  readonly datumId: string;
   readonly t: number;
 }
 
@@ -141,7 +147,13 @@ export function createLogRecollection(
           t: event.t,
         };
         if (key(past) === wanted) {
-          recalled.push({ entityId, cycle: records[i]!.anchor.cycle, t: event.t });
+          const rec = records[i]!;
+          recalled.push({
+            entityId,
+            cycle: rec.anchor.cycle,
+            datumId: rec.datumId ?? `cycle-${rec.anchor.cycle}`,
+            t: event.t,
+          });
           return past;
         }
       }

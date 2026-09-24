@@ -675,8 +675,13 @@ export function createCycle(deps: CycleDeps): Cycle {
       // A recalled scar is "data in use"; §9 is explicit that a scar is not a
       // resting place. The datum key is the recalled scar's own (`cycle-N`), not
       // this cycle's: it is that datum which moved, not this one.
+      // The move is the datum's own and happens once: a scar recalled again once
+      // it is back in use does not move again, and `[data]` follows the log.
       for (const r of deps.recollection?.drain() ?? []) {
-        events.append(recordProvenance(`cycle-${r.cycle}`, cycle, "scar", "running", cycleT));
+        const held = data.get(r.datumId);
+        if (held === undefined || held.fixed.provenance !== "scar") continue;
+        data.put(r.datumId, toRunning(held, cycle));
+        events.append(recordProvenance(r.datumId, cycle, "scar", "running", cycleT));
       }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──

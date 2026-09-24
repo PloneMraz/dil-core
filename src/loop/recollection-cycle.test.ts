@@ -20,7 +20,7 @@ import { createT5 } from "./layers/t5.js";
 import { createT6 } from "./layers/t6.js";
 import { createT7 } from "./layers/t7.js";
 import { createT8 } from "./layers/t8.js";
-import { createDataStore } from "../store/data-store.js";
+import { createDataStore, type DataStore } from "../store/data-store.js";
 import { createEventLog } from "../store/event-log.js";
 import { admitHostData } from "../store/tagging-gate.js";
 import { toRunning, toScar } from "../store/data-store.js";
@@ -48,7 +48,12 @@ const situationKey = (u: InfoUnit): string => {
   return String(c?.value?.value?.where ?? "");
 };
 
-function seededLog(outcome: string) {
+/**
+ * A store as a past run left it: the scar in `[event]` and, since `[data]` is
+ * kept with it, the scarred datum in `[data]` too, under `datumId` when the
+ * record names one and `cycle-N` when it does not.
+ */
+function seededLog(outcome: string, data: DataStore = createDataStore(), datumId?: string) {
   const events = createEventLog();
   let d = admitHostData(
     { payload: "cycle", admittingLayer: 1, open: { domain: "weather", phase: "loop", source: "region" } },
@@ -60,9 +65,11 @@ function seededLog(outcome: string) {
     cycle: SEEDED_AT_CYCLE,
     fieldState: {},
   };
+  const scar = toScar(d, true);
+  data.put(datumId ?? `cycle-${SEEDED_AT_CYCLE}`, scar);
   events.append(
     recordScar(
-      toScar(d, true),
+      scar,
       {
         source_id: "weather",
         expected: null,
@@ -71,12 +78,13 @@ function seededLog(outcome: string) {
         t: 1,
       },
       anchor,
+      datumId,
     ),
   );
-  return events;
+  return { events, data };
 }
 
-function cycleOver(events: ReturnType<typeof createEventLog>) {
+function cycleOver({ events, data }: { events: ReturnType<typeof createEventLog>; data: DataStore }) {
   const recollection = createLogRecollection(events, { key: situationKey });
   const layers: Layers = {
     t1: createT1(),
@@ -91,7 +99,7 @@ function cycleOver(events: ReturnType<typeof createEventLog>) {
   return createCycle({
     layers,
     glob: createGlobMod({ appraisalGain: 1 }, 0),
-    data: createDataStore(),
+    data,
     events,
     initialEmission: { action: "boot" },
     recollection,
@@ -108,8 +116,9 @@ function provenance(events: ReturnType<typeof createEventLog>): ProvenanceActivi
 }
 
 test("a recalled scar returns as data in use, recorded as scar → running (§9)", () => {
-  const events = seededLog("rain");
-  const cycle = cycleOver(events);
+  const store = seededLog("rain");
+  const { events } = store;
+  const cycle = cycleOver(store);
 
   cycle.run({ signals: [seen("hall", "sun")], changes: [] });
 
@@ -122,10 +131,30 @@ test("a recalled scar returns as data in use, recorded as scar → running (§9)
   );
 });
 
+test("a recalled scar held by a region return moves on that datum, and only once", () => {
+  const store = seededLog("rain", createDataStore(), "signal-7-0");
+  const { events, data } = store;
+  const cycle = cycleOver(store);
+  // Cycle 0 recalls the seeded scar, and the region contradicts it: a new scar
+  // on this cycle's return. Cycles 1 and 2 recall that newer scar, the most
+  // recent record about the hall — which moves the first time only.
+  for (let i = 0; i < 3; i++) cycle.run({ signals: [seen("hall", "sun")], changes: [] });
+
+  const returns = provenance(events).filter((p) => p.from === "scar" && p.to === "running");
+  assert.deepEqual(
+    returns.map((p) => [p.datumId, p.cycleMark]),
+    [["signal-7-0", 0], ["signal-0-0", 1]],
+    "each recalled scar moves on the datum its record names, and once",
+  );
+  assert.equal(data.get("signal-7-0")!.fixed.provenance, "running", "[data] follows the log");
+  assert.equal(data.get("signal-0-0")!.fixed.provenance, "running");
+});
+
 test("the record supplies the expectation, and the region contradicting it makes a new scar", () => {
-  const events = seededLog("rain");
+  const store = seededLog("rain");
+  const { events } = store;
   const before = events.size();
-  const cycle = cycleOver(events);
+  const cycle = cycleOver(store);
 
   // The record says `rain` here. The region says `sun`.
   const result = cycle.run({ signals: [seen("hall", "sun")], changes: [] });
@@ -139,8 +168,7 @@ test("the record supplies the expectation, and the region contradicting it makes
 });
 
 test("the region agreeing with the record leaves no new scar", () => {
-  const events = seededLog("rain");
-  const cycle = cycleOver(events);
+  const cycle = cycleOver(seededLog("rain"));
 
   const result = cycle.run({ signals: [seen("hall", "rain")], changes: [] });
 
@@ -148,8 +176,9 @@ test("the region agreeing with the record leaves no new scar", () => {
 });
 
 test("a situation the record has never met leaves scar → running unfired", () => {
-  const events = seededLog("rain");
-  const cycle = cycleOver(events);
+  const store = seededLog("rain");
+  const { events } = store;
+  const cycle = cycleOver(store);
 
   cycle.run({ signals: [seen("cellar", "sun")], changes: [] });
 
@@ -158,7 +187,7 @@ test("a situation the record has never met leaves scar → running unfired", () 
 });
 
 test("with no recollection declared the driver records no scar return", () => {
-  const events = seededLog("rain");
+  const { events, data } = seededLog("rain");
   const layers: Layers = {
     t1: createT1(),
     t2: createT2(),
@@ -172,7 +201,7 @@ test("with no recollection declared the driver records no scar return", () => {
   const cycle = createCycle({
     layers,
     glob: createGlobMod({ appraisalGain: 1 }, 0),
-    data: createDataStore(),
+    data,
     events,
     initialEmission: { action: "boot" },
   });
