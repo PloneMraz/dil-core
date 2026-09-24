@@ -6,6 +6,25 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 15:55 — fix: dữ liệu môi trường trả về là datum, và scar nằm trên nó
+**Commit:** `276f30a`
+
+Trước giờ driver **không coi thứ môi trường trả về là dữ liệu**. Mỗi chu kỳ chỉ có một datum là cycle datum do driver tự tạo, với payload là số tín hiệu. Hễ có va chạm là chính cycle datum đó bị gắn `scar`. Tức là tag `scar` nằm trên một bộ đếm, còn mismatch thì không biết mình lệch so với cái gì. §3 định nghĩa: *"A `scar` has collided with resistance and held"*. Nếu thứ được đem ra so với kỳ vọng không phải là datum, thì tag không có chỗ để gắn.
+
+Giờ mỗi thứ môi trường trả về:
+- đi qua tagging-gate vào `[data]` dưới id `signal-<cycle>-<i>`;
+- chạy như `running` và để lại dòng log ở mọi tầng nó rời;
+- ghi bộ tag (không ghi nội dung) vào activity record, mục `admitted`;
+- khi kỳ vọng về nó lệch thì **chính nó** chuyển `running → scar`, và scar record chứa nó kèm `datumId`.
+
+Host khai báo tag qua `AdmitPolicy`. Mặc định `admitReturn` giữ mọi thứ, gắn `domain: region`, `source`, `format`. Cycle datum vẫn đại diện cho cả chu kỳ, và cho absence, vì ở đó môi trường không trả về gì.
+
+Store query giờ **chỉ trả lời bằng những gì store đã có trước chu kỳ đặt câu hỏi**, nên thứ vừa đến không bị gợi lại như trí nhớ của chính nó. Checker kiểm đường đi của các datum này (C3) và việc chúng vào qua cổng (C6). Checker cũng đọc flow mode từ cycle-seal, vì flow mode là thuộc tính của chu kỳ.
+
+Đã thử đột biến: bỏ dòng loại trừ ra thì test về trí nhớ fail. **344 test xanh.**
+
+---
+
 ### 15:14 — feat: rule dự đoán tự hỏi store thứ nó còn thiếu
 **Commit:** `1e2d826`
 
