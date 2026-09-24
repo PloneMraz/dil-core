@@ -253,7 +253,12 @@ export function createCycle(deps: CycleDeps): Cycle {
   const recalled = new Set<string>(deps.resume?.recalled ?? []);
   /** Recalled data not arriving this cycle — no absence is owed by them (T7). */
   let unasked: ReadonlySet<string> = new Set();
-  /** Wall-clock (host server clock, epoch-ms) of the cycle currently running. */
+  /**
+   * Wall-clock (host server clock, epoch-ms) at which the cycle currently running
+   * began: the cycle datum's timestamp and the seal's `t`. Every record takes the
+   * clock at the moment it is appended instead (§9: "records each transition as
+   * it occurs") — a cycle whose thinking takes minutes shows where they went.
+   */
   let cycleT = 0;
 
   /** The id the cycle datum takes in `[data]`; also its key in the `[event]` path. */
@@ -271,9 +276,10 @@ export function createCycle(deps: CycleDeps): Cycle {
   const admit = deps.admit ?? admitReturn;
   /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
-    events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
+    const at = now();
+    events.append(recordLayerExit(datumId(), cycle, layer, at));
     for (const id of [...runningRecalled, ...runningAdmitted, ...runningWritten]) {
-      events.append(recordLayerExit(id, cycle, layer, cycleT));
+      events.append(recordLayerExit(id, cycle, layer, at));
     }
   }
   /**
@@ -287,7 +293,7 @@ export function createCycle(deps: CycleDeps): Cycle {
    * (issuing layer T8). Returns the action so a caller can also feed it forward.
    */
   function emit(issuingLayer: LayerIndex, action: unknown): unknown {
-    events.append(recordEmission(datumId(), cycle, issuingLayer, action, cycleT));
+    events.append(recordEmission(datumId(), cycle, issuingLayer, action, now()));
     return action;
   }
 
@@ -472,7 +478,7 @@ export function createCycle(deps: CycleDeps): Cycle {
               ],
             };
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";
-      cycleT = now(); // the host server clock at this cycle (epoch-ms), for [event] timestamps
+      cycleT = now(); // the host server clock as this cycle begins (epoch-ms)
 
       // The cycle datum, threaded T1→T8 so it accrues a floor-tag at each
       // layer; the flow mode rides along as an open tag (trace-visible, §13.3).
@@ -499,7 +505,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         const held = data.get(id);
         if (held !== undefined && held.fixed.provenance === "prior") {
           data.put(id, toRunning(held, cycle));
-          events.append(recordProvenance(id, cycle, "prior", "running", cycleT));
+          events.append(recordProvenance(id, cycle, "prior", "running", now()));
         }
       }
       runningRecalled = returned
@@ -514,7 +520,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         const held = data.get(id)!;
         if (held.fixed.provenance === "nascent") {
           data.put(id, toRunning(held, cycle));
-          events.append(recordProvenance(id, cycle, "nascent", "running", cycleT));
+          events.append(recordProvenance(id, cycle, "nascent", "running", now()));
         }
       }
       runningWritten = [...new Set(writtenBack.map((w) => w.action.datum))];
@@ -529,7 +535,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         const declared = admit(signal);
         if (declared === null) return;
         const id = `signal-${cycle}-${i}`;
-        data.put(id, admitArrival(declared, cycleT, cycle));
+        data.put(id, admitArrival(declared, now(), cycle));
         admittedAt.set(i, id);
       });
       runningAdmitted = [...admittedAt.values()];
@@ -579,7 +585,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // environment, never a persistent/continuing self (the §7 forbidden claim).
       // A resumed line has already crystallized; T2 does not re-signal.
       if (pass.crystallized) {
-        events.append(recordCrystallization(datumId(), cycle, cycleT));
+        events.append(recordCrystallization(datumId(), cycle, now()));
       }
 
       // ── Lateral emissions raised during the pass (§6.4) ──
@@ -597,7 +603,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // running in it, and answering with it would recall what is being seen.
       for (const e of pass.emissions) {
         if (!isStoreQuery(e.action)) continue;
-        for (const s of answerQuery(data, e.action.cue, cycleT)) {
+        for (const s of answerQuery(data, e.action.cue, now())) {
           const id = (s.raw_payload as StoreReturn).entity;
           if (admittedNow.has(id)) continue;
           if (!pending.some((p) => (p.raw_payload as StoreReturn).entity === id)) pending.push(s);
@@ -627,13 +633,13 @@ export function createCycle(deps: CycleDeps): Cycle {
           }
           id = w.datumId;
           data.put(id, { ...held, payload: w.payload, open: w.open ?? held.open });
-          events.append(recordRevision(id, cycle, 5, cycleT));
+          events.append(recordRevision(id, cycle, 5, now()));
         } else {
           if (w.open === undefined) {
             throw new TaggingGateError("a datum written anew must carry its open tags");
           }
           id = `written-${cycle}-${anew++}`;
-          data.put(id, admitNascent({ payload: w.payload, admittingLayer: 5, open: w.open }, cycleT, cycle));
+          data.put(id, admitNascent({ payload: w.payload, admittingLayer: 5, open: w.open }, now(), cycle));
         }
         const d = data.get(id)!;
         const action: WriteAction = { kind: "write", datum: id };
@@ -643,7 +649,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         if (!writeActions.some((a) => a.datum === id)) writeActions.push(action);
         pendingWrites = pendingWrites.filter((p) => p.action.datum !== id);
         pendingWrites.push({
-          signal: { source_id: STORE_CHANNEL, raw_payload: { entity: id, payload: d.payload, fixed: d.fixed, open: d.open }, t: cycleT },
+          signal: { source_id: STORE_CHANNEL, raw_payload: { entity: id, payload: d.payload, fixed: d.fixed, open: d.open }, t: now() },
           action,
         });
       }
@@ -657,7 +663,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         // `source === entity_id`: for a value-mismatch, the entity IS the resistance
         // source (the scar's source_id, cycle.ts collisions) — recorded explicitly.
         events.append(
-          recordExpectation(datumId(), cycle, r.entity_id, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, cycleT),
+          recordExpectation(datumId(), cycle, r.entity_id, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, now()),
         );
       }
       // ── Resistance readings for absences (§8, T7) ──
@@ -667,7 +673,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // is left un-measurable in the trace (§8.3 absorption covers absences too).
       for (const a of pass.t7.absences) {
         events.append(
-          recordResistanceReading(datumId(), cycle, "region", a.entity_id, "absence", a.recurrence, a.delta, "-", cycleT),
+          recordResistanceReading(datumId(), cycle, "region", a.entity_id, "absence", a.recurrence, a.delta, "-", now()),
         );
       }
 
@@ -681,7 +687,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         const held = data.get(r.datumId);
         if (held === undefined || held.fixed.provenance !== "scar") continue;
         data.put(r.datumId, toRunning(held, cycle));
-        events.append(recordProvenance(r.datumId, cycle, "scar", "running", cycleT));
+        events.append(recordProvenance(r.datumId, cycle, "scar", "running", now()));
       }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──
@@ -704,7 +710,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       if (material.length > 0) {
         // running → simulated: the loop takes the datum up into building situations
         datum = toSimulated(datum);
-        events.append(recordProvenance(datumId(), cycle, "running", "simulated", cycleT));
+        events.append(recordProvenance(datumId(), cycle, "running", "simulated", now()));
         // Build up to H_COUNT situations (a ceiling, not a quota). Fit = the store's
         // support for the situation (accrued confidence); the closer-fitting
         // outcomes carry, blended by fit (INV-7), never a hard scored winner.
@@ -713,7 +719,7 @@ export function createCycle(deps: CycleDeps): Cycle {
           .slice(0, H_COUNT);
         // simulated → projected: each situation yields the outcome cast from it
         datum = toProjected(datum);
-        events.append(recordProvenance(datumId(), cycle, "simulated", "projected", cycleT));
+        events.append(recordProvenance(datumId(), cycle, "simulated", "projected", now()));
         projectedUnits = situations.map((r) => r.expectation.predicted);
         cast = new Set(situations.map((r) => r.entity_id));
         forwardBuilt = true;
@@ -740,7 +746,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         register: "↔",
         issuing_layer: 8,
         built_from: [appraisal],
-        t: cycleT,
+        t: now(),
       };
       const response: Emission = { action: directive.committed_action };
 
@@ -779,7 +785,7 @@ export function createCycle(deps: CycleDeps): Cycle {
           // → scar: from `projected` if a cast preceded the collision, else a
           // direct `running → scar` (reflex, §5/§8.7).
           events.append(
-            recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", cycleT),
+            recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", now()),
           );
         }
         for (const { source_id, e } of collisions) {
@@ -793,7 +799,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             const held = data.get(collidedId)!;
             collided = toScar(held, true);
             data.put(collidedId, collided);
-            events.append(recordProvenance(collidedId, cycle, held.fixed.provenance, "scar", cycleT));
+            events.append(recordProvenance(collidedId, cycle, held.fixed.provenance, "scar", now()));
           }
           events.append(
             recordScar(
@@ -803,7 +809,7 @@ export function createCycle(deps: CycleDeps): Cycle {
                 expected: e.predicted.content,
                 received: e.observed?.content ?? null,
                 mismatch_kind: e.observed === null ? "absence" : "value-mismatch",
-                t: cycleT,
+                t: now(),
               },
               anchor,
               collidedId,
@@ -819,7 +825,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         // projected → running: the cast produced no scar; the datum returns to use
         // (a datum is never a conclusion at rest — §9).
         datum = toRunning(datum, cycle);
-        events.append(recordProvenance(datumId(), cycle, "projected", "running", cycleT));
+        events.append(recordProvenance(datumId(), cycle, "projected", "running", now()));
       }
 
       // ── Emit the cycle's committed action (link 5, §6.4) ──
@@ -840,6 +846,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             observed: pass.t5.results.map((r) => r.entity_id),
             scars,
             t: cycleT,
+            closedAt: now(),
             ...(recalledTags.length > 0 ? { recalled: recalledTags } : {}),
             ...(admittedTags.length > 0 ? { admitted: admittedTags } : {}),
             ...(writtenTags.length > 0 ? { written: writtenTags } : {}),
