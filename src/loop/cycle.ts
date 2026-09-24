@@ -25,7 +25,8 @@
  * runs one cycle correctly; it makes no self-continuity claim.
  */
 
-import { admitHostData, type HostDatum } from "../store/tagging-gate.js";
+import { admitArrival, admitNascent, TaggingGateError, type HostDatum } from "../store/tagging-gate.js";
+import { invalidOpenTagReason } from "../store/tags.js";
 import { stampLayer, toRunning, toScar, toSimulated, toProjected } from "../store/data-store.js";
 import {
   recordScar,
@@ -36,6 +37,7 @@ import {
   recordCrystallization,
   recordExpectation,
   recordResistanceReading,
+  recordRevision,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import type { DataStore } from "../store/data-store.js";
@@ -59,7 +61,7 @@ import type { GlobMod } from "./glob-mod.js";
 import type { Appraisal, Signal, PredErr, ModField, LayerIndex, Directive, InfoUnit } from "./types.js";
 import type { ActivityEnvironment } from "./types.js";
 import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js";
-import { isStoreQuery, storeQuery, type T3Input, type T3Output } from "./layers/t3.js";
+import { isStoreQuery, storeQuery, STORE_CHANNEL, type T3Input, type T3Output } from "./layers/t3.js";
 import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
 import type { T5Input, T5Output } from "./layers/t5.js";
@@ -160,6 +162,20 @@ export interface DriverState {
   readonly recalled?: readonly string[];
   /** Actions layers emitted laterally last cycle, for T2 to read (§6.4). */
   readonly lastLateral?: readonly unknown[];
+  /** What the rule wrote last cycle, arriving at T1 now (v0.3.3). */
+  readonly pendingWrites?: readonly PendingWrite[];
+}
+
+/** What T2 reads as the agent's act when a datum it wrote arrives (v0.3.3). */
+export interface WriteAction {
+  readonly kind: "write";
+  readonly datum: string;
+}
+
+/** A datum the rule wrote, on its way to T1 at the next cycle. */
+export interface PendingWrite {
+  readonly signal: Signal;
+  readonly action: WriteAction;
 }
 
 /** What the host supplies for one cycle. */
@@ -231,6 +247,8 @@ export function createCycle(deps: CycleDeps): Cycle {
   let pending: Signal[] = [...(deps.resume?.pendingReturns ?? [])];
   /** What layers emitted laterally last cycle — readable by T2 now (§6.4 rule 3). */
   let lastLateral: readonly unknown[] = deps.resume?.lastLateral ?? [];
+  /** What the rule wrote last cycle, arriving at T1 this cycle (v0.3.3). */
+  let pendingWrites: PendingWrite[] = [...(deps.resume?.pendingWrites ?? [])];
   /** Every datum ever recalled; each returns only on a cycle it was asked for. */
   const recalled = new Set<string>(deps.resume?.recalled ?? []);
   /** Recalled data not arriving this cycle — no absence is owed by them (T7). */
@@ -248,11 +266,13 @@ export function createCycle(deps: CycleDeps): Cycle {
   let runningRecalled: readonly string[] = [];
   /** The region's returns admitted this cycle; they pass the layers with the cycle datum too. */
   let runningAdmitted: readonly string[] = [];
+  /** Data the rule wrote last cycle, running now: their exits are theirs too. */
+  let runningWritten: readonly string[] = [];
   const admit = deps.admit ?? admitReturn;
   /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
     events.append(recordLayerExit(datumId(), cycle, layer, cycleT));
-    for (const id of [...runningRecalled, ...runningAdmitted]) {
+    for (const id of [...runningRecalled, ...runningAdmitted, ...runningWritten]) {
       events.append(recordLayerExit(id, cycle, layer, cycleT));
     }
   }
@@ -405,6 +425,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       pendingReturns: [...pending],
       recalled: [...recalled],
       lastLateral: [...lastLateral],
+      pendingWrites: [...pendingWrites],
     }),
     run(regionInput): CycleResult {
       const field = glob.current();
@@ -417,7 +438,17 @@ export function createCycle(deps: CycleDeps): Cycle {
       // memory that was not recalled is not silent, it was not asked.
       const returned = pending;
       pending = [];
-      const arriving = new Set(returned.map((s) => (s.raw_payload as StoreReturn).entity));
+      // What the rule wrote last cycle arrives now too, and runs every layer;
+      // its change is the agent's own write, which T2 matches to the write it
+      // made (v0.3.3 §9: SELF_WRITTEN at the next cycle).
+      const writtenBack = pendingWrites.filter((w) => data.has(w.action.datum));
+      pendingWrites = [];
+      const arriving = new Set([
+        ...returned.map((s) => (s.raw_payload as StoreReturn).entity),
+        ...writtenBack.map((w) => w.action.datum),
+      ]);
+      // Like a recalled datum, a written one returns only when it is written:
+      // not arriving later is no absence.
       for (const id of arriving) recalled.add(id);
       unasked = new Set([...recalled].filter((id) => !arriving.has(id)));
       // Each return is also a change the agent's own query produced: its value
@@ -426,17 +457,18 @@ export function createCycle(deps: CycleDeps): Cycle {
       // matches". The datum's CONTENT is still not the agent's own; agency and
       // provenance are two different questions.
       const host: HostCycleInput =
-        returned.length === 0
+        returned.length === 0 && writtenBack.length === 0
           ? regionInput
           : {
               ...regionInput,
-              signals: [...regionInput.signals, ...returned],
+              signals: [...regionInput.signals, ...returned, ...writtenBack.map((w) => w.signal)],
               changes: [
                 ...regionInput.changes,
                 ...returned.map((s) => {
                   const r = s.raw_payload as StoreReturn;
                   return { id: r.entity, value: storeQuery(r.cue) };
                 }),
+                ...writtenBack.map((w) => ({ id: w.action.datum, value: w.action })),
               ],
             };
       const flow: FlowMode = cycle === 0 ? "single-threaded" : "multi-stream";
@@ -444,19 +476,18 @@ export function createCycle(deps: CycleDeps): Cycle {
 
       // The cycle datum, threaded T1→T8 so it accrues a floor-tag at each
       // layer; the flow mode rides along as an open tag (trace-visible, §13.3).
-      const admitted: TaggedDatum = toRunning(
-        admitHostData(
-          {
-            payload: { signals: host.signals.length, cycle },
-            admittingLayer: 1,
-            open: { domain: "cycle", phase: "loop", source: "driver", flow },
-          },
-          cycleT, // timestamp = wall-clock; the cycle number is the separate cycle-mark
-        ),
+      // It is the loop's own, in use the moment it exists, so it passes the
+      // tagging-gate at `running` (v0.3.3 §9); its entry is the cycle seal that
+      // embeds it with its tags.
+      const admitted: TaggedDatum = admitArrival(
+        {
+          payload: { signals: host.signals.length, cycle },
+          admittingLayer: 1,
+          open: { domain: "cycle", phase: "loop", source: "driver", flow },
+        },
+        cycleT, // timestamp = wall-clock; the cycle number is the separate cycle-mark
         cycle,
       );
-      // prior → running: the admitted host datum has run this cycle (a lean line).
-      events.append(recordProvenance(datumId(), cycle, "prior", "running", cycleT));
 
       // prior → running, for each recalled datum that had not run before (§9):
       // "Host data, once admitted and once it has run, bears a cycle-mark." It
@@ -475,17 +506,30 @@ export function createCycle(deps: CycleDeps): Cycle {
         .map((s) => (s.raw_payload as StoreReturn).entity)
         .filter((id) => data.has(id));
 
-      // prior → running, for each return from the region (see `AdmitPolicy`).
-      // It enters through the tagging-gate and runs now, so it takes this
-      // cycle's mark. The region's signals come first in `host.signals`, so
+      // nascent → running, for each datum the rule wrote anew last cycle: it
+      // runs now, keeping the mark of the cycle that wrote it (v0.3.3 §9). A
+      // revised datum arrives too, its provenance untouched.
+      for (const w of writtenBack) {
+        const id = w.action.datum;
+        const held = data.get(id)!;
+        if (held.fixed.provenance === "nascent") {
+          data.put(id, toRunning(held, cycle));
+          events.append(recordProvenance(id, cycle, "nascent", "running", cycleT));
+        }
+      }
+      runningWritten = [...new Set(writtenBack.map((w) => w.action.datum))];
+
+      // Each return from the region enters through the tagging-gate at
+      // `running` (see `AdmitPolicy`, v0.3.3 §9): in use the moment it arrives,
+      // it takes this cycle's mark, and its entry is its tag set in this
+      // cycle's record. The region's signals come first in `host.signals`, so
       // signal i is T3's unit i.
       const admittedAt = new Map<number, string>();
       regionInput.signals.forEach((signal, i) => {
         const declared = admit(signal);
         if (declared === null) return;
         const id = `signal-${cycle}-${i}`;
-        data.put(id, toRunning(admitHostData(declared, cycleT), cycle));
-        events.append(recordProvenance(id, cycle, "prior", "running", cycleT));
+        data.put(id, admitArrival(declared, cycleT, cycle));
         admittedAt.set(i, id);
       });
       runningAdmitted = [...admittedAt.values()];
@@ -518,6 +562,9 @@ export function createCycle(deps: CycleDeps): Cycle {
         admittedTags.push({ datumId: id, fixed: ran.fixed, open: ran.open });
       }
       runningAdmitted = [];
+      // And each datum the rule wrote, running now.
+      for (const id of runningWritten) data.put(id, stampLayer(data.get(id)!, 8));
+      runningWritten = [];
       // Which admitted datum each observation came from, by the unit itself:
       // T4 and T5 carry T3's units through unchanged.
       const datumOf = new Map<InfoUnit, string>();
@@ -555,6 +602,50 @@ export function createCycle(deps: CycleDeps): Cycle {
           if (admittedNow.has(id)) continue;
           if (!pending.some((p) => (p.raw_payload as StoreReturn).entity === id)) pending.push(s);
         }
+      }
+
+      // ── What the rule wrote (v0.3.3 §9) ──
+      // A datum written anew enters through the tagging-gate at `nascent`,
+      // bearing this cycle's mark. A revision rewrites a datum already held: its
+      // content changes, its provenance does not, and a bare `revision` line is
+      // recorded. Either way the datum's tags go into this cycle's record, and it
+      // arrives at T1 next cycle, where T2 reads the write as the agent's own.
+      // Taken after the store has answered: what is written now is not memory yet.
+      const writtenTags: RecalledTags[] = [];
+      const writeActions: WriteAction[] = [];
+      let anew = 0;
+      for (const w of pass.t5.writes ?? []) {
+        let id: string;
+        if (w.datumId !== undefined) {
+          const held = data.get(w.datumId);
+          if (held === undefined) {
+            throw new Error(`write: there is no datum "${w.datumId}" to revise; a datum written anew carries no datumId`);
+          }
+          if (w.open !== undefined) {
+            const bad = invalidOpenTagReason(w.open);
+            if (bad !== null) throw new TaggingGateError(bad);
+          }
+          id = w.datumId;
+          data.put(id, { ...held, payload: w.payload, open: w.open ?? held.open });
+          events.append(recordRevision(id, cycle, 5, cycleT));
+        } else {
+          if (w.open === undefined) {
+            throw new TaggingGateError("a datum written anew must carry its open tags");
+          }
+          id = `written-${cycle}-${anew++}`;
+          data.put(id, admitNascent({ payload: w.payload, admittingLayer: 5, open: w.open }, cycleT, cycle));
+        }
+        const d = data.get(id)!;
+        const action: WriteAction = { kind: "write", datum: id };
+        const idx = writtenTags.findIndex((t) => t.datumId === id);
+        if (idx >= 0) writtenTags.splice(idx, 1);
+        writtenTags.push({ datumId: id, fixed: d.fixed, open: d.open });
+        if (!writeActions.some((a) => a.datum === id)) writeActions.push(action);
+        pendingWrites = pendingWrites.filter((p) => p.action.datum !== id);
+        pendingWrites.push({
+          signal: { source_id: STORE_CHANNEL, raw_payload: { entity: id, payload: d.payload, fixed: d.fixed, open: d.open }, t: cycleT },
+          action,
+        });
       }
 
       // ── Expectation readings: the observable signature of accumulation (INV-5) ──
@@ -727,6 +818,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             t: cycleT,
             ...(recalledTags.length > 0 ? { recalled: recalledTags } : {}),
             ...(admittedTags.length > 0 ? { admitted: admittedTags } : {}),
+            ...(writtenTags.length > 0 ? { written: writtenTags } : {}),
           },
           anchor,
         ),
@@ -750,7 +842,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       // Feedback + accrual: the response becomes the next cycle's emission, and
       // every lateral emission of this cycle is readable by T2 next cycle too.
       lastEmission = response;
-      lastLateral = pass.emissions.map((e) => e.action);
+      lastLateral = [...pass.emissions.map((e) => e.action), ...writeActions];
       cycle += 1;
 
       return {

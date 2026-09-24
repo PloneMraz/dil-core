@@ -277,21 +277,23 @@ test("[data] is mutable and clearable each cycle", () => {
 
 // ── Provenance state graph (§9): 11 edges, prior one-way ───────────────────
 
-test("every one of the 11 §9 edges is accepted; prior is a one-way entry", () => {
-  const states: Provenance[] = ["prior", "running", "simulated", "projected", "scar"];
-  // exactly the 11 declared edges are legal; every other ordered pair is not
+test("every one of the 12 §9 edges is accepted; prior and nascent are one-way entries", () => {
+  const states: Provenance[] = ["prior", "nascent", "running", "simulated", "projected", "scar"];
+  // exactly the 12 declared edges are legal; every other ordered pair is not
   const legal = new Set(PROVENANCE_EDGES.map(([f, t]) => `${f}->${t}`));
-  assert.equal(PROVENANCE_EDGES.length, 11);
+  assert.equal(PROVENANCE_EDGES.length, 12);
   for (const f of states) {
     for (const t of states) {
       assert.equal(isProvenanceEdge(f, t), legal.has(`${f}->${t}`), `${f}->${t}`);
     }
   }
-  // prior is a one-way entry: no edge returns to it
+  // prior and nascent are one-way entries: no edge returns to either
   for (const f of states) assert.equal(isProvenanceEdge(f, "prior"), false, `${f}->prior`);
-  // and prior only exits to running
+  for (const f of states) assert.equal(isProvenanceEdge(f, "nascent"), false, `${f}->nascent`);
+  // and each only exits to running
   for (const t of states) {
     assert.equal(isProvenanceEdge("prior", t), t === "running", `prior->${t}`);
+    assert.equal(isProvenanceEdge("nascent", t), t === "running", `nascent->${t}`);
   }
 });
 

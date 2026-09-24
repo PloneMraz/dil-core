@@ -33,7 +33,7 @@ import { SCHEMA_VERSION, SCHEMA_VERSIONED_SINCE } from "./decisions.js";
  */
 export const DIL_CLAIM = {
   /** The protocol version whose law governs this store. */
-  protocol: "0.3.2",
+  protocol: "0.3.3",
   /** The fixed-tag + open-tag schema version (store/tags.ts, SCHEMA_VERSION). */
   tagSchema: SCHEMA_VERSION,
   /** The on-substrate layout version (the three store kinds below). */

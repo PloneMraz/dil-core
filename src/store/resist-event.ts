@@ -103,6 +103,14 @@ export interface ActivityEvent {
    * Absent when nothing was admitted.
    */
   readonly admitted?: readonly RecalledTags[];
+  /**
+   * The full tag set of every datum the agent wrote this cycle — written anew
+   * (entering at `nascent`) or revised (its provenance unchanged) — as it stands
+   * once written (v0.3.3). Tags only, never content: what a revised datum held
+   * is read from the commit snapshot, not the log. Each of these arrives at T1
+   * the next cycle and runs every layer. Absent when nothing was written.
+   */
+  readonly written?: readonly RecalledTags[];
 }
 
 /** One recalled datum's tag set, as the activity record carries it. */
@@ -136,6 +144,23 @@ export interface CycleSealActivity {
   /** The cycle datum (provenance `running`, or `scar` if the cycle collided). */
   readonly datum: TaggedDatum;
   readonly anchor: ContextAnchor;
+}
+
+/**
+ * A revision (v0.3.3, §9 "Revision is not entry"): the agent rewrote the content
+ * of a datum it already holds. The datum stays the same datum — no provenance
+ * move, no entry. A bare record that the revision occurred: which datum, in which
+ * cycle, by which layer. It carries no content, as no `[event]` does; what the
+ * datum held is read from the commit snapshot.
+ */
+export interface RevisionActivity {
+  readonly kind: "activity";
+  readonly activityKind: "revision";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  /** The layer whose work wrote the revision. */
+  readonly issuingLayer: LayerIndex;
+  readonly t: number;
 }
 
 export interface LayerExitActivity {
@@ -262,7 +287,8 @@ export type ActivityRecord =
   | EmissionActivity
   | CrystallizationActivity
   | ExpectationActivity
-  | ResistanceReadingActivity;
+  | ResistanceReadingActivity
+  | RevisionActivity;
 
 /**
  * The manifest — the log's CONSTITUTION (§9, §8.5). A one-time genesis record,
@@ -311,6 +337,16 @@ export function recordActivity(
 }
 
 /** Note a datum exiting a layer (a lean trace line). */
+/** Build a `revision` line: datum D was revised at cycle N by layer L (no content). */
+export function recordRevision(
+  datumId: string,
+  cycleMark: number,
+  issuingLayer: LayerIndex,
+  t: number,
+): RevisionActivity {
+  return { kind: "activity", activityKind: "revision", datumId, cycleMark, issuingLayer, t };
+}
+
 export function recordLayerExit(
   datumId: string,
   cycleMark: number,

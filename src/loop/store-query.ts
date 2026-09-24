@@ -7,6 +7,11 @@
  * denote the same dimension wherever it appears, "so the `[event]` log is
  * filterable", and a filter is what this is.
  *
+ * One key reads the fixed layer instead: `provenance`, the position a datum
+ * occupies now. "What collided" is a question about position, not about what a
+ * datum is, so a cue may carry it — `{ kind: "frame", provenance: "scar" }` — and
+ * no open tag may use that key, since open tags never overwrite the fixed layer.
+ *
  * The answer is a set of Signals on the store channel, ingested at T1 the next
  * cycle like any query-return (§6: "input channels: query returns"). Nothing is
  * read into any layer here, and nothing is changed in `[data]`: the provenance
@@ -29,10 +34,17 @@ export interface StoreReturn {
   readonly cue: Description;
 }
 
-/** Whether a datum's open tags carry every pair of the cue. */
+/** The one cue key read from the fixed layer rather than the open layer. */
+export const PROVENANCE_CUE = "provenance";
+
+function valueFor(datum: TaggedDatum, key: string): string | undefined {
+  return key === PROVENANCE_CUE ? datum.fixed.provenance : datum.open[key];
+}
+
+/** Whether a datum carries every pair of the cue: its open tags, and its provenance for that one key. */
 export function matchesCue(datum: TaggedDatum, cue: Description): boolean {
   const keys = Object.keys(cue);
-  return keys.length > 0 && keys.every((k) => datum.open[k] === cue[k]);
+  return keys.length > 0 && keys.every((k) => valueFor(datum, k) === cue[k]);
 }
 
 /** The Signals a store query returns, in the store's own order. */

@@ -1,11 +1,18 @@
 /**
  * The tagging-gate — no side door (protocol §9, AGENTS.md "[event] log").
  *
- * Host data (a pre-existing memory file, say) is admitted to the loop ONLY after
- * passing the tagging rule: stamped provenance `prior`, with NO cycle-mark until
- * it has run, plus the open-tag layer — which MUST include the mandatory
- * `domain` tag (protocol §9) and MUST NOT name a verdict. Untagged data MUST NOT
- * enter the loop. There is no other way in.
+ * Every datum enters the store ONLY after passing the tagging rule: the four
+ * fixed tags plus the open-tag layer — which MUST include the mandatory `domain`
+ * tag (protocol §9) and MUST NOT name a verdict. Untagged data MUST NOT enter the
+ * loop. There is no other way in. What a datum is stamped depends on where it
+ * comes from (v0.3.3):
+ *   - host data existing before the loop ran → `prior`, no cycle-mark until it
+ *     has run (`admitHostData`);
+ *   - a datum the agent writes anew → `nascent`, bearing the cycle-mark of the
+ *     cycle that wrote it (`admitNascent`);
+ *   - what the region returns while the loop runs, and the loop's own per-cycle
+ *     datum → `running`, in use the moment they arrive, told apart by `domain`
+ *     (`admitArrival`).
  *
  * Admission failure is a halt (a thrown error), not a silent drop: data that
  * cannot be admitted cleanly must not slip into the store half-stamped.
@@ -58,5 +65,38 @@ export function admitHostData<T>(
       floorTag: datum.admittingLayer,
     },
     open,
+  };
+}
+
+function checkedOpen(open: OpenTags): OpenTags {
+  const bad = invalidOpenTagReason(open);
+  if (bad !== null) throw new TaggingGateError(bad);
+  return open;
+}
+
+/**
+ * Admit a datum the agent has written anew (v0.3.3 `nascent`). It bears the
+ * cycle-mark of the cycle that wrote it from the start, and moves
+ * `nascent → running` once it has run.
+ */
+export function admitNascent<T>(datum: HostDatum<T>, now: number, cycle: number): TaggedDatum<T> {
+  return {
+    payload: datum.payload,
+    fixed: { timestamp: now, cycleMark: cycle, provenance: "nascent", floorTag: datum.admittingLayer },
+    open: checkedOpen(datum.open),
+  };
+}
+
+/**
+ * Admit what arrives while the loop runs — a return from the region, or the
+ * loop's own per-cycle datum (v0.3.3). It is in use the moment it arrives, so it
+ * enters at `running`, bearing the cycle it arrived in; which class of data it is,
+ * is read from its `domain`, not from its provenance.
+ */
+export function admitArrival<T>(datum: HostDatum<T>, now: number, cycle: number): TaggedDatum<T> {
+  return {
+    payload: datum.payload,
+    fixed: { timestamp: now, cycleMark: cycle, provenance: "running", floorTag: datum.admittingLayer },
+    open: checkedOpen(datum.open),
   };
 }

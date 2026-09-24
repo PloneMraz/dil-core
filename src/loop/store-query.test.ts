@@ -423,13 +423,13 @@ function cycleWithRule(data: DataStore, events: EventLog, predict: PredictRule) 
 /** Asks about the world once, the first time it meets anything; records what it met. */
 function askingRule(met: unknown[]): PredictRule {
   let asked = false;
-  return (entityId, window, observed, contribute, ask) => {
+  return (entityId, window, observed, contribute, ask, write) => {
     met.push(observed.content);
     if (!asked) {
       asked = true;
       ask({ kind: "world" });
     }
-    return persistence(entityId, window, observed, contribute, ask);
+    return persistence(entityId, window, observed, contribute, ask, write);
   };
 }
 

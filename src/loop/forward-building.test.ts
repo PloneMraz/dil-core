@@ -58,7 +58,7 @@ test("cold start (cycle 0) affords no material — the datum does not forward-bu
   const { cycle, events } = freshCycle();
   cycle.run({ signals: [sig("weather", "sun")], changes: [] }); // first sight of the entity
   const t = transitions(events);
-  assert.equal(t["prior→running"], 1);
+  assert.equal(t["prior→running"] ?? 0, 0); // the cycle datum enters at running (v0.3.3)
   assert.equal(t["running→simulated"] ?? 0, 0); // no expectation accrued yet
   assert.equal(t["simulated→projected"] ?? 0, 0);
 });

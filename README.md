@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.2**: **265 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.3**: **352 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -153,7 +153,7 @@ scars by their *derived* name (tags are structured properties, not baked into na
 
 ```
 [event-log] — 45 record(s)
-  #0  [manifest] protocol=0.3.2 schema=2 · DECIDE@IMPL: tagB_thresholds, … 10:00:00  ← the run's constitution, once, at genesis
+  #0  [manifest] protocol=0.3.3 schema=3 · DECIDE@IMPL: tagB_thresholds, … 10:00:00  ← the run's constitution, once, at genesis
   #1  [provenance] cycle-0 prior→running (c0) 10:00:00
   #2  [layer-exit] cycle-0 @T1 (c0) 10:00:00
   …
@@ -216,9 +216,7 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 - **The cycle datum still goes to `scar` when a return collides.** Since `276f30a` the region's return is a datum and is the one that moves to `scar` when the expectation about it fails; the cycle datum, which stands for the cycle, still moves to `scar` too on any collision, as before. For an absence it is the only datum there is; when a return has collided, the cycle datum's own `scar` may be redundant. Changing it touches forward-building, whose `running → simulated → projected` road the cycle datum rides, so it is left as it is and deferred (with Plone, 2026-09-24).
 
-- **Migration to protocol v0.3.3 is in progress.** The law now has six provenance positions (`nascent` added for data the agent writes anew), holds `prior` to host data existing before the loop ran — region returns and the cycle datum enter at `running`, told apart by `domain` — and states that a revision of a held datum leaves a record but no new entry. The code still implements v0.3.2 until that migration lands.
-
-Otherwise empty. The codebase is **migrated to protocol v0.3.2** (parent spec, then `DIL-en-v6.md`; now [`DIL-en-v7.md`](DIL-en-v7.md)): `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission lines); the 5-state provenance **graph** (`simulated`/`projected`) with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
+Otherwise empty. The codebase is **migrated to protocol v0.3.3** (parent spec [`DIL-en-v7.md`](DIL-en-v7.md)): the six-position provenance graph with `nascent` for what the agent writes (`write` from the predict rule, arriving SELF_WRITTEN the next cycle), entries by origin through the tagging-gate (region returns and the cycle datum at `running`), the `revision` record, cues that may ask by provenance; and, from v0.3.2, `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission / revision lines); the `simulated`/`projected` states with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
 
 The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
 

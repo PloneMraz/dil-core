@@ -87,7 +87,8 @@ test("a return from the region is a running datum, tagged by what can be seen of
   assert.equal(d.fixed.cycleMark, 0);
   assert.equal(d.fixed.floorTag, 8, "it left T8 with the cycle datum");
   assert.deepEqual(d.open, { domain: "region", source: "ch", format: "object" });
-  assert.deepEqual(moves(events, "signal-0-0"), ["prior→running"]);
+  // It enters at `running` (v0.3.3): no provenance move, its entry is its tags in the record.
+  assert.deepEqual(moves(events, "signal-0-0"), []);
 });
 
 test("every layer a return exits is in the log, and its tags are in the cycle's record", () => {
@@ -110,7 +111,7 @@ test("the return the expectation failed on is the datum that becomes the scar, a
 
   assert.equal(data.get("signal-1-0")!.fixed.provenance, "scar");
   assert.equal(data.get("signal-0-0")!.fixed.provenance, "running", "the earlier return did not collide");
-  assert.deepEqual(moves(events, "signal-1-0"), ["prior→running", "running→scar"]);
+  assert.deepEqual(moves(events, "signal-1-0"), ["running→scar"]);
 
   const [scar, ...more] = scars(events);
   assert.equal(more.length, 0);

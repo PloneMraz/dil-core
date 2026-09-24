@@ -45,6 +45,8 @@ export {
   persistence,
   type PredictRule,
   type AskFn,
+  type WriteFn,
+  type WriteRequest,
   type T5Result,
   type T5Input,
   type T5Output,

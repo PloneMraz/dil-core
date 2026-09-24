@@ -29,8 +29,11 @@
  *   2 → v0.3.2's 5-state provenance graph (adds simulated, projected). First
  *       versioned schema: stamped per line, hashed with the version-inclusive
  *       formula.
+ *   3 → v0.3.3's 6-state graph (adds `nascent`, a datum the agent writes anew),
+ *       entries by origin (region returns and the cycle datum enter at
+ *       `running`), and the `revision` record.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * The first schema version under the self-describing, version-stamped chain — the

@@ -101,7 +101,9 @@ test("Store (§13.6) fails on an illegal provenance move in the trace", () => {
 
 test("Store (§13.6) fails if a datum enters `prior` more than once", () => {
   const { events, gate } = runDaemon([{ signals: [sig("weather", "sun")], changes: [] }]);
-  // a second prior→running for the same datum: entered twice (prior is one-way)
+  // the same datum leaving `prior` twice: entered twice (prior is one-way). Since
+  // v0.3.3 the cycle datum enters at `running`, so both lines are injected.
+  events.append(recordProvenance("cycle-0", 0, "prior", "running", 1));
   events.append(recordProvenance("cycle-0", 0, "prior", "running", 1));
   const store = checkConformance(events, { gate }).results.find((r) => r.id === "6")!;
   assert.equal(store.verdict, "fail");

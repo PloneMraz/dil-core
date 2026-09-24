@@ -48,8 +48,8 @@ export class LifecycleError extends Error {
 }
 
 /**
- * The provenance state graph (§9): the legal moves. `prior` is a one-way entry
- * (no edge returns to it); `running`, `simulated`, `projected`, `scar` circulate
+ * The provenance state graph (§9): the legal moves. `prior` and `nascent` are
+ * one-way entries (no edge returns to either); `running`, `simulated`, `projected`, `scar` circulate
  * with no terminal state — a datum is never a conclusion at rest. The forward
  * states (`simulated`/`projected`) are only *visited* once forward-building lands
  * (Bước 6); the graph is the law from here on, and every provenance move — at
@@ -57,6 +57,7 @@ export class LifecycleError extends Error {
  */
 export const PROVENANCE_EDGES: readonly (readonly [Provenance, Provenance])[] = [
   ["prior", "running"], // host data admitted and run
+  ["nascent", "running"], // a datum the agent wrote anew, once it has run (v0.3.3)
   ["running", "simulated"], // taken up into building a situation
   ["simulated", "projected"], // a situation yields the outcome cast from it
   ["simulated", "running"], // built, but no emission followed; back to use
@@ -84,10 +85,11 @@ export function assertProvenanceEdge(from: Provenance, to: Provenance): void {
 }
 
 /**
- * → running. A legal move to `running` (from `prior` on first run, or a re-entry
+ * → running. A legal move to `running` (from `prior` or `nascent` on first run, or a re-entry
  * from `simulated`/`projected`/`scar` once circulation lands, Bước 6). The
  * cycle-mark is set once, when the datum first runs (§9): null → cycle; a datum
- * that has already run keeps its mark on re-entry.
+ * that has already run keeps its mark on re-entry, and a `nascent` datum keeps
+ * the mark of the cycle that wrote it.
  */
 export function toRunning<T>(
   datum: TaggedDatum<T>,

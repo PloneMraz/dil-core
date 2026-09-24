@@ -36,6 +36,7 @@ import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { storeQuery, type Description } from "./t3.js";
+import type { OpenTags } from "../../store/tags.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 
 /** Mean prediction error over this cycle's entities (INV-7, up-channel). */
@@ -53,6 +54,8 @@ export interface T5Input {
 
 export interface T5Output {
   readonly results: readonly T5Result[];
+  /** What the rule wrote this cycle, in order; the driver takes each into `[data]` (v0.3.3). */
+  readonly writes?: readonly WriteRequest[];
 }
 
 export interface T5Options {
@@ -97,6 +100,17 @@ export interface T5Options {
  * any other: register ↔, one activity record naming T5 as its issuing layer, and
  * its answer arrives at T1 next cycle and runs every layer, so what the rule
  * read is in the trace. Nothing counts or limits how often a rule asks.
+ *
+ * And it receives `write`, the one way the rule's product enters the store
+ * (v0.3.3). **Why a rule needs it.** Where the thinking is a model, what it
+ * makes — a program predicting the region, say — is data, and data that is not
+ * in `[data]` cannot be recalled, snapshotted, or read back by a third party.
+ * `write` without a `datumId` writes a datum anew: it enters at `nascent`,
+ * bearing this cycle's mark. With a `datumId` it revises a datum already held:
+ * the content changes, the provenance does not, and a `revision` line is
+ * recorded. Either way the datum arrives at T1 next cycle, is classified
+ * SELF_WRITTEN at T2, and runs every layer. The driver does the admitting and
+ * the recording; the rule only says what to write.
  */
 export type PredictRule = (
   entityId: string,
@@ -104,10 +118,23 @@ export type PredictRule = (
   observed: InfoUnit,
   contribute: ContributeFn,
   ask: AskFn,
+  write: WriteFn,
 ) => InfoUnit;
 
 /** A store query from the rule, by cue (§6.4, §9). It emits nothing else. */
 export type AskFn = (cue: Description) => void;
+
+/** What the rule asks to be written: a datum anew, or a revision of one it holds. */
+export interface WriteRequest {
+  /** The datum to revise; absent to write one anew. */
+  readonly datumId?: string;
+  readonly payload: unknown;
+  /** Required for a datum written anew; for a revision, replaces its open tags when given. */
+  readonly open?: OpenTags;
+}
+
+/** Writing from the rule into `[data]`, through the driver (v0.3.3). */
+export type WriteFn = (request: WriteRequest) => void;
 
 /**
  * The reference update law: predict the most recent observation, or the
@@ -144,8 +171,13 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       for (const [k, v] of s.counts) counts.set(k, v);
     },
     process(input, _field, emit, contribute): T5Output {
-      // The rule's one road outward: a query to the store, issued from T5.
+      // The rule's road outward: a query to the store, issued from T5.
       const ask: AskFn = (cue) => emit(storeQuery(cue));
+      // And its road into the store: what it writes, handed to the driver.
+      const writes: WriteRequest[] = [];
+      const write: WriteFn = (request) => {
+        writes.push(request);
+      };
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;
         const observed = b.unit;
@@ -157,7 +189,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const predicted = predict(id, window, observed, contribute, ask);
+        const predicted = predict(id, window, observed, contribute, ask, write);
         const confidence = Math.min(1, count / recurrence);
 
         const matched = contentEqual(observed, predicted);
@@ -191,7 +223,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
           ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
           : 0;
       contribute({ [SURPRISE]: surprise });
-      return { results };
+      return writes.length > 0 ? { results, writes } : { results };
     },
     // INV-4: predicted and observed are InfoUnits leaving the layer.
     infoUnits: (out) =>

@@ -20,17 +20,21 @@ import type { LayerIndex } from "../invariants/types.js";
 
 /**
  * Provenance state (protocol §3, §9). NOT a chain but a directed graph: `prior`
- * is a one-way entry, and `running`, `simulated`, `projected`, `scar` form a
- * circulation with no terminal state — a datum is never a conclusion at rest but
- * data waiting to be used. The legal moves are the edge set in data-store.ts.
+ * and `nascent` are one-way entries, and `running`, `simulated`, `projected`,
+ * `scar` form a circulation with no terminal state — a datum is never a
+ * conclusion at rest but data waiting to be used. The legal moves are the edge
+ * set in data-store.ts.
  *
- *   - prior      — host data admitted through the tagging-gate, not yet run
+ *   - prior      — host data existing before the loop ran, admitted through the
+ *                  tagging-gate, not yet run
+ *   - nascent    — a datum the agent has written anew, not yet run; it bears the
+ *                  cycle-mark of the cycle that wrote it (v0.3.3)
  *   - running    — data in use, in motion through the loop
  *   - simulated  — taken up into the building of a situation (§6.2; exercised in Bước 6)
  *   - projected  — an outcome cast from a situation, not yet collided (§6.2; Bước 6)
  *   - scar       — collided with resistance and held
  */
-export type Provenance = "prior" | "running" | "simulated" | "projected" | "scar";
+export type Provenance = "prior" | "nascent" | "running" | "simulated" | "projected" | "scar";
 
 /**
  * The fixed four tags. `cycleMark` is null until the datum has run (a `prior`
@@ -39,9 +43,9 @@ export type Provenance = "prior" | "running" | "simulated" | "projected" | "scar
 export interface FixedTags {
   /** (1) timestamp — when the datum was stamped. */
   readonly timestamp: number;
-  /** (2) cycle-mark — the cycle in which it ran; null while still `prior`. */
+  /** (2) cycle-mark — the cycle in which it first ran, or, for `nascent`, the cycle that wrote it; null while still `prior`. */
   readonly cycleMark: number | null;
-  /** (3) provenance — a directed graph (§9): `prior` (one-way entry), then `running`/`simulated`/`projected`/`scar` circulating. */
+  /** (3) provenance — a directed graph (§9): `prior` and `nascent` (one-way entries), then `running`/`simulated`/`projected`/`scar` circulating. */
   readonly provenance: Provenance;
   /**
    * (4) floor-tag — a single slot naming the layer the datum just exited. Each
