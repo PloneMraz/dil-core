@@ -4,6 +4,29 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-09-24
+
+### 15:14 — feat: rule dự đoán tự hỏi store thứ nó còn thiếu
+**Commit:** `1e2d826`
+
+Trước giờ **chỉ T3 hỏi được store, và chỉ hỏi về thứ vừa đến**. Trong khi đó, phần của vòng lặp biết mình đang thiếu gì là rule dự đoán ở T5, nơi tư duy nằm, lại không có đường nào để tìm tới trí nhớ. Nó chỉ nhận những gì được đưa tới.
+
+§6.4 đã có sẵn đường cho việc này: *"emission is a lateral capability any layer MAY invoke: when a layer's own work requires pushing to the region — to obtain what it lacks"*. Giờ T5 trao cho rule một hàm `ask(cue)`. Hàm này **chỉ phát được store query, không phát được gì khác**: rule chọn thứ nó cần đọc, nhưng vẫn không hành động, và một kỳ vọng không bao giờ trở thành một lựa chọn. Query này là một emission như mọi emission khác:
+- register ↔;
+- một activity record ghi T5 là tầng phát;
+- câu trả lời đến T1 ở chu kỳ sau và chạy qua mọi tầng.
+
+Vì vậy những gì rule đã đọc đều nằm trong dấu vết. Không có hằng số nào đếm hay giới hạn số lần rule hỏi.
+
+Test kiểm năm điều:
+1. Query của rule được ghi với T5 là tầng phát.
+2. Câu trả lời tới được rule ở chu kỳ sau.
+3. Datum được hỏi chuyển sang `running`.
+4. Datum không được hỏi vẫn ở `prior`.
+5. Bộ kiểm không đánh fail claim nào.
+
+**336 test xanh.**
+
 ## [Unreleased] — 2026-09-23
 
 ### 17:33 — fix: datum được gọi lại để lại đường đi và bộ tag của chính nó trong log
