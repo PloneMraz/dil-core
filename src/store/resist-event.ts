@@ -270,6 +270,8 @@ export interface ExpectationActivity {
   /** Magnitude of the prediction error at this probe (PredErr.delta, §6.3 T5). */
   readonly delta: number;
   readonly t: number;
+  /** The held data the expectation was, by id (v0.3.5 §9); absent when none. */
+  readonly heldBy?: readonly string[];
 }
 
 /**
@@ -412,8 +414,12 @@ export function recordExpectation(
   recurrence: number,
   delta: number,
   t: number,
+  heldBy: readonly string[] = [],
 ): ExpectationActivity {
-  return { kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, source, confidence, recurrence, delta, t };
+  return {
+    kind: "activity", activityKind: "expectation", datumId, cycleMark, entity, source, confidence, recurrence, delta, t,
+    ...(heldBy.length > 0 ? { heldBy: [...heldBy] } : {}),
+  };
 }
 
 /**

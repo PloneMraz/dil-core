@@ -110,11 +110,16 @@ test("the return the expectation failed on is the datum that becomes the scar, a
   cycle.run({ signals: [weather("rain")], changes: [] }); // persistence expected "sun"
 
   assert.equal(data.get("signal-1-0")!.fixed.provenance, "scar");
-  assert.equal(data.get("signal-0-0")!.fixed.provenance, "running", "the earlier return did not collide");
+  // The earlier return is what persistence expected: it met the mismatch too
+  // and holds a scar of its own (v0.3.5 §9).
+  assert.equal(data.get("signal-0-0")!.fixed.provenance, "scar", "the expectation met the mismatch");
   assert.deepEqual(moves(events, "signal-1-0"), ["running→scar"]);
 
-  const [scar, ...more] = scars(events);
+  const [scar, held, ...more] = scars(events);
   assert.equal(more.length, 0);
+  assert.equal(held!.datumId, "signal-0-0");
+  const same = (r: EventRecord) => ({ ...r.event, t: 0 });
+  assert.deepEqual(same(held!), same(scar!), "one mismatch, the same ResistEvent on both sides");
   assert.equal(scar!.datumId, "signal-1-0");
   assert.deepEqual(scar!.scar.payload, { entity: "weather", value: "rain" });
   assert.deepEqual((scar!.event.expected as { value: { value: string } }).value.value, "sun");

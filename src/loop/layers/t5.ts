@@ -111,6 +111,15 @@ export interface T5Options {
  * recorded. Either way the datum arrives at T1 next cycle, is classified
  * SELF_WRITTEN at T2, and runs every layer. The driver does the admitting and
  * the recording; the rule only says what to write.
+ *
+ * It returns the expected unit, or the expected unit with the held data it is
+ * (`Expecting`, v0.3.5). **Why a rule needs to say that.** When an expectation
+ * mismatches, every datum that met the mismatch is scarred (§9): the return,
+ * and the datum the expectation is. A rule that returns a unit it took from its
+ * window — persistence does — needs to say nothing, since the driver knows which
+ * datum that unit came from. A rule that makes its expectation anew — by running
+ * a program it wrote, say — is the only thing that knows which datum it ran, so
+ * it names it: `heldBy`, units or datum ids, `[]` for nothing held.
  */
 export type PredictRule = (
   entityId: string,
@@ -119,7 +128,17 @@ export type PredictRule = (
   contribute: ContributeFn,
   ask: AskFn,
   write: WriteFn,
-) => InfoUnit;
+) => InfoUnit | Expecting;
+
+/** An expectation, with the held data it is (v0.3.5 §6.1). */
+export interface Expecting {
+  readonly predicted: InfoUnit;
+  readonly heldBy: readonly (InfoUnit | string)[];
+}
+
+function isExpecting(out: InfoUnit | Expecting): out is Expecting {
+  return (out as Expecting).heldBy !== undefined && (out as Expecting).predicted !== undefined;
+}
 
 /** A store query from the rule, by cue (§6.4, §9). It emits nothing else. */
 export type AskFn = (cue: Description) => void;
@@ -196,7 +215,8 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const predicted = predict(id, window, observed, contribute, ask, write);
+        const out = predict(id, window, observed, contribute, ask, write);
+        const predicted = isExpecting(out) ? out.predicted : out;
         const confidence = Math.min(1, count / recurrence);
 
         const matched = contentEqual(observed, predicted);
@@ -213,6 +233,10 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
           confidence,
           recurrence: count, // observations accrued so far (pre this one); drives confidence
           built_from: window.slice(),
+          // Named by the rule, or — for a rule that returned a unit it took from
+          // its window — that unit, which the driver resolves to its datum.
+          held_by: isExpecting(out) ? out.heldBy.slice() : [out],
+          held_by_declared: isExpecting(out),
         };
 
         // Accrue this observation into the bounded window.

@@ -1,6 +1,6 @@
 # CONTEXT.md — Building DIL as a Codebase
 
-> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.4.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
+> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.5.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
 
 ---
 

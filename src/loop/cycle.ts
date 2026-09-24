@@ -64,7 +64,7 @@ import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js
 import { isStoreQuery, storeQuery, STORE_CHANNEL, type T3Input, type T3Output } from "./layers/t3.js";
 import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
-import type { T5Input, T5Output } from "./layers/t5.js";
+import type { T5Input, T5Output, T5Result } from "./layers/t5.js";
 import type { T6Input, T6Output } from "./layers/t6.js";
 import type { T7Input, T7Output } from "./layers/t7.js";
 import type { T8Input, T8Output } from "./layers/t8.js";
@@ -689,11 +689,49 @@ export function createCycle(deps: CycleDeps): Cycle {
       // recurrence that drove it. A third party reads these back grouped by entity
       // and measures the ramp (§13.4) — an accruing self makes confidence and
       // recurrence climb together; a reloading impostor cannot.
+      // ── What each expectation is (v0.3.5 §9, `held_by`) ──
+      // The held data an expectation is, by id: named by the rule, or the datum a
+      // unit it took from its window came from. A name the rule gave that is no
+      // datum is refused, as a `builtFrom` would be; a unit the rule returned
+      // that came from no datum (the observation itself, for a fresh entity) is
+      // simply nothing held.
+      const heldOf = new Map<T5Result, string[]>();
+      for (const r of pass.t5.results) {
+        const ids: string[] = [];
+        for (const h of r.expectation.held_by) {
+          const id = typeof h === "string" ? (data.has(h) ? h : undefined) : unitDatum.get(h);
+          if (id === undefined) {
+            if (r.expectation.held_by_declared) {
+              throw new Error(
+                `expectation: held_by names ${typeof h === "string" ? `"${h}", which is no datum` : "a unit that came from no datum"}`,
+              );
+            }
+            continue;
+          }
+          if (!ids.includes(id)) ids.push(id);
+        }
+        heldOf.set(r, ids);
+      }
+      // An expectation built that a datum is, is that datum in use: a scar used
+      // again returns to `running` (§9 `scar → running`), once, before it is
+      // compared — so a program that keeps failing circulates between the two.
+      const inUse = new Set<string>();
+      for (const ids of heldOf.values()) {
+        for (const id of ids) {
+          if (inUse.has(id)) continue;
+          inUse.add(id);
+          const held = data.get(id);
+          if (held !== undefined && (held.fixed.provenance === "scar" || held.fixed.provenance === "prior")) {
+            data.put(id, toRunning(held, cycle));
+            events.append(recordProvenance(id, cycle, held.fixed.provenance, "running", now()));
+          }
+        }
+      }
       for (const r of pass.t5.results) {
         // `source === entity_id`: for a value-mismatch, the entity IS the resistance
         // source (the scar's source_id, cycle.ts collisions) — recorded explicitly.
         events.append(
-          recordExpectation(datumId(), cycle, r.entity_id, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, now()),
+          recordExpectation(datumId(), cycle, r.entity_id, r.entity_id, r.expectation.confidence, r.expectation.recurrence, r.predErr.delta, now(), heldOf.get(r) ?? []),
         );
       }
       // ── Resistance readings for absences (§8, T7) ──
@@ -783,11 +821,19 @@ export function createCycle(deps: CycleDeps): Cycle {
       // ── Collisions that hold → scars in [event] ──
       // Each collision is sourced: a value-mismatch by the entity that resisted,
       // an absence by the region. The source set drives diversity monitoring.
-      const collisions: { source_id: string; e: PredErr }[] = [
+      const collisions: { source_id: string; e: PredErr; held: readonly string[] }[] = [
         ...pass.t5.results
           .filter((r) => r.predErr.delta > 0)
-          .map((r) => ({ source_id: r.entity_id, e: r.predErr })),
-        ...pass.t7.absences.map((e) => ({ source_id: "region", e })),
+          // The expecting side is scarred only against what the region returned:
+          // an arrival from the store — the agent's own revision coming back —
+          // is not the region resisting, and scarring the datum the agent
+          // revised would make its own act a collision (INV-6).
+          .map((r) => ({
+            source_id: r.entity_id,
+            e: r.predErr,
+            held: r.predErr.observed !== null && datumOf.has(r.predErr.observed) ? heldOf.get(r) ?? [] : [],
+          })),
+        ...pass.t7.absences.map((e) => ({ source_id: "region", e, held: [] as readonly string[] })),
       ];
       const anchor: ContextAnchor = {
         depth: CONTEXT_ANCHOR_DEPTH,
@@ -818,7 +864,7 @@ export function createCycle(deps: CycleDeps): Cycle {
             recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", now()),
           );
         }
-        for (const { source_id, e } of collisions) {
+        for (const { source_id, e, held: heldIds } of collisions) {
           // What collided is the return the expectation was compared against:
           // that datum moves to `scar` (§9 `running → scar`), and the record
           // embeds and names it. Where there is no such return, the cycle
@@ -847,6 +893,32 @@ export function createCycle(deps: CycleDeps): Cycle {
           );
           collisionSources.add(source_id);
           scars += 1;
+          // The expecting side met the mismatch too (v0.3.5 §9): each datum the
+          // expectation is moves to `scar` with its own record, carrying the same
+          // ResistEvent. The rest of the window, evidence only, met nothing.
+          for (const id of heldIds) {
+            if (id === collidedId) continue;
+            const held = data.get(id);
+            if (held === undefined || !["running", "simulated", "projected"].includes(held.fixed.provenance)) continue;
+            const scarred = toScar(held, true);
+            data.put(id, scarred);
+            events.append(recordProvenance(id, cycle, held.fixed.provenance, "scar", now()));
+            events.append(
+              recordScar(
+                scarred,
+                {
+                  source_id,
+                  expected: e.predicted.content,
+                  received: e.observed?.content ?? null,
+                  mismatch_kind: "value-mismatch",
+                  t: now(),
+                },
+                anchor,
+                id,
+              ),
+            );
+            scars += 1;
+          }
         }
       }
       if (cycleCollides) {

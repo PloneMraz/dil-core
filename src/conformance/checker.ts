@@ -592,6 +592,23 @@ export function checkConformance(
           !Array.isArray(w.builtFrom) ||
           w.builtFrom.some((id) => !entered.has(id) || entered.get(id)! > cycle),
       );
+    // v0.3.5 §9: every datum an expectation named as what it is shows its entry
+    // by then, and — when that expectation mismatched against what the region
+    // returned — met the mismatch: a scar naming it at that cycle.
+    const regionReturns = new Set(cycleSeals.flatMap((r) => (r.activity.admitted ?? []).map((t) => t.datumId)));
+    const scarredAt = new Set(scars.map((s) => `${s.datumId}@${s.anchor.cycle}`));
+    const expectationLines = records.filter(
+      (r): r is ExpectationActivity => r.kind === "activity" && r.activityKind === "expectation",
+    );
+    const unheld = expectationLines.find((x) => {
+      const held = x.heldBy ?? [];
+      if (held.some((id) => !entered.has(id) || entered.get(id)! > x.cycleMark)) return true;
+      if (x.delta <= 0) return false;
+      const againstRegion = scars.some(
+        (s) => s.anchor.cycle === x.cycleMark && s.event.source_id === x.source && s.datumId !== undefined && regionReturns.has(s.datumId),
+      );
+      return againstRegion && held.some((id) => !scarredAt.has(`${id}@${x.cycleMark}`));
+    });
     const claims: ClaimCheck[] = [
       claim("every record well-formed — 4 fixed + ≥3 open tags incl domain + anchor", "trace", firstProblem ? "fail" : "pass"),
       claim("every cycle left an activity record (contiguous coverage)", "trace", coverageGap !== null ? "fail" : "pass"),
@@ -600,6 +617,7 @@ export function checkConformance(
       claim("host data entered only via the tagging-gate — every datum leaving `prior` or `nascent` shows its gate-admissible tag set in the trace (§13.6)", "trace", unseenEntry ? "fail" : "pass"),
       claim("every datum that ran or was revised shows its entry, with its tag set, in the trace (§9)", "trace", noEntry ? "fail" : "pass"),
       claim("every datum the agent wrote says what it was built from, each a datum whose entry the trace shows (§9)", "trace", unbuilt ? "fail" : "pass"),
+      claim("every datum an expectation was (held_by) shows its entry, and met its mismatch against the region as a scar (§9, v0.3.5)", "trace", unheld ? "fail" : "pass"),
     ];
     push(
       "6",
@@ -619,6 +637,8 @@ export function checkConformance(
                 ? `datum ${noEntry.datumId} appears at cycle ${noEntry.cycleMark} with no recorded entry before it (§9)`
               : unbuilt
                 ? `datum ${unbuilt.w.datumId}, written at cycle ${unbuilt.cycle}, does not say what it was built from, or names data with no recorded entry (§9)`
+              : unheld
+                ? `the expectation for ${unheld.entity} at cycle ${unheld.cycleMark} names as what it is data with no recorded entry, or data that did not scar when it mismatched against the region (§9)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior and nascent each entered once); every datum that ran shows its entry; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",
     );
   }

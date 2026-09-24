@@ -115,6 +115,7 @@ export interface SerializedExpectation {
   readonly recurrence: number;
   readonly delta: number;
   readonly t: number;
+  readonly heldBy?: readonly string[];
 }
 
 /** Serialized form of a lean `resistance-reading` activity line (§8; absence's per-source resistance). */
@@ -221,6 +222,7 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
         recurrence: rec.recurrence,
         delta: rec.delta,
         t: rec.t,
+        ...(rec.heldBy !== undefined ? { heldBy: rec.heldBy } : {}),
       };
     case "resistance-reading":
       return {
@@ -461,6 +463,7 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       recurrence: rec.recurrence,
       delta: rec.delta,
       t: rec.t,
+      ...(rec.heldBy !== undefined ? { heldBy: rec.heldBy } : {}),
     };
   }
   if (rec.form === "resistance-reading") {

@@ -78,7 +78,8 @@ test("a cast that did not collide returns to use, though another return collided
   assert.deepEqual(cycleMoves(events, 4), ["running→simulated", "simulated→projected", "projected→running"]);
   assert.equal(data.get("cycle-4")!.fixed.provenance, "running");
   assert.equal(data.get("signal-4-1")!.fixed.provenance, "scar", "`b`'s return holds the scar");
-  assert.equal(scarsAt(events, 4).length, 1);
+  assert.equal(data.get("signal-3-1")!.fixed.provenance, "scar", "and so does the return persistence expected (v0.3.5)");
+  assert.equal(scarsAt(events, 4).length, 2);
 });
 
 test("with no cast, a return that collides leaves the cycle datum running", () => {

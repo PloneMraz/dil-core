@@ -80,6 +80,16 @@ export interface Expectation {
    */
   readonly recurrence: number;
   readonly built_from: HistoryWindow;
+  /**
+   * The held data this expectation is (v0.3.5 §6.1, §9): the datum whose content
+   * is the expectation — a program the agent wrote and thinks with, or the
+   * observation a persistence rule repeats — as units or datum ids. When the
+   * expectation mismatches, each of them has met the mismatch and is scarred,
+   * as the return is; the rest of the window, evidence only, is not.
+   */
+  readonly held_by: readonly (InfoUnit | string)[];
+  /** Whether the rule named `held_by` itself (then every entry MUST resolve to a datum). */
+  readonly held_by_declared: boolean;
 }
 
 /** The sign a PredErr carries; absence registers as negative (T7). */

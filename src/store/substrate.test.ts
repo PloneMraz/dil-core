@@ -90,7 +90,7 @@ test("a pre-versioning stored tag-schema is refused (policy B): its [event] chai
   // a substrate stamped under the PRE-VERSIONING schema (v1, the 3-state provenance
   // era): its [event] lines carry no per-line stamp and were hashed under the old
   // version-less formula, so the versioned chain cannot verify them.
-  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.4", tagSchema: 1, layout: 1 }));
+  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.5", tagSchema: 1, layout: 1 }));
   // DIL refuses at the door rather than advancing the claim over an unverifiable
   // trust-root log (the substrate↔chain coherence policy B keeps).
   assert.throws(() => claimSubstrate(root), SubstrateClaimError);
@@ -110,7 +110,7 @@ test("a pre-versioning stored tag-schema is refused (policy B): its [event] chai
 test("a newer stored tag-schema is refused — an older DIL must not write it", () => {
   const root = tmpRoot();
   const layout = claimSubstrate(root);
-  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.4", tagSchema: 999, layout: 1 }));
+  fs.writeFileSync(layout.claimFile, JSON.stringify({ protocol: "0.3.5", tagSchema: 999, layout: 1 }));
   assert.throws(() => claimSubstrate(root), SubstrateClaimError);
   fs.rmSync(root, { recursive: true, force: true });
 });

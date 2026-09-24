@@ -91,10 +91,11 @@ test("a commit fires automatically after COMMIT_EVERY scars, at a cycle boundary
     const { daemon, commits } = makeDaemon(alternating(8), { commitsDir: dir, commitEvery: 3 });
     daemon.start();
     daemon.run();
-    // 7 scars over 8 cycles → commits at scar 3 and 6 → 2 markers
-    assert.equal(commits!.list().length, 2);
+    // 7 mismatches over 8 cycles, each scarring the return and the observation
+    // persistence expected (v0.3.5): 14 scars, 2 a cycle → commits at 4, 8, 12
+    assert.equal(commits!.list().length, 3);
     const head = commits!.getMarker(commits!.head()!);
-    assert.equal(head.scarCount, 6);
+    assert.equal(head.scarCount, 12);
     assert.ok(head.stateHash.length === 64);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -110,11 +111,17 @@ test("markers are parent-linked into a DAG and content-addressed (tamper self-ev
     const headHash = commits!.head()!;
     const head = commits!.getMarker(headHash);
     assert.ok(head.parent !== null);
-    const first = commits!.getMarker(head.parent!);
-    assert.equal(first.parent, null); // the genesis commit
+    // walk the parent links back to the genesis commit
+    let links = 1;
+    let marker = head;
+    while (marker.parent !== null) {
+      marker = commits!.getMarker(marker.parent);
+      links += 1;
+    }
+    assert.equal(links, commits!.list().length); // one chain, ending at genesis
     // tamper the head marker file → its content no longer matches its name
     const file = path.join(dir, `${headHash}.json`);
-    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace('"scarCount":6', '"scarCount":1'));
+    fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace('"scarCount":12', '"scarCount":1'));
     assert.throws(() => commits!.getMarker(headHash), /fails its content address/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
