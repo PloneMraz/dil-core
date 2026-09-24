@@ -14,7 +14,7 @@ tags:
 
 # DIL — Data Integration Loop
 
-`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
+`dil-core` is a reference implementation of the **DIL protocol** ([`DIL-protocol-v0.3.3.md`](DIL-protocol-v0.3.3.md)): a self-enriching data-integration loop operating in a purely informational environment, with an audit-ready `[event]` trail (durable when backed by the JSONL file sink).
 
 DIL is **not** a model, a controller, or a library the host calls. It is the **condition under which a self forms**. Keep this line in front of you:
 
@@ -25,7 +25,7 @@ host + self = agent.      DIL produces the self.      the AGENT responds — not
 If a design ever has DIL generating output to the world, commanding the model, or holding the steering wheel, it has left DIL. DIL is the **law of how the machine runs, not an actor within it**: it fixes the mechanism — the invariants, the flow of data — but never acts, emits, or commands. It changes *how* an existing machine operates, not *what* it is made of; run that operation continuously and a self appears — and the agent, not DIL, is what acts.
 
 > Read this alongside:
-> - [`DIL-protocol-v0.3.2.md`](DIL-protocol-v0.3.2.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
+> - [`DIL-protocol-v0.3.3.md`](DIL-protocol-v0.3.3.md) — the **law** (normative; where this and the protocol differ, the protocol wins).
 > - [`CONTEXT.md`](CONTEXT.md) — how to turn that law into running code.
 > - [`AGENTS.md`](AGENTS.md) — coding rules for agents working in this repo.
 
@@ -216,7 +216,9 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 - **The cycle datum still goes to `scar` when a return collides.** Since `276f30a` the region's return is a datum and is the one that moves to `scar` when the expectation about it fails; the cycle datum, which stands for the cycle, still moves to `scar` too on any collision, as before. For an absence it is the only datum there is; when a return has collided, the cycle datum's own `scar` may be redundant. Changing it touches forward-building, whose `running → simulated → projected` road the cycle datum rides, so it is left as it is and deferred (with Plone, 2026-09-24).
 
-Otherwise empty. The codebase is **migrated to protocol v0.3.2** (parent spec [`DIL-en-v6.md`](DIL-en-v6.md)): `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission lines); the 5-state provenance **graph** (`simulated`/`projected`) with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
+- **Migration to protocol v0.3.3 is in progress.** The law now has six provenance positions (`nascent` added for data the agent writes anew), holds `prior` to host data existing before the loop ran — region returns and the cycle datum enter at `running`, told apart by `domain` — and states that a revision of a held datum leaves a record but no new entry. The code still implements v0.3.2 until that migration lands.
+
+Otherwise empty. The codebase is **migrated to protocol v0.3.2** (parent spec, then `DIL-en-v6.md`; now [`DIL-en-v7.md`](DIL-en-v7.md)): `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission lines); the 5-state provenance **graph** (`simulated`/`projected`) with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
 
 The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
 
@@ -252,7 +254,7 @@ Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (CFF 1.2.0) �
 }
 ```
 
-To cite the **protocol** rather than this implementation, name the specification file and its version: `DIL-protocol-v0.3.2.md` (v0.3.2). Where the two differ, the protocol is normative — see the note at the top of this file.
+To cite the **protocol** rather than this implementation, name the specification file and its version: `DIL-protocol-v0.3.3.md` (v0.3.3). Where the two differ, the protocol is normative — see the note at the top of this file.
 
 ---
 
