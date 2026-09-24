@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-24
 
+### 16:20 — docs: ghi hàng chờ, cycle datum có còn thành scar không
+**Commit:** `c413f34`
+
+Mục "Deferred" trong README trước đây ghi trống. Giờ nó có một việc: từ `276f30a`, phản hồi của môi trường là datum chuyển sang `scar`, nhưng cycle datum *cũng* vẫn thành `scar` mỗi khi có va chạm. Với absence thì chỉ có cycle datum để gắn. Còn khi đã có phản hồi thật sự va chạm, việc cycle datum cũng thành scar có thể là thừa. Sửa chỗ này sẽ đụng tới forward-building, nên để sau (theo thống nhất với Plone).
+
+---
+
 ### 15:55 — fix: dữ liệu môi trường trả về là datum, và scar nằm trên nó
 **Commit:** `276f30a`
 
