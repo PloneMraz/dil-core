@@ -694,6 +694,8 @@ export function createCycle(deps: CycleDeps): Cycle {
       const material = pass.t5.results.filter((r) => r.expectation.confidence > fitFloor);
       let forwardBuilt = false;
       let projectedUnits: readonly InfoUnit[] = [];
+      /** The entities whose outcome the cycle datum cast: what it carries into collision. */
+      let cast: ReadonlySet<string> = new Set();
       if (material.length > 0) {
         // running → simulated: the loop takes the datum up into building situations
         datum = toSimulated(datum);
@@ -708,6 +710,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         datum = toProjected(datum);
         events.append(recordProvenance(datumId(), cycle, "simulated", "projected", cycleT));
         projectedUnits = situations.map((r) => r.expectation.predicted);
+        cast = new Set(situations.map((r) => r.entity_id));
         forwardBuilt = true;
       }
 
@@ -752,21 +755,35 @@ export function createCycle(deps: CycleDeps): Cycle {
       };
       let scars = 0;
       const collisionSources = new Set<string>();
+      // The cycle datum collides only when what it carries does (§9): an outcome
+      // it cast — `projected → scar`, "the emission was made, the region
+      // returned, and the datum collided and held" — or a collision that has no
+      // return of its own to hold the scar (an absence, where nothing returned;
+      // a return the host kept out; a store arrival), for which it stands.
+      // Otherwise the region's return is the datum that collided, and a cast
+      // that did not collide returns to use: `projected → running`.
+      const returnOf = (e: PredErr): string | undefined =>
+        e.observed !== null ? datumOf.get(e.observed) : undefined;
+      const cycleCollides = collisions.some(
+        ({ source_id, e }) => returnOf(e) === undefined || (forwardBuilt && cast.has(source_id)),
+      );
       if (collisions.length > 0) {
-        const scarDatum = toScar(datum, true);
-        // → scar: from `projected` if a cast preceded the collision, else a direct
-        // `running → scar` (reflex, §5/§8.7). Which road it was depends on whether
-        // the store afforded a forward-cast this cycle — a situational fact.
-        events.append(
-          recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", cycleT),
-        );
+        let scarDatum: TaggedDatum | undefined;
+        if (cycleCollides) {
+          scarDatum = toScar(datum, true);
+          // → scar: from `projected` if a cast preceded the collision, else a
+          // direct `running → scar` (reflex, §5/§8.7).
+          events.append(
+            recordProvenance(datumId(), cycle, forwardBuilt ? "projected" : "running", "scar", cycleT),
+          );
+        }
         for (const { source_id, e } of collisions) {
           // What collided is the return the expectation was compared against:
           // that datum moves to `scar` (§9 `running → scar`), and the record
-          // embeds and names it. An absence has no return, so the cycle datum
-          // stands for it.
-          const collidedId = e.observed !== null ? datumOf.get(e.observed) : undefined;
-          let collided = scarDatum;
+          // embeds and names it. Where there is no such return, the cycle
+          // datum stands for the collision.
+          const collidedId = returnOf(e);
+          let collided = scarDatum!;
           if (collidedId !== undefined) {
             const held = data.get(collidedId)!;
             collided = toScar(held, true);
@@ -790,7 +807,9 @@ export function createCycle(deps: CycleDeps): Cycle {
           collisionSources.add(source_id);
           scars += 1;
         }
-        datum = scarDatum;
+      }
+      if (cycleCollides) {
+        datum = toScar(datum, true);
       } else if (forwardBuilt) {
         // projected → running: the cast produced no scar; the datum returns to use
         // (a datum is never a conclusion at rest — §9).
