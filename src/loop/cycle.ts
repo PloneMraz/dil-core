@@ -210,6 +210,11 @@ export interface CycleResult {
   readonly absences: number;
   /** Distinct sources whose return resisted this cycle (for diversity monitoring). */
   readonly collisionSources: readonly string[];
+  /**
+   * The actions T5 pushed to the region as tests this cycle (§6.4), in order.
+   * dil-core has no body to carry them out; a host that has one does.
+   */
+  readonly tests: readonly unknown[];
 }
 
 export interface Cycle {
@@ -986,6 +991,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         scars,
         absences: pass.t7.absences.length,
         collisionSources: [...collisionSources],
+        tests: pass.t5.tests ?? [],
       };
     },
   };

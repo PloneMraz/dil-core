@@ -56,6 +56,8 @@ export interface T5Output {
   readonly results: readonly T5Result[];
   /** What the rule wrote this cycle, in order; the driver takes each into `[data]` (v0.3.3). */
   readonly writes?: readonly WriteRequest[];
+  /** The actions the rule pushed to the region as tests this cycle, in order (§6.4). */
+  readonly tests?: readonly unknown[];
 }
 
 export interface T5Options {
@@ -112,6 +114,17 @@ export interface T5Options {
  * SELF_WRITTEN at T2, and runs every layer. The driver does the admitting and
  * the recording; the rule only says what to write.
  *
+ * And it receives `test`, the emission §6.4 names as T5's own: "an action that
+ * pushes to the region to see whether the return matches the Expectation just
+ * built". **Why a rule needs it.** Where the thinking is a model, working out the
+ * region is not only predicting what comes back but deciding what to try next,
+ * so that the return can meet the expectation. The rule thinks; it does not act:
+ * `test` records the action as an emission from T5 (register ↔, one activity
+ * record naming T5), and the action reaches the region only if the host has a
+ * body to carry it out — dil-core has none, and records it. It is readable by T2
+ * next cycle, like every lateral emission. `CycleResult.tests` hands the cycle's
+ * tests to the host.
+ *
  * It returns the expected unit, or the expected unit with the held data it is
  * (`Expecting`, v0.3.5). **Why a rule needs to say that.** When an expectation
  * mismatches, every datum that met the mismatch is scarred (§9): the return,
@@ -128,7 +141,21 @@ export type PredictRule = (
   contribute: ContributeFn,
   ask: AskFn,
   write: WriteFn,
+  test?: TestFn,
 ) => InfoUnit | Expecting;
+
+/** An action pushed to the region to test an expectation (§6.4). It emits nothing else. */
+export type TestFn = (action: unknown) => void;
+
+/** The emission a test is recorded as: an action for the region, from T5. */
+export interface RegionTest {
+  readonly kind: "test";
+  readonly action: unknown;
+}
+
+export function regionTest(action: unknown): RegionTest {
+  return { kind: "test", action };
+}
 
 /** An expectation, with the held data it is (v0.3.5 §6.1). */
 export interface Expecting {
@@ -204,6 +231,12 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       const write: WriteFn = (request) => {
         writes.push(request);
       };
+      // And its road to the region: a test, recorded from T5 (§6.4).
+      const tests: unknown[] = [];
+      const test: TestFn = (action) => {
+        tests.push(action);
+        emit(regionTest(action));
+      };
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;
         const observed = b.unit;
@@ -215,7 +248,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const out = predict(id, window, observed, contribute, ask, write);
+        const out = predict(id, window, observed, contribute, ask, write, test);
         const predicted = isExpecting(out) ? out.predicted : out;
         const confidence = Math.min(1, count / recurrence);
 
@@ -254,7 +287,11 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
           ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
           : 0;
       contribute({ [SURPRISE]: surprise });
-      return writes.length > 0 ? { results, writes } : { results };
+      return {
+        results,
+        ...(writes.length > 0 ? { writes } : {}),
+        ...(tests.length > 0 ? { tests } : {}),
+      };
     },
     // INV-4: predicted and observed are InfoUnits leaving the layer.
     infoUnits: (out) =>
