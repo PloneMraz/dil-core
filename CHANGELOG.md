@@ -6,6 +6,19 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-25
 
+### 03:40 — feat: T5 phát ra test, tức hành động mà rule đẩy ra region
+**Commit:** `a8ef7ce`
+
+Plone duyệt: lệnh của mind chính là emission mà §6.4 dành cho T5, *"an action that pushes to the region to see whether the return matches the Expectation just built"*. Trước đây dil-arc3 đưa đề xuất của mind lên field, nên bị **trễ một nhịp**: theo INV-7, những gì góp vào field ở cycle N chỉ có hiệu lực từ N+1.
+
+- **Rule ở T5 nhận thêm `test(action)`.** Hàm này ghi hành động thành một emission từ T5 (register ↔, một activity record) và không làm gì khác.
+- T2 đọc được test đó ở cycle sau như mọi lateral emission. `CycleResult.tests` trao các test của cycle cho host.
+- dil-core không có cơ thể nên chỉ ghi lại; host có cơ thể thì thực hiện.
+- Tham số là tùy chọn, nên rule nào không test thì không đổi.
+- **Không sửa protocol**, vì §6.4 đã có sẵn. **373 test xanh.**
+
+---
+
 ### 02:10 — feat: protocol v0.3.5, mọi datum gặp mismatch đều mang scar
 **Commit:** `4f5da8f`
 
