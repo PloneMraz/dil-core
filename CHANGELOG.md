@@ -4,7 +4,19 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
-## [Unreleased] — 2026-09-25
+## [Unreleased] — 2026-09-27
+
+### 08:07 — docs: luật chống rò rỉ thông tin trong CLAUDE.md
+**Commit:** `9bbd2a5`
+
+Plone yêu cầu thêm luật chống rò rỉ vào CLAUDE.md của mọi repo, sau khi phát hiện trailer `Claude-Session:` trong lịch sử của một repo khác. CLAUDE.md có thêm mục *Outbound disclosure (absolute)*:
+
+- Không đưa lên link phiên Claude: không trailer `Claude-Session:`, không URL `claude.ai/code/session…`.
+- Không đưa lên dữ liệu cá nhân của tác giả, kể cả trong metadata của tệp.
+- Chỉ một trailer `Co-Authored-By` và footer PR đã được duyệt.
+- Đọc lại mọi thứ trước mỗi lần push.
+
+Lịch sử của dil-core đã được quét: không commit nào mang link phiên.
 
 ### 03:40 — feat: T5 phát ra test, tức hành động mà rule đẩy ra region
 **Commit:** `a8ef7ce`
