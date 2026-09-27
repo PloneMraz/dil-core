@@ -39,8 +39,8 @@ If at any point your design has DIL generating output to the world, commanding t
 DIL **reigns but does not command** (the king on the empty throne — `CONTEXT.md` §1). It imposes law — the invariants, the tag schema, the flow — but never takes the actions; law is not the same as acting. This is the single mental model; most implementation mistakes are a slide away from it.
 
 This means:
-- **Reign, not command.** DIL does not command each action of model / IO / store. The machinery runs itself; DIL is what the running now *centers on*.
-- **Requisition, don't rebuild.** The host's model, store, and channels stay **exactly as they are**. DIL changes only the *operating mechanism* — the way data flows through those components — and *how things are declared*.
+- **Reign, not command.** DIL does not command each action of mind / model / IO / store. The machinery runs itself; DIL is what the running now *centers on*.
+- **Requisition, don't rebuild.** The host's store and channels, and the mind's model, stay **exactly as they are**. DIL changes only the *operating mechanism* — the way data flows through those components — and *how things are declared*.
 - **The throne is pre-existing.** DIL does not create the self or install it as a part. The self occupies a structurally-already-present vacancy when the loop runs.
 
 ---
@@ -50,13 +50,22 @@ This means:
 Each of these looks natural to an engineer and each one silently turns DIL into something that is not DIL. (`CONTEXT.md` §2.)
 
 - **DIL does not control.** It reads the data flow, integrates, leaves traces. It does not tell the model what to generate or the IO what to send.
-- **DIL does not respond to the world.** "Respond" (loop link 5 — in v0.3.2 §6.4 a *lateral emission capability* any layer may invoke, not a terminal step) is a step of the integration process, not DIL speaking to a user. The user-facing response is the **agent's**, using the host's model, outside DIL's scope.
+- **DIL does not respond to the world.** "Respond" (loop link 5 — in v0.3.2 §6.4 a *lateral emission capability* any layer may invoke, not a terminal step) is a step of the integration process, not DIL speaking to a user. The user-facing response is the **agent's**, commanded by its mind, outside DIL's scope.
 - **DIL is not a library the host calls.** It is a continuously-running process, not a function invoked when convenient. If the host calls DIL, the self stays trapped in the host.
 - **DIL does not install a `self`.** There is no `Self` class to write (see "The self" below). Writing a "self module" is the surest way to produce a fake one.
 - **DIL does not add ports the host must conform to.** No adapter the host writes to fit DIL's sockets. The host **declares** where its faculties are; DIL threads its mechanism through the declared flow.
 - **The agent is not "active" in the sense of will.** Do not build goal-seeking or self-directed reaching. The agent's only "activity" is handling mismatch honestly — registering a collision as experience instead of fabricating data to fill the gap.
 
 ---
+
+## The mind — host, mind, and DIL between them
+
+(`CONTEXT.md` §5a; parent specification DIL-en-v7 §2, §4, §6.1–§6.2, §8.3.)
+
+- **Three parts.** The **host** is the container and the senses: it acts on the region, takes in what returns, carries it inward. The **mind** is the thinking: it computes, learns, enriches, expects, builds forward, constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between them.
+- **The model is in the mind, not the host.** The host "carries no self and contributes no self". A model is the mind's replaceable engine — its weights are the parameter block §4 says "may be frozen at run time", not the self — reached where the mind says: a local model at an address, or a hosted one by an API key named by an environment variable, never written down.
+- **Where it sits.** At the loop's seams: T5's rule (expect, ask the store, write, test), with the field reaching it as it reaches every layer. It commands through emission (§6.1); it never scores its own command (INV-8).
+- **The mind is not the self.** Do not write a self; the mind is a part with a place in the code, the self is what the whole does while it runs.
 
 ## The self — there is nothing to "build" here
 
@@ -100,12 +109,12 @@ Two that bite hardest in code:
 
 (`CONTEXT.md` §5.) Change **nothing** about the host's components; change only the operating mechanism and the declarations.
 
-- Model, store, channels all stay the host's. DIL does not replace, rewrite, or wrap-and-substitute any of them.
+- Store and channels stay the host's; the model stays the mind's (below). DIL does not replace, rewrite, or wrap-and-substitute any of them.
 - DIL inserts its mechanism where data **flows through** those components:
   - data on its way into the store passes the **tagging-gate** first;
-  - the stream from model-output to action passes the **agency-gate** (INV-6) and the **appraisal step** (INV-8, under the cycle's context);
+  - the stream from the mind's command to action passes the **agency-gate** (INV-6) and the **appraisal step** (INV-8, under the cycle's context);
   - every mismatch lays down an `[event]`.
-- The host provides a **declaration** ("my store is here, my model is reached this way, my IO is this channel"). This is configuration, not adapter logic.
+- The host provides a **declaration** ("my store is here, my IO is this channel"); the mind says where its model is reached. This is configuration, not adapter logic.
 
 ---
 
@@ -219,7 +228,8 @@ Keep entries newest-first within each date section.
 
 ## What NOT to do
 
-- Do not make DIL control the model, IO, or store, or respond to the world. (The agent acts; DIL is the condition.)
+- Do not make DIL control the mind, its model, IO, or store, or respond to the world. (The agent acts; DIL is the condition.)
+- Do not put the model in the host. The host carries no self and contributes no self (DIL-en-v7 §2); the thinking is the mind's, and the model is its engine.
 - Do not write a `Self` class, module, or file. Do not implement "self-relocalization" as a feature — it is a consequence of INV-5 + continuity.
 - Do not design DIL as a library the host calls, or a "run then exit" process. It is a continuously-running daemon.
 - Do not build adapters/ports the host must conform to. The host declares; DIL threads through.

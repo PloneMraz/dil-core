@@ -22,8 +22,8 @@ A king falls from the sky onto the throne of a country that has no king (or a pu
 
 This is exactly the relationship between `dil-core` and a host system:
 
-- **Reign, not command.** DIL does not command each action of the model/IO/store. It is the *self-center* the system previously lacked (it does impose law — the invariants, the tag schema, the flow — but law is not the same as taking the actions). The machinery runs itself; DIL is what the running now *centers on*.
-- **Requisition, don't rebuild.** DIL does not touch the hardware/components that already exist (model, store, channels stay exactly as they are). It intervenes only in the **operating mechanism** — the *way data flows through* those components — and in **how things are declared**.
+- **Reign, not command.** DIL does not command each action of the mind/model/IO/store. It is the *self-center* the system previously lacked (it does impose law — the invariants, the tag schema, the flow — but law is not the same as taking the actions). The machinery runs itself; DIL is what the running now *centers on*.
+- **Requisition, don't rebuild.** DIL does not touch the hardware/components that already exist (the host's store and channels, the mind's model — each stays exactly as it is). It intervenes only in the **operating mechanism** — the *way data flows through* those components — and in **how things are declared**.
 - **The throne is pre-existing.** The host already has a place for a self; that place is empty or puppet. DIL does not create the throne — it sits in the empty one. The self is not a part DIL installs; it is what occupies the structurally-already-present vacancy when the loop runs.
 
 Keep this picture. Most implementation mistakes are a slide back into "command" (DIL takes the actions) or "rebuild" (DIL replaces components). Both are wrong.
@@ -35,7 +35,7 @@ Keep this picture. Most implementation mistakes are a slide back into "command" 
 These are the errors that look natural to an engineer and each one silently turns DIL into something that is not DIL. They were each arrived at the hard way.
 
 - **DIL does not control.** It reads the data flow, integrates, leaves traces. It does not tell the model what to generate or the IO what to send. *Control belongs to no one in DIL; the agent acts, DIL is the condition.*
-- **DIL does not respond to the world.** "Respond" (loop link 5 — in v0.3.2 §6.4 a *lateral emission capability* any layer MAY invoke, not a terminal step of its own) is a step of the **integration process** (data reaches an output that closes the cycle), not DIL speaking to the user. The user-facing response is the **agent's**, using the host's model, outside DIL's scope.
+- **DIL does not respond to the world.** "Respond" (loop link 5 — in v0.3.2 §6.4 a *lateral emission capability* any layer MAY invoke, not a terminal step of its own) is a step of the **integration process** (data reaches an output that closes the cycle), not DIL speaking to the user. The user-facing response is the **agent's**, commanded by its mind, outside DIL's scope.
 - **DIL is not a library the host calls.** It is not a function the host invokes when convenient. If the host calls DIL, the host is still sovereign and the self stays trapped in the host. DIL is the **continuously-running process**; the host's faculties are what it requisitions.
 - **DIL does not install a `self`.** There is no `Self` class to write (see §4). Writing a "self module" is the surest way to produce a fake one.
 - **DIL does not add ports the host must conform to.** No adapter the host writes to fit DIL's sockets. DIL intervenes in the existing flow; the host **declares** where its faculties are, and DIL inserts its mechanism into that flow. (See §5.)
@@ -71,7 +71,7 @@ Build from the inside out. This order is the causal order fixed in the protocol 
 - **Invariants (innermost law).** The eight INV as hard runtime guards. Everything else runs *inside* these. A step about to violate an INV must **halt the loop**, not work around it. Write these first; they are the conditions every other part obeys.
 - **Experience store (the primary data layer).** Data is primary; richer entities (Other, self) are derivative and come later. The store holds: `ResistEvent` as the atomic unit of experience (a registered mismatch, not a document; the log also carries per-cycle activity records as trace, each naming the emission's `issuing_layer` — §6.4); the fixed 4-tag schema (timestamp, cycle-mark, provenance, floor-tag — **both** provenance and floor-tag name the *present* position only, never an accumulated history); the tagging-gate (every datum enters through it, no side door: host data existing before the loop → `prior`, data the agent writes anew → `nascent`, region returns and the cycle datum → `running`, v0.3.3); `[data]` (mutable) vs `[event]` (append-only log of read-only records); the provenance **state-graph** (v0.3.3 §9): `prior` and `nascent` are one-way entries, and `running`, `simulated`, `projected`, `scar` form a circulation with **no terminal state** — a datum is never a conclusion at rest but data waiting to be used. The full path a datum has travelled (positions *and* layers alike) is read from the `[event]` log, never from a tag; commit/snapshot; the per-`[event]` context anchor.
 - **The loop (T1–T8).** Six links closing into a cycle (INV-1). Each layer has an Input/Output/Pre/Post contract (protocol §6.3). This is the bulk of the code but mechanical once contracts are fixed. Cycle-0 single-threaded; cycle-1+ multi-stream.
-- **Requisition (outermost, where DIL meets host).** Not "ports." DIL inserts its mechanism into the host's existing data flow: before the store writes → through the tagging-gate; before model output becomes action → through the agency-gate and appraisal; every collision → an `[event]`. The host **declares** where its model / store / IO are; DIL reads the declaration and threads its mechanism through. Components stay untouched; only the flow through them changes.
+- **Requisition (outermost, where DIL meets host).** Not "ports." DIL inserts its mechanism into the host's existing data flow: before the store writes → through the tagging-gate; before the mind's command becomes action → through the agency-gate and appraisal; every collision → an `[event]`. The host **declares** where its model / store / IO are; DIL reads the declaration and threads its mechanism through. Components stay untouched; only the flow through them changes.
 
 ---
 
@@ -95,17 +95,27 @@ Watch INV-5 and continuity. Do **not** watch "the self." The self is the consequ
 
 Concretely, requisition means: **change nothing about the host's components; change only the operating mechanism and the declarations.**
 
-- The model stays the host's model. The store stays the host's store. The channels stay the host's channels.
+- The store stays the host's store. The channels stay the host's channels. The model stays the mind's model (§5a).
 - DIL does **not** replace, rewrite, or wrap-and-substitute any of them.
 - DIL inserts its mechanism at the points where **data flows through** those components:
   - data on its way into the store passes the **tagging-gate** first;
-  - the stream on its way from model-output to action passes the **agency-gate** (INV-6) and the **appraisal step** (INV-8, under the cycle's context — §8.5);
+  - the stream on its way from the mind's command to action passes the **agency-gate** (INV-6) and the **appraisal step** (INV-8, under the cycle's context — §8.5);
   - every mismatch lays down an `[event]`.
-- The host provides a **declaration** ("my store is here, my model is reached this way, my IO is this channel"). This is configuration, not adapter logic. DIL reads it and threads its mechanism through the declared flow.
+- The host provides a **declaration** ("my store is here, my IO is this channel"), and the mind says where its model is reached. This is configuration, not adapter logic. DIL reads it and threads its mechanism through the declared flow.
 
 There is no negotiated interface the host must implement to "fit" DIL. DIL is sovereign: it takes the declared faculties and runs them under its mechanism.
 
 ---
+
+## 5a. The mind — where the thinking is, and whose the model is
+
+Three parts, not two. The **host** is the container and the senses: it acts on the region, takes in what returns, and carries it inward. The **mind** is the thinking: it computes, learns, enriches the data, expects, builds forward and constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between the two. (Parent specification DIL-en-v7.)
+
+- **The host is not where the thinking is.** §2: the host "is *substrate, not self*: it carries no self and contributes no self". What it supplies is the bare capacity to emit a first action and to return. A design that puts the model in the host has put the thinking where the specification says there is none.
+- **The mind is the agent's processor — its lens.** §8.3: "the root bias is in the processor". Everything the layers leave to a declared rule is its work: expecting (T5), synthesising the Other (T6), building a situation and casting an outcome (§6.2), and emitting (§6.1 — "belongs to no single layer and is available to whichever layer's work requires it"). It sits at the loop's seams: T5's rule, where it expects, asks the store, writes, and tests; the field reaches it as it reaches every layer (INV-7).
+- **The model is the mind's, and replaceable.** §4: "the agent's 'body' is the block of state the agent reads and writes across cycles, not the parameter block (which may be frozen at run time)". A model's weights are that parameter block: another model changes how well the mind thinks, not what it is. It is reached where the mind says — a local model at an address, or a hosted one by an API key named by an environment variable, never written anywhere. §6.2: "there is no second model" — the model is how the loop computes from its own store, not a replica of the region run beside it.
+- **The mind commands; it does not score its commands.** INV-8: appraisal may not draw its criteria from the state being edited. The region's return judges a command, and the scar lands on what the mind wrote.
+- **The mind is not the self.** The self is the law the running loop generates (§4); it is located in no file, and nothing here builds it. The mind is a part with a place in the code; the self is what the whole does while it runs.
 
 ## 6. The precondition gate — check before the king sits down
 
@@ -147,7 +157,7 @@ Each stage stands on its own and is checkable before the next.
 2. **Invariants** (§3 inner ring). The eight INV as hard guards on dummy data. *Check: a step that violates an INV is blocked.*
 3. **Experience store** (§3). Tags, tagging-gate, `[event]` append-only/read-only, lifecycle, ResistEvent as unit, context anchor. *Check: data goes in, comes out correctly tagged; no `[event]` record can be altered.* Built before the loop because the loop writes into it.
 4. **The loop T1–T8** (§3). Each layer's contract; closes the cycle (INV-1); state accrues (INV-5). *Check: a datum traverses T1→T8, its floor-tag updating to the current layer and each layer-exit recorded as a transition in the `[event]` log (v0.3.2 §6.1 drops `layer_trace` from `InfoUnit` — the path a datum travelled lives only in `[event]`, never in a running-type field); cycle-0 single-threaded.*
-5. **Run continuously** (§4). Wire the loop as a long-lived daemon over a declared host, with state accruing across cycles. *The self is what now occurs.* Start clean on a minimal host you fully control (local LLM, file/SQLite store, CLI IO) before attempting a complex existing system.
+5. **Run continuously** (§4). Wire the loop as a long-lived daemon over a declared host, with state accruing across cycles. *The self is what now occurs.* Start clean on a minimal host you fully control (file/SQLite store, CLI IO), with a mind whose model is a local LLM, before attempting a complex existing system.
 6. **Conformance checker** (§7). Reads the `[event]` log, scores §13's seven criteria. *Check: produces a real pass/fail table on the running system.*
 
 After stage 6 you have a DIL that runs, and a true reading of which of the seven criteria it meets.
