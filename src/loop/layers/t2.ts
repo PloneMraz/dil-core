@@ -14,12 +14,20 @@
  *
  * Thresholds MATCHING_WINDOW and STABILITY_THRESHOLD are DECIDE@IMPL tag B,
  * declared in decisions.ts.
+ *
+ * THE FIELD (INV-7). T2 reads `trust`: how far back an emission is still matched
+ * as the cause of a change — the matching window, shifted by trust (the declared
+ * window at NEUTRAL). It does not read the stability threshold: once T2 is
+ * stable nothing may leave UNDECIDED again (INV-6), and a threshold the field
+ * moved could put it back. It votes `alertness` from what only it sees: the share
+ * of the changes it classified that the region pushed.
  */
 
 import { assertAgencyClassified } from "../../invariants/guards.js";
 import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { ActivityEnvironment, AgencyTag } from "../types.js";
 import { MATCHING_WINDOW, STABILITY_THRESHOLD } from "../decisions.js";
+import { ALERTNESS, TRUST, axis, castVotes, rising, share, shiftedCount } from "../field.js";
 
 /** What the agent emitted this cycle. */
 export interface Emission {
@@ -95,17 +103,20 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
       recentEmissions.push(...s.recentEmissions);
       cyclesRun = s.cyclesRun;
     },
-    process(input): T2Output {
+    process(input, field, _emit, contribute): T2Output {
       // The crystallization of §7: T2 first drawing the self/environment
       // distinction. `cyclesRun === 0` is true only on the very first run (and,
       // after recovery, false — a restored cyclesRun means the self already
       // crystallized in the line being resumed).
       const crystallized = cyclesRun === 0;
 
-      // Accrue this cycle's emission into the bounded matching window.
+      // Accrue this cycle's emission into the bounded matching window. What is
+      // accrued is kept whole; the field only shifts how far back it is read.
       recentEmissions.push(input.emitted.action);
       for (const a of input.lateral ?? []) recentEmissions.push(a);
-      while (recentEmissions.length > window) recentEmissions.shift();
+      while (recentEmissions.length > window * 2) recentEmissions.shift();
+      const reach = shiftedCount(window, rising(axis(field, TRUST)));
+      const matchable = recentEmissions.slice(-reach);
       cyclesRun += 1;
 
       const stable = cyclesRun >= stability;
@@ -115,12 +126,15 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
           // The self/environment line is not yet trusted.
           agency = "UNDECIDED";
         } else {
-          agency = recentEmissions.some((a) => matches(a, change.value))
+          agency = matchable.some((a) => matches(a, change.value))
             ? "SELF_WRITTEN"
             : "ENV_PUSHED";
         }
         return { change, agency };
       });
+      const classified = tagged.filter((t) => t.agency !== "UNDECIDED");
+      const pushed = classified.filter((t) => t.agency === "ENV_PUSHED").length;
+      castVotes(contribute, { [ALERTNESS]: share(pushed, classified.length) });
       return { tagged, crystallized };
     },
     post(output): void {

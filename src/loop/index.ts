@@ -89,3 +89,20 @@ export type {
   Appraisal,
   Directive,
 } from "./types.js";
+
+// The field's axes and how a layer reads and feeds them (INV-7).
+export {
+  TRUST,
+  ALERTNESS,
+  EXPLORATION,
+  AXES,
+  NEUTRAL,
+  axis,
+  rising,
+  falling,
+  shiftedCount,
+  share,
+  votes,
+  castVotes,
+} from "./field.js";
+export type { Axis } from "./field.js";

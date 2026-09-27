@@ -17,16 +17,9 @@ import { runLayer, type ContributeFn, type LayerSpec } from "./layer.js";
 import { createCycle, type Layers } from "./cycle.js";
 import { createGlobMod } from "./glob-mod.js";
 import {
-  CHANNEL_ACTIVITY,
-  INTERACTIONS,
-  RESISTANCE_CONCENTRATION,
-  OTHER_COUNT,
-  STRANGENESS,
-  SURPRISE,
-  SILENCE,
-  attentionWidth,
   createT1, createT2, createT3, createT4, createT5, createT6, createT7, createT8,
 } from "./layers/index.js";
+import { ALERTNESS, AXES, EXPLORATION, TRUST } from "./field.js";
 import { createDataStore } from "../store/data-store.js";
 import { createEventLog, type EventLog } from "../store/event-log.js";
 import { admitHostData } from "../store/tagging-gate.js";
@@ -86,39 +79,6 @@ test("the layer never states its own index, exactly as with emit", () => {
   assert.equal(runLayer(lying, null, FIELD, datum()).contributions[0]!.layer, 8);
 });
 
-// ── attention is a COMPOSITION of what the field holds ──
-
-test("attention narrows as the loop holds more Others", () => {
-  assert.equal(attentionWidth({ [OTHER_COUNT]: 1 }), 1);
-  assert.equal(attentionWidth({ [OTHER_COUNT]: 4 }), 0.25);
-  assert.ok(
-    attentionWidth({ [OTHER_COUNT]: 10 }) < attentionWidth({ [OTHER_COUNT]: 4 }),
-    "more Others, thinner attention",
-  );
-});
-
-test("attention widens again when what arrives stops being attributable", () => {
-  // A strange situation earns a longer look; a crowded familiar one does not.
-  const familiar = attentionWidth({ [OTHER_COUNT]: 4, [STRANGENESS]: 0 });
-  const strange = attentionWidth({ [OTHER_COUNT]: 4, [STRANGENESS]: 1 });
-  assert.ok(strange > familiar, `${strange} > ${familiar}`);
-});
-
-test("an empty field composes to 1, so a silent host is unchanged", () => {
-  assert.equal(attentionWidth({}), 1);
-});
-
-test("no single layer decides the width", () => {
-  // The mistake this replaces: T6 computed 1/N and contributed the ANSWER,
-  // making attention one layer's constant. Now every layer reports a FACT from
-  // its own vantage and the width is read off the composition.
-  assert.notEqual(
-    attentionWidth({ [OTHER_COUNT]: 4 }),
-    attentionWidth({ [OTHER_COUNT]: 4, [STRANGENESS]: 0.5 }),
-    "a second layer's fact changes the width",
-  );
-});
-
 // ── through the driver, into the field ──
 
 function sig(entity: string, value: unknown) {
@@ -138,44 +98,54 @@ function freshCycle() {
   return { cycle, glob, events };
 }
 
-test("every layer's fact reaches the field, and only at N+1 (INV-7)", () => {
+test("the layers' votes reach the field, and only at N+1 (INV-7)", () => {
   const { cycle, glob } = freshCycle();
   assert.deepEqual(glob.current().params, { appraisalGain: 1 }, "not before the cycle");
   cycle.run({ signals: [sig("a", 1)], changes: [] });
 
   const params = glob.current().params;
-  for (const key of [CHANNEL_ACTIVITY, STRANGENESS, SURPRISE, OTHER_COUNT, SILENCE]) {
+  for (const key of [TRUST, ALERTNESS, EXPLORATION]) {
     assert.ok(key in params, `${key} reached the field`);
   }
-  assert.equal(params[OTHER_COUNT], 1, "one Other held");
-  assert.equal(params[CHANNEL_ACTIVITY], 1, "one signal delivered");
+  assert.equal(params[TRUST], 1, "T1 heard the region, T4 bound what arrived");
+  assert.equal(params[EXPLORATION], 1, "the one Other was met for the first time");
 });
 
-test("the field narrows as the loop meets more Others", () => {
+test("the field carries dispositions, never what was read (DIL-en-v7 §2)", () => {
+  // "It carries how to read, never what is read." A count of Others or of
+  // signals is what was read; only the axes, and what the host seeded, may be
+  // in the field — and every axis is read by some operation (field.test.ts).
   const { cycle, glob } = freshCycle();
   cycle.run({ signals: [sig("a", 1)], changes: [] });
-  cycle.run({ signals: [sig("a", 1), sig("b", 1)], changes: [] });
-  cycle.run({ signals: [sig("a", 1), sig("b", 1), sig("c", 1), sig("d", 1)], changes: [] });
-  assert.equal(glob.current().params[OTHER_COUNT], 4);
-  assert.equal(attentionWidth(glob.current().params), 0.25);
+  cycle.run({ signals: [sig("a", 2), sig("b", 1)], changes: [] });
+  cycle.run({ signals: [], changes: [] });
+  const keys = Object.keys(glob.current().params).sort();
+  const allowed = new Set<string>([...AXES, "appraisalGain"]);
+  assert.deepEqual(keys.filter((k) => !allowed.has(k)), [], `unexpected keys: ${keys}`);
 });
 
-test("the count is ACCRUED Others, not this cycle's returns", () => {
-  // The bug this pins. The job sat on T8 first, which ranks the Others PRESENT
-  // this cycle — so in a host where one entity returns per cycle T8 saw N = 1
-  // every time and the width never moved. Measured on a live run: the gain sat
-  // at 1.0 for all 80 cycles. T6 is the layer that ACCRUES Others, so it is the
-  // one that knows how many the loop is holding.
+test("every axis stays within [0, 1] however the loop runs (no runaway)", () => {
   const { cycle, glob } = freshCycle();
-  // Four entities, but only ever one returning per cycle.
-  for (const id of ["a", "b", "c", "d"]) {
-    cycle.run({ signals: [sig(id, 1)], changes: [] });
+  for (let i = 0; i < 12; i++) {
+    const signals = i % 3 === 2 ? [] : [sig(`e${i % 4}`, i), sig("x", i % 2)];
+    cycle.run({ signals, changes: [] });
+    for (const name of AXES) {
+      const v = glob.current().params[name];
+      if (v === undefined) continue;
+      assert.ok(v >= 0 && v <= 1, `${name} = ${v} at cycle ${i}`);
+    }
   }
-  assert.equal(
-    glob.current().params[OTHER_COUNT],
-    4,
-    "four Others held, though only one returned in any cycle",
-  );
+});
+
+test("a layer that saw nothing on an axis leaves it as it was", () => {
+  // No signals: T1 votes trust 0, but T4 had nothing to bind and T5 nothing to
+  // expect — they cast no vote, and the axes they feed carry over.
+  const { cycle, glob } = freshCycle();
+  cycle.run({ signals: [sig("a", 1)], changes: [] });
+  const before = glob.current().params[EXPLORATION];
+  cycle.run({ signals: [], changes: [] });
+  assert.equal(glob.current().params[EXPLORATION], before, "nothing met, nothing to explore on");
+  assert.equal(glob.current().params[TRUST], 0, "T1 alone voted: the region said nothing");
 });
 
 test("contributions blend rather than last-write-win", () => {
@@ -195,39 +165,45 @@ test("contributions blend rather than last-write-win", () => {
   assert.equal(weighted.current().params.g, 0.25, "re-weighted, as INV-7 says");
 });
 
-test("the driver's own resistance contribution still lands alongside the layers'", () => {
+test("the driver adds nothing of its own: it is not a layer", () => {
   const { cycle, glob } = freshCycle();
   cycle.run({ signals: [sig("a", 1)], changes: [] });
-  const params = glob.current().params;
-  assert.ok("resistance" in params, "the driver's key");
-  assert.ok(OTHER_COUNT in params, "and a layer's");
+  assert.ok(!("resistance" in glob.current().params), "the driver's old key is gone");
 });
 
 
 // ── T8 closes back into the loop (INV-1) ──
 
-test("T8's output re-enters the loop through the field, not into a sink", () => {
-  // §6.2: "T8 closes back into the loop, not into a sink". Nothing read T8's
-  // relValues or socialEdges; the field is the one path back that INV-3 allows.
-  const { cycle, glob } = freshCycle();
-  cycle.run({ signals: [sig("a", 1), sig("b", 1)], changes: [] });
-  const params = glob.current().params;
-  assert.ok(INTERACTIONS in params, "T8 reported the interactions it saw");
-  assert.ok(RESISTANCE_CONCENTRATION in params, "and the relative picture");
-});
-
-test("interactions reported are the Other-to-Other ones the host supplied", () => {
-  const { cycle, glob } = freshCycle();
-  cycle.run({
-    signals: [sig("a", 1), sig("b", 1)],
-    changes: [],
-    interactions: [{ a_id: "a", b_id: "b", observed_interaction: "contact-made" }],
+test("T8's output re-enters the loop through the dispositions below it read", () => {
+  // §6.2: "T8 closes back into the loop, not into a sink". The meaning-channel
+  // cannot carry relValues or socialEdges down (INV-3); the field can, and T8
+  // votes on trust — which T4 and T6 read — and on exploration.
+  const t8 = createT8();
+  const other = (id: string, resistances: number) => ({
+    entity_id: id,
+    context_map: {},
+    independence_evidence: { resistances, envPushed: 0 },
   });
-  assert.equal(glob.current().params[INTERACTIONS], 1);
+  const run = runLayer(
+    t8,
+    {
+      others: [other("a", 3), other("b", 1)],
+      interactions: [{ a_id: "a", b_id: "b", observed_interaction: "met" }],
+    },
+    FIELD,
+    datum(),
+  );
+  const votes = run.contributions[0]!.params;
+  assert.equal(votes[TRUST], 0.25, "resistance held 3:1 — one Other stands out");
+  assert.equal(votes[EXPLORATION], 0.5, "one interaction between two Others");
 });
 
-test("with nothing resisting yet, concentration is 0 rather than undefined", () => {
-  const { cycle, glob } = freshCycle();
-  cycle.run({ signals: [sig("a", 1)], changes: [] });
-  assert.equal(glob.current().params[RESISTANCE_CONCENTRATION], 0);
+test("with one Other, T8 has nothing to compare and casts no vote", () => {
+  const run = runLayer(
+    createT8(),
+    { others: [{ entity_id: "a", context_map: {}, independence_evidence: { resistances: 1, envPushed: 0 } }] },
+    FIELD,
+    datum(),
+  );
+  assert.deepEqual(run.contributions, []);
 });

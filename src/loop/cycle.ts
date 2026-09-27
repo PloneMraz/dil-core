@@ -40,6 +40,7 @@ import {
   recordRevision,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
+import { EXPLORATION, NEUTRAL, axis, rising, shiftedCount } from "./field.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
 import type { ContextAnchor, RecalledTags, WrittenTags } from "../store/resist-event.js";
@@ -774,7 +775,14 @@ export function createCycle(deps: CycleDeps): Cycle {
       // floor is 0, which is what the loop always did. Nothing here skips an
       // expectation or alters a recorded confidence — see FIT_FLOOR for why
       // both of those are unsafe.
-      const fitFloor = field.params[FIT_FLOOR_PARAM] ?? FIT_FLOOR;
+      // Leaning to consolidate (exploration below NEUTRAL) raises the floor
+      // toward full confidence, never to it — a floor no confidence can clear
+      // would end building from the store, not bias it — and exploring builds
+      // more situations; at NEUTRAL both are the declared ones.
+      const exploration = axis(field, EXPLORATION);
+      const floorBase = field.params[FIT_FLOOR_PARAM] ?? FIT_FLOOR;
+      const fitFloor = floorBase + (1 - floorBase) * Math.max(0, NEUTRAL - exploration);
+      const situationsNow = shiftedCount(H_COUNT, rising(exploration));
       const material = pass.t5.results.filter((r) => r.expectation.confidence > fitFloor);
       let forwardBuilt = false;
       let projectedUnits: readonly InfoUnit[] = [];
@@ -789,7 +797,7 @@ export function createCycle(deps: CycleDeps): Cycle {
         // outcomes carry, blended by fit (INV-7), never a hard scored winner.
         const situations = [...material]
           .sort((a, b) => b.expectation.confidence - a.expectation.confidence)
-          .slice(0, H_COUNT);
+          .slice(0, situationsNow);
         // simulated → projected: each situation yields the outcome cast from it
         datum = toProjected(datum);
         events.append(recordProvenance(datumId(), cycle, "simulated", "projected", now()));
@@ -968,13 +976,10 @@ export function createCycle(deps: CycleDeps): Cycle {
       // ── GLOB-MOD: the cycle's contributions blend, and take effect at N+1 ──
       // INV-7: "Every layer contributes to it as one competing parameter;
       // contributions blend, re-weighted each cycle, never last-write-wins."
-      // Each layer's own contributions go in first, bound to its index by
-      // `runLayer`; the driver adds the cycle's total resistance last, as it
-      // always did. With more than one contributor the blend is finally doing
-      // what its name says.
+      // Each layer's votes, bound to its index by `runLayer`. The driver adds
+      // none: it is not a layer, and what it sees (the cycle's total
+      // resistance) the layers that met it already voted on.
       for (const c of pass.contributions) glob.contribute(c.layer, c.params, c.weight);
-      const totalResistance = predErrs.reduce((s, e) => s + e.delta, 0);
-      glob.contribute(5, { resistance: totalResistance }, 1);
       glob.advance(cycle + 1);
 
       // Feedback + accrual: the response becomes the next cycle's emission, and

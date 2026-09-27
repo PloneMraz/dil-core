@@ -30,17 +30,24 @@
  * re-reading its own log — becoming precisely the impostor that signature exists
  * to catch. Through the expectation slot nothing of the sort is possible: only
  * what the region returned ever enters the window.
+ *
+ * THE FIELD (INV-7). T5 reads `exploration`: how long a baseline it keeps —
+ * exploring keeps less, consolidating more; the declared BASELINE_WINDOW at
+ * NEUTRAL. What is accrued is kept whole; the field shifts only how much of it
+ * is read. It does NOT read the field into confidence: §13.4 reads a confidence
+ * that fails to rise with recurrence as the reloading signature, so a field
+ * that slowed or lowered it would make an accruing loop read as a faked one
+ * (store/decisions.ts FIT_FLOOR). It votes `alertness` from what only it sees:
+ * the share of this cycle's entities whose return did not match.
  */
 
 import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
-import type { Expectation, InfoUnit, PredErr } from "../types.js";
+import type { Expectation, InfoUnit, ModField, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { storeQuery, type Description } from "./t3.js";
 import type { OpenTags } from "../../store/tags.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
-
-/** Mean prediction error over this cycle's entities (INV-7, up-channel). */
-export const SURPRISE = "surprise";
+import { ALERTNESS, EXPLORATION, axis, castVotes, falling, shiftedCount } from "../field.js";
 
 export interface T5Result {
   readonly entity_id: string;
@@ -133,6 +140,12 @@ export interface T5Options {
  * datum that unit came from. A rule that makes its expectation anew — by running
  * a program it wrote, say — is the only thing that knows which datum it ran, so
  * it names it: `heldBy`, units or datum ids, `[]` for nothing held.
+ *
+ * And it receives `field`, the cycle's GLOB-MOD (INV-7), read-only background
+ * like every layer's. **Why a rule needs it.** The rule is where the thinking
+ * is, and thinking is conditioned by the field as every layer's reading is —
+ * how alert to mismatch, how far to explore: "same data plus a different field
+ * yields different meaning". A rule that does not read it omits the parameter.
  */
 export type PredictRule = (
   entityId: string,
@@ -142,6 +155,7 @@ export type PredictRule = (
   ask: AskFn,
   write: WriteFn,
   test?: TestFn,
+  field?: ModField,
 ) => InfoUnit | Expecting;
 
 /** An action pushed to the region to test an expectation (§6.4). It emits nothing else. */
@@ -223,7 +237,9 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       counts.clear();
       for (const [k, v] of s.counts) counts.set(k, v);
     },
-    process(input, _field, emit, contribute): T5Output {
+    process(input, field, emit, contribute): T5Output {
+      // The field's reading of this cycle's thresholds (INV-7, down-channel).
+      const windowNow = shiftedCount(windowSize, falling(axis(field, EXPLORATION)));
       // The rule's road outward: a query to the store, issued from T5.
       const ask: AskFn = (cue) => emit(storeQuery(cue));
       // And its road into the store: what it writes, handed to the driver.
@@ -240,7 +256,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
       const results = input.bound.map((b): T5Result => {
         const id = b.entity_id;
         const observed = b.unit;
-        const window = windows.get(id) ?? [];
+        const window = (windows.get(id) ?? []).slice(-windowNow);
         const count = counts.get(id) ?? 0;
 
         // The declared update law. Whatever the rule, what leaves here is an
@@ -248,7 +264,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const out = predict(id, window, observed, contribute, ask, write, test);
+        const out = predict(id, window, observed, contribute, ask, write, test, field);
         const predicted = isExpecting(out) ? out.predicted : out;
         const confidence = Math.min(1, count / recurrence);
 
@@ -272,21 +288,22 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
           held_by_declared: isExpecting(out),
         };
 
-        // Accrue this observation into the bounded window.
-        const nextWindow = [...window, observed];
-        while (nextWindow.length > windowSize) nextWindow.shift();
+        // Accrue this observation into the bounded window: kept up to the longest
+        // baseline the field can ask for, read up to the one it asks for now.
+        const nextWindow = [...(windows.get(id) ?? []), observed];
+        while (nextWindow.length > windowSize * 2) nextWindow.shift();
         windows.set(id, nextWindow);
         counts.set(id, count + 1);
 
         return { entity_id: id, expectation, predErr };
       });
-      // A FACT T5 can see: how far the region fell from expectation, right now.
-      // Reported as it is; what follows from it is not T5's to say.
-      const surprise =
-        results.length > 0
-          ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
-          : 0;
-      contribute({ [SURPRISE]: surprise });
+      // Its vote: how much of what returned did not match what it expected.
+      castVotes(contribute, {
+        [ALERTNESS]:
+          results.length > 0
+            ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
+            : undefined,
+      });
       return {
         results,
         ...(writes.length > 0 ? { writes } : {}),

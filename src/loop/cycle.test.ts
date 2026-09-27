@@ -9,6 +9,7 @@
  */
 
 import { test } from "node:test";
+import { ALERTNESS, axis, rising } from "./field.js";
 import assert from "node:assert/strict";
 
 import { createCycle, type Layers } from "./cycle.js";
@@ -248,9 +249,12 @@ test("the appraisal reflects the field context (§8.5): different gain, differen
     initialEmission: { action: "boot" },
   });
   cycle.run({ signals: [weather("sun")], changes: [] });
+  const context = glob.current();
   const r = cycle.run({ signals: [weather("rain")], changes: [] });
-  // resistance=1 under gain 10 → valence -10 (context-dependent)
-  assert.equal(r.appraisal.valence, -10);
+  // resistance=1 under the host's gain 10, weighed by the loop's alertness as
+  // the field held it this cycle (context-dependent, INV-7).
+  assert.equal(r.appraisal.valence, -10 * rising(axis(context, ALERTNESS)));
+  assert.ok(r.appraisal.valence < -1, "the host's gain still amplifies it");
 });
 
 test("an absence is registered when an expected entity stops returning", () => {

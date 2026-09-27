@@ -150,3 +150,126 @@ export const GLOB_MOD_UPDATE_LAW =
  * result is always within the range of the contributions, so the field cannot
  * amplify itself from within. No gain cap is needed.
  */
+
+/**
+ * DECIDE@IMPL — the field's axes (protocol §12, INV-7; DIL-en-v7 §2 "What it
+ * carries": "the exact axes and their number are DECIDE@IMPL; what is fixed is
+ * their kind" — scalar interpretive biases on the gain or threshold of a layer
+ * operation). Implemented in field.ts.
+ */
+export const GLOB_MOD_AXES =
+  "trust (how readily a source is trusted), alertness (how alert the loop is to mismatch), exploration (how far it leans toward exploring rather than consolidating); each in [0, 1], NEUTRAL = 0.5" as const;
+/**
+ * Rationale: the three the specification itself names as examples, and no
+ * others — an axis beyond them would be a disposition the protocol never
+ * described, invented to fill a slot. Bounded to [0, 1] so the convex blend
+ * (GLOB_MOD_UPDATE_LAW) keeps every axis in range with no cap. NEUTRAL is the
+ * midpoint: the disposition of a field no layer has leaned.
+ *
+ * Seed (DIL-en-v7: "at cycle-0 the prior is seeded from the host's existing
+ * data"): the host passes its bias as the field's initial params; an axis it
+ * does not seed reads NEUTRAL.
+ */
+
+/** DECIDE@IMPL — how a layer reads an axis (field.ts `rising`, `falling`, `shiftedCount`). */
+export const FIELD_READING_LAW =
+  "an axis v shifts a declared threshold or gain by (½ + v) when the operation grows with the axis, by (1½ − v) when it shrinks: the declared value at NEUTRAL, half of it at one end, one and a half at the other; a count threshold never below 1; a floor is raised toward its ceiling, never to it" as const;
+/**
+ * Rationale: linear and centred on the declared value, so (a) a field that has
+ * not leaned leaves every operation exactly as declared — the reference
+ * behaviour holds — and (b) the field biases an operation and never annuls or
+ * inverts it. DIL-en-v7 §2, "What lies past the modulatory threshold": a field
+ * strong enough "not merely to bias but to determine every layer's
+ * interpretation" is a halted loop, not a worse one. A gain of 0 — a first
+ * version of this law — was exactly that: an appraisal that could no longer
+ * weigh any resistance, an attention span of nothing, evidence that no longer
+ * accrued, a fit floor above every confidence. The bounds ½ and 1½ keep every
+ * operation alive at either end. Tunable, NOT derived.
+ */
+
+/** DECIDE@IMPL — what each layer reads and what it votes (field.ts `castVotes`). */
+export const FIELD_WIRING =
+  "T1 reads trust, votes trust; T2 reads trust, votes alertness; T3 reads exploration, votes exploration; T4 reads trust, votes trust; T5 reads exploration, votes alertness, and hands the field to its rule; T6 reads trust, votes exploration; T7 reads alertness, votes alertness; T8 reads exploration, votes trust and exploration; appraisal reads alertness; forward-building reads exploration" as const;
+/**
+ * Rationale, layer by layer — each reads the axis that bears on its own
+ * operation, and votes from what it alone sees:
+ *
+ *   T1  reads trust: how many silent cycles it holds the environment confirmed
+ *       (T1_GRACE_MAX). Votes trust: 1 when the region said anything this
+ *       cycle, 0 when it said nothing.
+ *   T2  reads trust: how far back an emission is still matched as the cause of a
+ *       change (MATCHING_WINDOW). Not STABILITY_THRESHOLD: once T2 is stable
+ *       nothing may leave UNDECIDED again (INV-6), and a threshold that moved
+ *       could put it back. Votes alertness: the share of classified changes the
+ *       region pushed.
+ *   T3  reads exploration: whether a cue already asked is asked again
+ *       (T3_REASK_AFTER). Votes exploration: the share of this cycle's cues
+ *       never asked before.
+ *   T4  reads trust: how many sightings before a named entity is bound by its
+ *       name rather than STRANGER (T4_RECOGNITION). Votes trust: the share of
+ *       arrivals bound to a known entity.
+ *   T5  reads exploration: how long a baseline it keeps (BASELINE_WINDOW) —
+ *       exploring keeps less, consolidating more. Not alertness into
+ *       SUFFICIENT_RECURRENCE: a confidence the field slowed would fail §13.4's
+ *       accumulation reading (store/decisions.ts FIT_FLOOR). Its rule — where
+ *       the mind sits — receives the field whole. Votes alertness: the share
+ *       of entities whose return mismatched.
+ *   T6  reads trust: how much one resistance or one pushed change counts as
+ *       evidence of an independent Other. Votes exploration: the share of this
+ *       cycle's Others met for the first time.
+ *   T7  reads alertness: how long an entity stays demanded back after it was
+ *       last seen (the attention span). Votes alertness: the share of attended
+ *       entities that fell silent.
+ *   T8  reads exploration: how deep it compares Others when ranking them
+ *       (T8_COMPARISON). Votes trust: how evenly resistance is spread across the
+ *       Others (1 − the share of the most-resisting one); votes exploration: how
+ *       many Other↔Other interactions per Other. DIL-en-v7 §7 routes T8's
+ *       feedback "by content, e.g. GeneralOther to T4, RelValue/SocialEdge to
+ *       T6": both read trust, which T8 feeds.
+ *   appraisal reads alertness: the gain on the resistance met.
+ *   forward-building reads exploration: how many situations it builds (H_COUNT)
+ *       and the fit floor under them (FIT_FLOOR).
+ *
+ * Every axis is read by at least two operations and fed by at least two layers,
+ * so no key in the field is carried without being read, and none read without
+ * being fed. Tunable, NOT derived.
+ */
+
+/** DECIDE@IMPL tag B — the longest run of silent cycles T1 holds the environment confirmed through. */
+export const T1_GRACE_MAX = 2;
+/**
+ * Rationale: T1 confirms "that an activity-environment is present". A single
+ * silence against a background of returns is not the environment's absence
+ * (protocol §4: it is a mismatch, registered at T7). How many silent cycles it
+ * holds through is trust's: none at NEUTRAL or below (the reference behaviour:
+ * confirmed only when the region said something), up to T1_GRACE_MAX at full
+ * trust. Tunable, NOT derived.
+ */
+
+/** DECIDE@IMPL tag B — the span after which a cue asked before is asked again, leaning to explore. */
+export const T3_REASK_AFTER = 16;
+/**
+ * Rationale: T3 asks the store once per cue, and at NEUTRAL or below it never
+ * asks again (the reference behaviour: a cue asked has been answered). Leaning
+ * to explore, it asks again after T3_REASK_AFTER · (1½ − exploration) cycles, by
+ * which time the store may hold more under that cue. The same length as
+ * BASELINE_WINDOW, the loop's other declared memory span; not derived.
+ */
+
+/** DECIDE@IMPL tag B — sightings before a named entity is bound by its name, at NEUTRAL. */
+export const T4_RECOGNITION = 1;
+/**
+ * Rationale: the reference binds a named entity at once. With less trust it
+ * takes more sightings (T4_RECOGNITION · (1½ − trust), rounded, never below 1); with
+ * more, never fewer than one. Until then the arrival is bound to STRANGER — a
+ * positional unknown, not a loss: it is still registered.
+ */
+
+/** DECIDE@IMPL — how deep T8 compares Others, by exploration. */
+export const T8_COMPARISON =
+  "by resistance; leaning to explore (exploration > NEUTRAL), by resistance and then by pushed changes" as const;
+/**
+ * Rationale: the reference ranks by resistance alone. Exploring, it compares on
+ * one more dimension of the independence evidence T6 accrued, so Others equal
+ * in resistance are told apart. Tunable, NOT derived.
+ */

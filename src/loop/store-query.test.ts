@@ -259,7 +259,10 @@ test("what T3 has asked, and what is still in flight, survive a snapshot", () =>
   });
   resumed.run({ signals: [status(2)], changes: [] });
   assert.equal(moves(events, DIRECTIVE).length, 1, "the answer in flight still arrived");
-  assert.deepEqual(t3.snapshot(), { asked: [JSON.stringify([["object", "region-status"]])] });
+  assert.deepEqual(t3.snapshot(), {
+    asked: [[JSON.stringify([["object", "region-status"]]), 1]],
+    tick: 2,
+  });
 });
 
 // ── agency closure (§6.4 rule 3) ──

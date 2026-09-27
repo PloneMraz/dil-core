@@ -15,6 +15,7 @@
 import { assertAppraisalIndependence } from "../invariants/guards.js";
 import { APPRAISAL_ANCHOR_ID } from "./decisions.js";
 import type { Appraisal, InfoUnit, ModField, PredErr } from "./types.js";
+import { ALERTNESS, axis, rising } from "./field.js";
 
 export interface AppraisalInput {
   /** Reference to the information being appraised (e.g. a cycle id). */
@@ -48,8 +49,10 @@ export function appraise(input: AppraisalInput): Appraisal {
     editedState: input.editedState,
   });
 
-  // §8.5: read the current field as the conditioning context.
-  const gain = input.field.params.appraisalGain ?? 1;
+  // §8.5: read the current field as the conditioning context — the loop's
+  // alertness to mismatch weighs the resistance it met (1 at NEUTRAL), under any
+  // gain the host seeded.
+  const gain = (input.field.params.appraisalGain ?? 1) * rising(axis(input.field, ALERTNESS));
   const resistance = input.predErrs.reduce((sum, e) => sum + e.delta, 0);
   // Forward-cast outcomes are not-yet-collided: they carry no resistance, so they
   // do not change the valence — they only widen the set of information the

@@ -16,12 +16,22 @@
  * the width never moves. Measured on a live host: the gain sat at 1.0 for the
  * whole run. How many Others the loop is holding is accrued knowledge, and the
  * layer that accrues it is T6.
+ *
+ * THE FIELD (INV-7). T8 reads `exploration`: how deep it compares Others when it
+ * ranks them (T8_COMPARISON) — by resistance at NEUTRAL, the reference; leaning
+ * to explore, by resistance and then by the changes each pushed. It closes back
+ * into the loop through the field, by voting on the dispositions T4 and T6 read
+ * (DIL-en-v7 §7: T8's feedback is "routed by content… GeneralOther to T4,
+ * RelValue/SocialEdge to T6"): `trust`, from how evenly resistance is spread
+ * across the Others; `exploration`, from how many Other↔Other interactions it
+ * met per Other.
  */
 
 import { assertCorrelational } from "../../invariants/guards.js";
 import type { LayerSpec } from "../layer.js";
 import type { OtherModel, RelValue, SocialEdge } from "../types.js";
 import type { IndependenceEvidence } from "./t6.js";
+import { EXPLORATION, NEUTRAL, TRUST, axis, castVotes, share } from "../field.js";
 
 export interface T8Input {
   readonly others: readonly OtherModel[];
@@ -42,31 +52,29 @@ function resistancesOf(other: OtherModel): number {
   return typeof ev?.resistances === "number" ? ev.resistances : 0;
 }
 
-/** How many Other↔Other interactions T8 recorded this cycle (INV-7, up-channel). */
-export const INTERACTIONS = "interactions";
-
-/**
- * The share of all resistance held by the most-resisting Other (INV-7,
- * up-channel). 1 means one Other is doing all the resisting; 1/N means it is
- * spread evenly; 0 means nothing has resisted yet.
- */
-export const RESISTANCE_CONCENTRATION = "resistanceConcentration";
+function pushedOf(other: OtherModel): number {
+  const ev = other.independence_evidence as Partial<IndependenceEvidence> | null;
+  return typeof ev?.envPushed === "number" ? ev.envPushed : 0;
+}
 
 export function createT8(): LayerSpec<T8Input, T8Output> {
   return {
     index: 8,
     consumes: [6],
-    process(input, _field, _emit, contribute): T8Output {
+    process(input, field, _emit, contribute): T8Output {
+      // How deep the Others are compared, read off the field (T8_COMPARISON).
+      const deep = axis(field, EXPLORATION) > NEUTRAL;
       // RelValue exists only when N ≥ 2.
       let relValues: RelValue[] = [];
       if (input.others.length >= 2) {
         const ranked = [...input.others].sort(
-          (a, b) => resistancesOf(b) - resistancesOf(a),
+          (a, b) =>
+            resistancesOf(b) - resistancesOf(a) || (deep ? pushedOf(b) - pushedOf(a) : 0),
         );
         relValues = ranked.map((other, i) => ({
           entity_id: other.entity_id,
           relative_rank: i + 1,
-          comparison_basis: "resistance",
+          comparison_basis: deep ? "resistance+envPushed" : "resistance",
         }));
       }
 
@@ -84,17 +92,18 @@ export function createT8(): LayerSpec<T8Input, T8Output> {
       });
 
       // T8 CLOSES BACK INTO THE LOOP (INV-1, §6.2: "T8 closes back into the
-      // loop, not into a sink"). Nothing read T8's output: relValues and
-      // socialEdges were produced and dropped, so the top of the meaning-channel
-      // was a dead branch. The meaning-channel cannot carry them back down —
-      // INV-3 forbids it — but the field can, and does from N+1. So T8 reports
-      // what only it can see: the relative picture of the Others, and how many
-      // of them met each other.
+      // loop, not into a sink"). The meaning-channel cannot carry relValues and
+      // socialEdges back down — INV-3 forbids it — but the field can, from N+1:
+      // T8 votes on the dispositions the layers below it read. Resistance spread
+      // evenly across the Others is Others comparable as sources (trust);
+      // resistance held by one is one source standing out against the rest.
+      // Others meeting each other is more of the region to explore.
+      const n = input.others.length;
       const resistances = input.others.map(resistancesOf);
       const total = resistances.reduce((a, b) => a + b, 0);
-      contribute({
-        [INTERACTIONS]: socialEdges.length,
-        [RESISTANCE_CONCENTRATION]: total > 0 ? Math.max(...resistances) / total : 0,
+      castVotes(contribute, {
+        [TRUST]: n >= 2 && total > 0 ? 1 - Math.max(...resistances) / total : undefined,
+        [EXPLORATION]: n >= 2 ? share(socialEdges.length, n) : undefined,
       });
 
       return { relValues, socialEdges };

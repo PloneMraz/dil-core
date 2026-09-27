@@ -5,7 +5,7 @@
  * T2 (Agency Differentiation — where the self crystallizes).
  */
 
-export { createT1 } from "./t1.js";
+export { createT1, graceOf } from "./t1.js";
 
 export {
   createT2,
@@ -18,7 +18,6 @@ export {
 } from "./t2.js";
 
 export {
-  CHANNEL_ACTIVITY,
   STORE_CHANNEL,
   createT3,
   isStoreQuery,
@@ -30,7 +29,6 @@ export {
 } from "./t3.js";
 
 export {
-  STRANGENESS,
   createT4,
   STRANGER,
   type ContextResolver,
@@ -40,7 +38,6 @@ export {
 } from "./t4.js";
 
 export {
-  SURPRISE,
   createT5,
   persistence,
   type PredictRule,
@@ -54,7 +51,6 @@ export {
 } from "./t5.js";
 
 export {
-  OTHER_COUNT,
   createT6,
   type IndependenceEvidence,
   type T6Input,
@@ -63,7 +59,6 @@ export {
 
 export {
   ATTENTION_GAIN,
-  SILENCE,
   attentionWidth,
   createT7,
   type T7Input,
@@ -72,8 +67,6 @@ export {
 } from "./t7.js";
 
 export {
-  INTERACTIONS,
-  RESISTANCE_CONCENTRATION,
   createT8,
   type T8Input,
   type T8Output,

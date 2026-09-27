@@ -19,10 +19,18 @@
  * T3 asks about a description it has not asked about before. Memory is recalled
  * by the character on a cue, never poured in: the store does not flood the loop,
  * and a cue already asked about has already been answered.
+ *
+ * THE FIELD (INV-7). T3 reads `exploration`: leaning to explore, it asks again a
+ * cue it asked long enough ago (T3_REASK_AFTER), since the store may hold more
+ * under it by now; at NEUTRAL or below it never asks again, the reference
+ * behaviour. It votes `exploration` from what only it sees: the share of this
+ * cycle's cues it had never asked before.
  */
 
 import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { Signal, InfoUnit } from "../types.js";
+import { T3_REASK_AFTER } from "../decisions.js";
+import { EXPLORATION, NEUTRAL, axis, castVotes, falling, share, shiftedCount } from "../field.js";
 
 /** The open-tag description of an arrival: registry key → value (§9, tag F). */
 export type Description = Readonly<Record<string, string>>;
@@ -45,9 +53,6 @@ const defaultTransducer: ChannelTransducer = (signal) => ({
   infoType: "raw",
   value: signal.raw_payload,
 });
-
-/** How many signals the region delivered this cycle (INV-7, up-channel). */
-export const CHANNEL_ACTIVITY = "channelActivity";
 
 /**
  * The internal channel a query to the agent's own store opens, and on which its
@@ -96,21 +101,35 @@ export interface T3Output {
 export function createT3(
   transducers: Readonly<Record<string, ChannelTransducer>> = {},
 ): LayerSpec<T3Input, T3Output> & Snapshottable {
-  // Every cue T3 has asked the store about (INV-5: accrued, never reloaded).
-  const asked = new Set<string>();
+  // Every cue T3 has asked the store about, and the cycle it last asked (INV-5:
+  // accrued, never reloaded). T3 runs once a cycle, so its call count is its clock.
+  const asked = new Map<string, number>();
+  let tick = 0;
 
   return {
     index: 3,
     consumes: [1],
-    snapshot: () => ({ asked: [...asked] }),
+    snapshot: () => ({ asked: [...asked.entries()], tick }),
     restore(state: unknown): void {
+      // A snapshot from before the field was read keeps only the cues: each
+      // restores as asked at cycle 0.
+      const s = state as { asked: (string | [string, number])[]; tick?: number };
       asked.clear();
-      for (const k of (state as { asked: string[] }).asked) asked.add(k);
+      for (const k of s.asked) {
+        if (typeof k === "string") asked.set(k, 0);
+        else asked.set(k[0], k[1]);
+      }
+      tick = s.tick ?? 0;
     },
-    process(input, _field, emit, contribute): T3Output {
-      // A FACT T3 can see and no other layer can: how much the region said this
-      // cycle. Not a policy number — T3 does not decide what follows from it.
-      contribute({ [CHANNEL_ACTIVITY]: input.signals.length });
+    process(input, field, emit, contribute): T3Output {
+      tick += 1;
+      // How long ago a cue must have been asked for T3 to ask it again: never at
+      // NEUTRAL or below.
+      const exploration = axis(field, EXPLORATION);
+      const reaskAfter =
+        exploration > NEUTRAL ? shiftedCount(T3_REASK_AFTER, falling(exploration)) : Infinity;
+      let cueCount = 0;
+      let fresh = 0;
       const units = input.signals.map((signal): InfoUnit => {
         const transduce = transducers[signal.source_id] ?? defaultTransducer;
         const { infoType, value, describe } = transduce(signal);
@@ -122,8 +141,11 @@ export function createT3(
           for (const cue of cues) {
             if (Object.keys(cue).length === 0) continue;
             const key = cueKey(cue);
-            if (asked.has(key)) continue;
-            asked.add(key);
+            cueCount += 1;
+            const last = asked.get(key);
+            if (last === undefined) fresh += 1;
+            else if (tick - last < reaskAfter) continue;
+            asked.set(key, tick);
             emit(storeQuery(cue));
           }
         }
@@ -135,6 +157,7 @@ export function createT3(
           t: signal.t,
         };
       });
+      castVotes(contribute, { [EXPLORATION]: share(fresh, cueCount) });
       return { units };
     },
     infoUnits: (out) => out.units,

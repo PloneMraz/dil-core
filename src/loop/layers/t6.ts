@@ -6,11 +6,17 @@
  * env-pushed changes — accrues only when there is real external resistance.
  * Under Mode-A (self-confirmation, nothing pushes back) the evidence stays zero
  * and the model degenerates. State accrues per entity (INV-5).
+ *
+ * THE FIELD (INV-7). T6 reads `trust`: how much one resistance, or one change the
+ * region pushed, counts as evidence of an independent Other — one at NEUTRAL,
+ * the reference count. It votes `exploration` from what only it sees: the share
+ * of this cycle's Others it met for the first time.
  */
 
 import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { OtherModel } from "../types.js";
 import type { T5Result } from "./t5.js";
+import { EXPLORATION, TRUST, axis, castVotes, rising, share } from "../field.js";
 
 /** Concrete shape of OtherModel.independence_evidence (shared with T8). */
 export interface IndependenceEvidence {
@@ -36,9 +42,6 @@ interface EntityState {
   observations: number;
 }
 
-/** How many Others the loop is holding (INV-7, up-channel). */
-export const OTHER_COUNT = "otherCount";
-
 export function createT6(): LayerSpec<T6Input, T6Output> & Snapshottable {
   const state = new Map<string, EntityState>();
 
@@ -55,13 +58,17 @@ export function createT6(): LayerSpec<T6Input, T6Output> & Snapshottable {
     // under multi-stream it reads both from the meaning-channel itself, rather
     // than having the T2 digest smuggled in by the driver.
     consumes: [2, 5],
-    process(input, _field, _emit, contribute): T6Output {
+    process(input, field, _emit, contribute): T6Output {
+      // How much one piece of evidence counts, read off the field.
+      const weight = rising(axis(field, TRUST));
+      let firstMet = 0;
       const others = input.results.map((result): OtherModel => {
         const id = result.entity_id;
+        if (!state.has(id)) firstMet += 1;
         const st = state.get(id) ?? { resistances: 0, envPushed: 0, observations: 0 };
         st.observations += 1;
-        if (result.predErr.delta > 0) st.resistances += 1; // resistance met
-        if (input.envPushed?.has(id)) st.envPushed += 1;
+        if (result.predErr.delta > 0) st.resistances += weight; // resistance met
+        if (input.envPushed?.has(id)) st.envPushed += weight;
         state.set(id, st);
 
         const evidence: IndependenceEvidence = {
@@ -77,15 +84,7 @@ export function createT6(): LayerSpec<T6Input, T6Output> & Snapshottable {
           independence_evidence: evidence,
         };
       });
-      // A FACT T6 can see and no other layer can: how many Others the loop is
-      // HOLDING — not how many happened to return this cycle, which is all T8
-      // could see and is why the width never moved when T8 had this job.
-      //
-      // It contributes the COUNT and not a width. A layer reports what it sees;
-      // deciding what follows is not its business, and a lone layer computing a
-      // policy number was the mistake this replaces: attention is a composition
-      // of what the whole field holds, not one layer's formula.
-      contribute({ [OTHER_COUNT]: state.size });
+      castVotes(contribute, { [EXPLORATION]: share(firstMet, others.length) });
 
       return { others };
     },
