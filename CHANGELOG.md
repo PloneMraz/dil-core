@@ -6,6 +6,18 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 10:30 — feat: bản chụp lưu thành cây đối tượng theo địa chỉ nội dung, như git lưu tree của commit
+**Commit:** `1096476`
+
+Plone hỏi vì sao bản chụp nặng, khi commit kiểu git vốn nhẹ. Marker vốn đã nhẹ (~420 byte); nặng là **payload**: mỗi lần commit ghi lại **nguyên khối JSON** của toàn hệ thống (lựa chọn 2-(a)). Ở dil-arc3, một lượt 400 cycle giữ 67 bản chụp, bản cuối 10 MB. Plone chỉ đạo sửa theo cơ chế của git.
+
+- **Lựa chọn 2-(b).** Mọi object hay array trong bản chụp có JSON dài từ `MIN_OBJECT_BYTES` (1024, khai báo) trở lên được cất **một lần** trong `objects/`, tên là sha256 của nội dung, và đứng trong nút cha dưới dạng `{"#dil-ref": <hash>}`. Gốc nằm trong `state/`; hash của gốc là địa chỉ của bản chụp.
+- Nhánh không đổi giữa hai lần chụp (một datum, một lưới, trạng thái một layer) là **cùng một đối tượng**: bản chụp chỉ tốn phần đã đổi.
+- **Vẫn là cây Merkle:** mỗi đối tượng được kiểm hash khi đọc, nên sửa một byte là bị bắt; hash của gốc vẫn phủ toàn bộ trạng thái.
+- Giá trị trông giống tham chiếu được bọc lại (`#dil-esc`), đọc ra đúng như cũ.
+- **Bản chụp nguyên khối cũ vẫn đọc được.** `putState`/`getState` và recovery không đổi.
+- **Không sửa protocol:** §9 đòi chụp *toàn bộ* hệ thống vào marker bất biến theo địa chỉ nội dung; cách cất là `DECIDE@IMPL`. **378 test xanh** (5 test mới).
+
 ### 08:07 — docs: luật chống rò rỉ thông tin trong CLAUDE.md
 **Commit:** `9bbd2a5`
 
