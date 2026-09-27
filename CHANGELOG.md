@@ -6,6 +6,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 22:40 — docs: model thuộc mind, không thuộc host
+**Commit:** `aa98da9`
+
+Plone chỉnh lại: DIL là cơ chế vận hành xuyên suốt; host là vùng chứa, hành động, thu dữ liệu và đẩy về mind; mind là phần tư duy (tính toán, học, làm giàu dữ liệu, kỳ vọng, kiến tạo hành vi, ra lệnh lại cho host); model nằm trong mind. AGENTS.md và CONTEXT.md trước đây gọi model là cơ quan của host ("the host's model", "my model is reached this way"), trái với đặc tả gốc: host *"carries no self and contributes no self"* (DIL-en-v7 §2), và phần tư duy là *processor* của agent (§8.3).
+
+- [CONTEXT.md](CONTEXT.md) có mục **§5a**: ba phần, mind ngồi ở đâu (rule của T5, field đến nó như đến mọi tầng), model là động cơ thay được của mind (§4: *parameter block*, không phải self), mind ra lệnh nhưng không tự chấm lệnh (INV-8), mind không phải self.
+- [AGENTS.md](AGENTS.md) có mục tương ứng và thêm một điều cấm: không đặt model vào host.
+- Mọi câu gán model cho host được sửa. Không đổi code.
+
 ### 22:26 — feat: GLOB-MOD mang ba trục; mọi tầng đọc một trục và bỏ phiếu từ điều chỉ nó thấy
 **Commit:** `1e0a22a`
 
