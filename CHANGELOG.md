@@ -6,6 +6,23 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 23:30 — feat: chỗ cắm model của mind nhận một language model (local qua địa chỉ, hoặc hosted qua key)
+**Commit:** `4358977`
+
+Bước cuối theo chỉ đạo của Plone: model ghép sau bằng API key, hoặc qua một đường dẫn chờ kết nối với model local.
+
+- **[endpoint.ts](src/mind/endpoint.ts)**: `ModelEndpoint { url, model, apiKeyEnv, timeoutMs, extra }` và `chat()` theo `/chat/completions` chuẩn OpenAI-compatible (llama.cpp, vLLM, phần lớn nhà cung cấp).
+  - **Vòng chạy mỗi cycle đồng bộ, còn `fetch` thì không.** Nên request được gửi từ một tiến trình Node ngắn hạn mà mind chờ. Chỉ dùng thư viện chuẩn, không thêm dependency.
+  - **Key** được đọc từ biến môi trường mà `apiKeyEnv` chỉ tên, lúc gửi, và chỉ vào header `Authorization`. Có test kiểm key không có trong `[data]` lẫn `[event]`.
+- **[language.ts](src/mind/language.ts)**: `languageModel`.
+  - Chỉ được hỏi khi một kỳ vọng hỏng.
+  - Được cho thấy: thực thể, những gì nó trả về trước đó, điều đã kỳ vọng, điều trả về, điều trí nhớ trả lời, và field. Có giới hạn, không bao giờ là toàn bộ lịch sử (INV-5).
+  - Trả lời một object JSON: nay kỳ vọng gì, vì sao, hỏi trí nhớ gì, ra lệnh gì.
+  - Mọi câu trả lời được giữ nguyên thành datum `thought`, kể cả câu không parse được.
+  - Request hỏng thì không đổi gì, và lần sau model được cho biết.
+  - Prompt không gọi tên môi trường nào.
+- **Còn mở, đã ghi trong README:** kỳ vọng của model chưa gắn với datum nó viết (`heldBy`); chưa chạy với một language model thật (máy không có server model đang chạy). **405 test xanh.**
+
 ### 23:05 — feat: mind — phần tư duy, ngồi ở rule của T5; model là động cơ thay được của nó
 **Commit:** `8722def`
 
