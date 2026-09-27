@@ -6,6 +6,22 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 23:05 — feat: mind — phần tư duy, ngồi ở rule của T5; model là động cơ thay được của nó
+**Commit:** `8722def`
+
+Plone chỉ đạo dựng một góc mind trong dil-core theo mẫu của dil-arc3, có chỗ riêng cho model ghép sau (LLM qua API key, hoặc model local qua đường dẫn), để mind nhận được dữ liệu từ vòng. Trước đây dil-core không có host lẫn model để hoàn tất vòng di chuyển của dữ liệu: seam `predict` của T5 chỉ có `persistence`.
+
+- **[src/mind/](src/mind/)**: `createMind(model)` là một `PredictRule`. Qua đó mind nhận mọi arrival và có bốn đường ra của vòng: kỳ vọng nó trả về, `ask`, `write`, `test`.
+- **Việc của mind**, dù model nào:
+  - kỳ vọng từ tình huống, không được thấy câu trả lời (INV-8);
+  - nhìn điều trả về, và model học nếu nó học từ mỗi lần trả về;
+  - nghĩ khi kỳ vọng hỏng, số lần mỗi cycle do `alertness` của field quyết định (`MIND_THOUGHTS_PER_CYCLE`);
+  - hỏi trí nhớ, và câu trả lời đến lần nghĩ sau (được hỏi mới có, không đổ vào);
+  - ghi điều học được kèm `builtFrom` (v0.3.4);
+  - ra lệnh bằng test của T5 (§6.4) mà không tự chấm lệnh (INV-8).
+- **`Model`** là chỗ cắm model: `expect`, `observe`, `think`, `propose`. `standingModel` làm mind đúng bằng luật tham chiếu; có test kiểm log expectation giống hệt `persistence`.
+- Endpoint cho LLM (local hoặc API key) là bước sau. **397 test xanh** (8 test mới).
+
 ### 22:40 — docs: model thuộc mind, không thuộc host
 **Commit:** `aa98da9`
 
