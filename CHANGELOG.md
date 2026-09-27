@@ -6,6 +6,21 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 23:55 — chore: smoke test mind với một language model thật
+**Commit:** `ec72977`
+
+Plone chỉ ra llama.cpp (b11149, bản CPU) và `Qwen3.6-35B-A3B-UD-IQ4_XS.gguf` trong thư mục Downloads của workspace. Server chạy cục bộ (`-c 8192 -t 12 --jinja`, không thinking), sẵn sàng sau 45 giây, và đã dừng sau khi thử.
+
+[scripts/smoke-language-model.mjs](scripts/smoke-language-model.mjs): vòng chạy 12 cycle trên một thực thể có giá trị lặp chu kỳ ba (sun, sun, rain), mind nghĩ bằng `languageModel`.
+
+- **Chạy trọn vòng.** 5 lần nghĩ (25–33 giây mỗi lần), 5/5 câu trả lời là JSON và được nhận, 0 request hỏng.
+  - Điều model nói nay kỳ vọng thành kỳ vọng của vòng.
+  - Mỗi câu trả lời thành một datum `thought`.
+  - Model đọc field và dẫn nó trong lý do ("Given high trust and low alertness…").
+- **Kết quả: 7/12 kỳ vọng đúng.** Luật `persistence` trên cùng chuỗi đúng 5/12. Model dừng ở giá trị đa số (sun) và trượt mọi lần rain.
+- **Giới hạn của thiết kế, không phải của model:** mỗi thực thể chỉ có một giá trị kỳ vọng, và giá trị đó chỉ được sửa khi hỏng. Vì vậy model không thể nói "sun, sun, rồi rain". Cách dil-arc3 làm (model viết một chương trình `predict`) nói được điều đó. README ghi giới hạn này.
+- Conformance của run: `1:pass 2:unverifiable 3:pass 4:partial 5:partial 6:pass 7:partial` (không có gate, nên §13.2 là unverifiable).
+
 ### 23:30 — feat: chỗ cắm model của mind nhận một language model (local qua địa chỉ, hoặc hosted qua key)
 **Commit:** `4358977`
 
