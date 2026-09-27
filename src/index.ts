@@ -8,6 +8,9 @@
  *   Stage 4: the loop (T1–T8, GLOB-MOD, cycle driver).
  *   Stage 5: the runtime daemon (continuous run).
  *   Stage 6: the conformance checker.
+ *
+ * And the mind — the thinking, seated at T5's rule; the model is its engine
+ * (CONTEXT.md §5a).
  */
 
 export type {
@@ -41,3 +44,5 @@ export * from "./loop/index.js";
 export * from "./runtime/index.js";
 
 export * from "./conformance/index.js";
+
+export * from "./mind/index.js";

@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.5**: **389 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.5**: **397 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -64,6 +64,8 @@ Built inside-out, the causal order fixed in the protocol (Invariants → Loop �
    The SELF is not a ring. It is what occurs when the
    inner rings run continuously (there is no `Self` class).
 ```
+
+**The mind** (`src/mind`) is not a ring either: it is the thinking, seated at T5's rule — it expects without being shown the answer (INV-8), looks, thinks on what failed, asks its own memory, writes what it learned with what it was built from, and commands as T5's test (§6.4); the field reaches it as it reaches every layer. The **model** is the mind's replaceable engine, not the host's: the host is the container and the senses, and DIL is the mechanism the data runs by between the host and the mind ([CONTEXT.md §5a](CONTEXT.md)). `createMind(standingModel)` is the reference law exactly.
 
 ## Build stages
 
