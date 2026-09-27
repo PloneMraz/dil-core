@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase is **migrated to protocol v0.3.5**: **397 tests, 0 failures.**
+All six build stages are implemented, and the codebase is **migrated to protocol v0.3.5**: **405 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -65,7 +65,7 @@ Built inside-out, the causal order fixed in the protocol (Invariants → Loop �
    inner rings run continuously (there is no `Self` class).
 ```
 
-**The mind** (`src/mind`) is not a ring either: it is the thinking, seated at T5's rule — it expects without being shown the answer (INV-8), looks, thinks on what failed, asks its own memory, writes what it learned with what it was built from, and commands as T5's test (§6.4); the field reaches it as it reaches every layer. The **model** is the mind's replaceable engine, not the host's: the host is the container and the senses, and DIL is the mechanism the data runs by between the host and the mind ([CONTEXT.md §5a](CONTEXT.md)). `createMind(standingModel)` is the reference law exactly.
+**The mind** (`src/mind`) is not a ring either: it is the thinking, seated at T5's rule — it expects without being shown the answer (INV-8), looks, thinks on what failed, asks its own memory, writes what it learned with what it was built from, and commands as T5's test (§6.4); the field reaches it as it reaches every layer. The **model** is the mind's replaceable engine, not the host's: the host is the container and the senses, and DIL is the mechanism the data runs by between the host and the mind ([CONTEXT.md §5a](CONTEXT.md)). `createMind(standingModel)` is the reference law exactly; `createMind(languageModel({ endpoint }))` thinks with a language model — a local one at an address (`{ url: "http://127.0.0.1:8080/v1", model }`), or a hosted one with `apiKeyEnv` naming the environment variable that holds its key, which goes into the request header and nowhere else. It is asked only when an expectation fails, and every answer is kept whole in the store.
 
 ## Build stages
 
@@ -219,6 +219,8 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 **Empty.** The codebase is **migrated to protocol v0.3.5** (parent spec [`DIL-en-v7.md`](DIL-en-v7.md)): the six-position provenance graph with `nascent` for what the agent writes (`write` from the predict rule, arriving SELF_WRITTEN the next cycle, recording what it was built from), every datum that meets a mismatch scarred — the return and each datum the expectation is (`held_by`), a scar used again returning to `running`, entries by origin through the tagging-gate (region returns and the cycle datum at `running`), the `revision` record, cues that may ask by provenance; and, from v0.3.2, `layer_trace` dropped and the path read from `[event]`; the `[event]` log as a datum-activity journal (layer-exit / provenance / emission / revision lines); the `simulated`/`projected` states with the §13.6 edge check; §6.4 Emission (`Directive`, `issuing_layer`, no-arbiter; T5's *test*, an action the predict rule pushes to the region, recorded from T5 and handed to the host as `CycleResult.tests`); Mode-B **return-not-write** (read-only `[event]` view); forward-building §6.2 with **tag H** (situations genuinely visit `simulated`/`projected`, emergently); the store requisitioned onto a durable substrate (SQLite `[data]`, disk `[event]`, RAM bounded); wall-clock timestamps. Everything still open is open *by design*, below.
 
 The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
+
+Two residuals of the mind (`src/mind`): a language model's expectation is not yet tied to the datum it wrote (`heldBy`), so a failed expectation scars the return and not the thought that made it; and `languageModel` is verified against a scripted and a local test server, not yet against a running language model.
 
 ### Deployment-open by design (no core work owed — each deployment declares its own)
 

@@ -16,3 +16,18 @@ export {
   type Proposal,
 } from "./model.js";
 export { MIND_THOUGHTS_PER_CYCLE, MIND_SEAT } from "./decisions.js";
+export {
+  chat,
+  DEFAULT_TIMEOUT_MS,
+  type ModelEndpoint,
+  type ChatMessage,
+  type ChatResult,
+  type ChatFn,
+} from "./endpoint.js";
+export {
+  languageModel,
+  parseAnswer,
+  SYSTEM_PROMPT,
+  type LanguageModel,
+  type LanguageModelOptions,
+} from "./language.js";
