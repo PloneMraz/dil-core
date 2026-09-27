@@ -6,6 +6,17 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
+### 22:26 — feat: GLOB-MOD mang ba trục; mọi tầng đọc một trục và bỏ phiếu từ điều chỉ nó thấy
+**Commit:** `1e0a22a`
+
+Plone chỉ đạo, sau khi kiểm dil-arc3 cho thấy field hầu như không được đọc: sáu khóa (`channelActivity`, `surprise`, `silence`, `interactions`, `resistanceConcentration`, `resistance`) được góp vào rồi không ai đọc, và giá trị field chỉ được đọc ở T7, appraisal và fit floor. Bản sửa T8 (`a1914f3`) đưa đầu ra của T8 vào field nhưng không vào hành vi. Plone: thiết kế theo mô tả trong đặc tả, không để trống.
+
+- **Field chỉ mang khuynh hướng, không mang điều đã đọc** (DIL-en-v7 §2: *"how to read, never what is read"*). Ba trục đúng như đặc tả nêu làm ví dụ: `trust`, `alertness`, `exploration`, mỗi trục trong [0, 1], trung tính 0.5 ([field.ts](src/loop/field.ts)).
+- **Mọi tầng đọc một trục** để dời ngưỡng hay hệ số đã khai của chính nó, và **bỏ phiếu** từ điều chỉ nó thấy (`FIELD_WIRING` trong [decisions.ts](src/loop/decisions.ts)). T8 bỏ phiếu `trust`, trục mà T4 và T6 đọc, đúng hướng *"routed by content"* của §7.
+- **Luật đọc: hệ số trong [½, 1½].** Một bản đầu dùng 2v và các test bắt được: trục về 0 thì appraisal không còn cân kháng cự, span của T7 thành 0, bằng chứng của T6 ngừng tích lũy, fit floor vượt mọi confidence. Theo đặc tả, field quyết định thay cho tầng là vòng đã dừng. Nay field chỉ nghiêng, không xóa.
+- **Field không chạm vào confidence.** §13.4 đọc confidence không tăng theo recurrence là dấu hiệu nạp lại. Vì vậy T5 đọc `exploration` (độ dài baseline) chứ không đọc `alertness` vào `SUFFICIENT_RECURRENCE`. Rule của T5 nhận nguyên field.
+- Ở trung tính mọi tầng chạy đúng như tham chiếu. Quick-start vẫn 4 pass / 3 partial / 0 fail, run dài 6 / 1 / 0. **389 test xanh** (11 test mới trong [field.test.ts](src/loop/field.test.ts)).
+
 ### 15:19 — feat: bản chụp lưu thành cây đối tượng theo địa chỉ nội dung, như git lưu tree của commit
 **Commit:** `1096476`
 
