@@ -6,7 +6,7 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-09-27
 
-### 10:30 — feat: bản chụp lưu thành cây đối tượng theo địa chỉ nội dung, như git lưu tree của commit
+### 15:19 — feat: bản chụp lưu thành cây đối tượng theo địa chỉ nội dung, như git lưu tree của commit
 **Commit:** `1096476`
 
 Plone hỏi vì sao bản chụp nặng, khi commit kiểu git vốn nhẹ. Marker vốn đã nhẹ (~420 byte); nặng là **payload**: mỗi lần commit ghi lại **nguyên khối JSON** của toàn hệ thống (lựa chọn 2-(a)). Ở dil-arc3, một lượt 400 cycle giữ 67 bản chụp, bản cuối 10 MB. Plone chỉ đạo sửa theo cơ chế của git.
