@@ -3,8 +3,18 @@
  *
  * A COMMIT MARKER is the tiny commit-object: parent-linked (the DAG), it points
  * INTO the [event] log via the hash-chain head and at its snapshot payload via
- * a content address. The PAYLOAD is the whole-system state (choice 2-(a):
- * one content-addressed JSON per snapshot, under `state/`).
+ * a content address. The PAYLOAD is the whole-system state, stored as a tree of
+ * content-addressed objects, as git stores a commit's tree (choice 2-(b); Plone,
+ * 2026-09-27): every object or array in it whose JSON is at least
+ * MIN_OBJECT_BYTES long is stored once, under `objects/`, by the sha256 of its
+ * text, and stands in its parent as `{"#dil-ref": <hash>}`; the root is stored
+ * under `state/`, and its hash is the snapshot's address. A subtree that did not
+ * change since the last snapshot — a datum, a grid, a layer's state — is the
+ * same object, stored once: a snapshot costs what changed, not the whole store.
+ * Every object read is checked against its name, so the root's hash still
+ * covers the whole state (a Merkle tree). Until 2026-09-27 each snapshot was
+ * one JSON (choice 2-(a)), rewritten whole each time; such a state has no
+ * reference in it and is read as it was.
  *
  * Immutability is self-enforcing, like git objects: every file's NAME is the
  * sha256 of its content — written once with the `wx` flag (fail-if-exists;
@@ -81,14 +91,72 @@ function getObject(file: string, expectedHash: string, kind: string): string {
   return text;
 }
 
+/**
+ * DECIDE@IMPL (declared, not measured): how large a subtree must be to be an
+ * object of its own. Smaller ones stay inline in their parent; a row of a grid
+ * does, a grid does not. A bound on the number of files, not on what is kept.
+ */
+export const MIN_OBJECT_BYTES = 1024;
+
+/** The key of a reference to an object, and of an escaped value that has it. */
+const REF = "#dil-ref";
+const ESC = "#dil-esc";
+
+type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+
 export function createDirCommitStore(dir: string): CommitStore {
   const stateDir = path.join(dir, "state");
+  const objectDir = path.join(dir, "objects");
   fs.mkdirSync(stateDir, { recursive: true });
+  fs.mkdirSync(objectDir, { recursive: true });
   const headFile = path.join(dir, "HEAD");
+
+  /** A value whose large subtrees are stored and replaced by their references. */
+  function children(value: Json): Json {
+    if (value === null || typeof value !== "object") return value;
+    if (Array.isArray(value)) return value.map(store);
+    const out: { [key: string]: Json } = {};
+    for (const [k, v] of Object.entries(value)) out[k] = store(v);
+    // A value that looks like a reference is escaped, so it reads back as itself.
+    return REF in out || ESC in out ? { [ESC]: out } : out;
+  }
+
+  /** A value stored as an object of its own if it is large enough, else inline. */
+  function store(value: Json): Json {
+    if (value === null || typeof value !== "object") return value;
+    const node = children(value);
+    const text = JSON.stringify(node);
+    if (text.length < MIN_OBJECT_BYTES) return node;
+    const hash = sha256(text);
+    putObject(path.join(objectDir, `${hash}.json`), text);
+    return { [REF]: hash };
+  }
+
+  /** A value with every reference read back (and checked) and every escape undone. */
+  function load(value: Json): Json {
+    if (value === null || typeof value !== "object") return value;
+    if (Array.isArray(value)) return value.map(load);
+    const keys = Object.keys(value);
+    if (keys.length === 1 && keys[0] === REF && typeof value[REF] === "string") {
+      const hash = value[REF] as string;
+      return load(JSON.parse(getObject(path.join(objectDir, `${hash}.json`), hash, "object")) as Json);
+    }
+    if (keys.length === 1 && keys[0] === ESC) {
+      const inner = value[ESC] as { [key: string]: Json };
+      const out: { [key: string]: Json } = {};
+      for (const [k, v] of Object.entries(inner)) out[k] = load(v);
+      return out;
+    }
+    const out: { [key: string]: Json } = {};
+    for (const [k, v] of Object.entries(value)) out[k] = load(v);
+    return out;
+  }
 
   return {
     putState(state: unknown): string {
-      const text = JSON.stringify(state);
+      // Plain JSON first: what a snapshot is, not how it is held in memory.
+      const plain = JSON.parse(JSON.stringify(state)) as Json;
+      const text = JSON.stringify(children(plain));
       const hash = sha256(text);
       putObject(path.join(stateDir, `${hash}.json`), text);
       return hash;
@@ -106,9 +174,9 @@ export function createDirCommitStore(dir: string): CommitStore {
       ) as CommitMarker;
     },
     getState(stateHash: string): unknown {
-      return JSON.parse(
+      return load(JSON.parse(
         getObject(path.join(stateDir, `${stateHash}.json`), stateHash, "state payload"),
-      );
+      ) as Json);
     },
     head(): string | null {
       return fs.existsSync(headFile) ? fs.readFileSync(headFile, "utf8").trim() : null;
