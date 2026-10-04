@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-04
 
+### 19:10 — docs: protocol v0.3.6 — nội dung datum đã sửa nằm trong [data]; snapshot để phục hồi
+**Commit:** `68d948d`
+
+Plone chỉ ra một lỗi diễn đạt nghiêm trọng: điều khoản về revision nói nội dung một datum từng có được "đọc từ snapshot". Commit dùng để chống mất dữ liệu và rollback khi hệ thống bị nhiễm virus, bị sybil attack hay injected prompt; nó nằm ngoài store, không thuộc đường đọc để học. Nay §9 và đặc tả nói: nội dung hiện tại của datum nằm trong `[data]`, nơi agent đọc nó; `[event]` ghi rằng việc sửa đã xảy ra; snapshot giữ nội dung của store **có chủ đích**, có mã băm, lưu ngoài store, không bao giờ bị ghi đè, để phục hồi khi bị tấn công trực tiếp. Hai chú thích trong `resist-event.ts` còn nói ngược lại; đã đưa vào hàng chờ trong CLAUDE.md.
+
+---
+
 ### 18:30 — docs: hàng chờ cho chú thích code theo protocol v0.3.6
 **Commit:** `45a782f`
 
