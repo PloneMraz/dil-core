@@ -18,7 +18,11 @@ See AGENTS.md for coding rules and build commands.
   continuity (§7). Plone settled it: memory here is the real past of what
   happened, a trace followed and inspected as any program's is, claiming nothing
   about a continuing self; reading it back is meeting an Other in Mode-A, not the
-  agent meeting itself. dil-arc3's port was brought to this first (its commit of
+  agent meeting itself. And `src/store/resist-event.ts` (two: the written
+  tags, `RevisionActivity`) says what a revised datum held "is read from the
+  commit snapshot": what it holds is in `[data]`; the snapshot keeps the store's
+  content by design, outside the store, for recovery, not for reading (v0.3.6,
+  §9). dil-arc3's port was brought to this first (its commit of
   2026-10-04, "recollection: the log is memory, read back as an Other"); port it
   back here, comments only.
 
