@@ -326,7 +326,7 @@ These are not four new powers to be granted. They are one capacity — emission 
 
 - Its register is ↔, never = (INV-2): a committed action is a revisable best-current-guess, read against the next cycle's consequence, not a frozen identity. Committing to one action is not promoting a correlation to an identity; demanding = before acting is what INV-2 forbids.
 
-- It leaves an externally readable trace (E4): every emission leaves a mark in the audit plane, recorded as one activity record per cycle (§9) — trace, not experience: no layer learns from it, and it never becomes a scar by accumulation.
+- It leaves an externally readable trace (E4): every emission leaves a mark in the audit plane, recorded as one activity record per cycle (§9) — trace, not experience: it never becomes a scar by accumulation.
 
 - It is readable back by T2 at the next cycle as "the action just emitted," closing the agency path: emit → region returns → T1 ingests → T2 matches. An emission unreadable in this way would leave the agency-gate (INV-6) unable to classify the resulting change.
 
