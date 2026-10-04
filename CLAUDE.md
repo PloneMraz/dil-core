@@ -26,6 +26,18 @@ See AGENTS.md for coding rules and build commands.
   2026-10-04, "recollection: the log is memory, read back as an Other"); port it
   back here, comments only.
 
+- **Sync to disk once a cycle, as a declared constant** (Plone, 2026-10-04).
+  The durable `[event]` sink syncs each record to disk before returning, and
+  the SQLite `[data]` store commits each write. In dil-arc3 with every change
+  of what the mind learns written (its "(A)"), these syncs were about 60% of a
+  run's time (ls20, 600 cycles: 1,316 s with them, 539 s without, the same
+  commands). Plone approved syncing once a cycle: each record still written to
+  its file as it comes, the log still append-only and hash-chained, `[data]`'s
+  writes in one transaction a cycle; what a crash of the machine could lose is
+  the cycle running, and recovery is what the commits are for. A DECIDE@IMPL
+  constant, its default the sync of each record as now; dil-arc3 declares the
+  cycle. Done in dil-arc3 first; port it here.
+
 ## Outbound disclosure (absolute)
 
 Anything pushed from this repository — a commit, a pull request, an issue or
