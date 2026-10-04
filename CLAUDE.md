@@ -38,6 +38,19 @@ See AGENTS.md for coding rules and build commands.
   constant, its default the sync of each record as now; dil-arc3 declares the
   cycle. Done in dil-arc3 first; port it here.
 
+- **The mind reads `[data]` for what its model computes from, and each read is
+  recorded** (Plone, 2026-10-05). The whole store is the agent's memory, so
+  what a model computes from — the states it reasons over, the hypotheses it
+  predicts with, the steps it learns from — the mind takes from `[data]`, not
+  from a copy it keeps. A read-only view of `[data]` at T5, beside `ask`,
+  `write` and `test`: no query's cycle of delay, no re-run through the layers;
+  each read recorded in `[event]` (what was read, in which cycle, by which
+  layer), and a datum written from it names what it was built from. Scope: what
+  the model computes from; the mind's own working state stays its own, already
+  written to `[data]`. A new mechanism of the protocol's (T5 has had only `ask`,
+  `write`, `test`): done in dil-arc3 first as a declared deviation; then here,
+  and the protocol to say so.
+
 ## Outbound disclosure (absolute)
 
 Anything pushed from this repository — a commit, a pull request, an issue or
