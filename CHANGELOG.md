@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-04
 
+### 18:05 — docs: protocol v0.3.6 — rút lại khẳng định "no layer learns from it"
+**Commit:** `0b9c766`
+
+Plone: câu "no layer learns from it" có thể bị bắt bẻ, vì mind có thể đọc dữ liệu trong store và trích cho learning, và đó là một kiểu học. Khẳng định này được bỏ khỏi §6.4, §9, đặc tả và AGENTS.md. Activity record vẫn là *trace, not experience* và không bao giờ thành scar. Dòng Changes-in-v0.3.6 giờ đếm đúng hai cách đọc được sửa. Chú thích trong code còn nhắc khẳng định này (`recollection.ts`, `cycle.ts`, `resist-event.ts`) và chưa được sửa; `recollection.ts` còn lập luận rằng log "is an Other and not a memory", trái với luật mới, và chờ Plone phân xử.
+
+---
+
 ### 17:10 — docs: protocol v0.3.6 và đặc tả v8 — toàn bộ store là trí nhớ của agent
 **Commit:** `6f96857`
 
