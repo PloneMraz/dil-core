@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-04
 
+### 21:40 — docs: hàng chờ cho việc đồng bộ xuống đĩa mỗi chu kỳ một lần
+**Commit:** `dd6cfdc`
+
+Plone duyệt: đồng bộ `[event]` và `[data]` xuống đĩa mỗi chu kỳ một lần thay vì sau từng bản ghi, như một hằng số DECIDE@IMPL; mặc định vẫn là từng bản ghi. Ở dil-arc3, việc ép đĩa chiếm khoảng 60% thời gian chạy (ls20: 1.316 s so với 539 s, lệnh trùng hệt). Lý do Plone chấp nhận: mất điện hay sập máy chỉ mất đoạn dữ liệu của chu kỳ đang chạy, còn khôi phục là việc của các bản commit. Làm ở dil-arc3 trước, ghi trong CLAUDE.md, mục Queued.
+
+---
+
 ### 19:10 — docs: protocol v0.3.6 — nội dung datum đã sửa nằm trong [data]; snapshot để phục hồi
 **Commit:** `68d948d`
 
