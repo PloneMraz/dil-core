@@ -4,6 +4,21 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-04
+
+### 17:10 — docs: protocol v0.3.6 và đặc tả v8 — toàn bộ store là trí nhớ của agent
+**Commit:** `6f96857`
+
+Theo chỉ đạo của Plone: "Toàn bộ store/ của dil là trí nhớ của agent. Trong đó, [event] không thể bị sửa hay ghi đè mà chỉ được ghi mới và được đọc, còn [data] thì có thể." Luật được ghi vào protocol (§3, §9) và đặc tả.
+
+- **Sửa những chỗ diễn giải khiến người đọc hiểu nhầm:**
+  - activity record được giữ ngoài *experience*, không phải ngoài trí nhớ (§9);
+  - `[data]` có thể sửa, không phải "bị ghi đè mỗi cycle" (§9, đặc tả, AGENTS.md);
+  - một item `[event]` không mang tri thức làm việc, nhưng vẫn là trí nhớ (đặc tả).
+- **Không đổi yêu cầu nào với implementation**, code không đụng tới: claim của store giữ `0.3.5`. README, AGENTS.md, CONTEXT.md trỏ tới file mới.
+
+---
+
 ## [Unreleased] — 2026-09-27
 
 ### 23:55 — chore: smoke test mind với một language model thật
