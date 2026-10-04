@@ -7,6 +7,21 @@ See AGENTS.md for coding rules and build commands.
 - After every change: commit with the format in AGENTS.md, then add a CHANGELOG.md entry.
 - Always respond in Vietnamese-only (English is allowed for special phrases/terms).
 
+## Queued (Plone, 2026-10-04)
+
+- **Bring the code's comments to protocol v0.3.6.** The protocol and the
+  specification now say the whole store is the agent's memory and no longer
+  claim that no layer learns from an activity record. The code still says so:
+  `src/loop/cycle.ts` (the activity record's comment), `src/store/resist-event.ts`
+  (two), and `src/loop/recollection.ts`, whose section "WHY THE LOG IS AN OTHER
+  AND NOT A MEMORY" argues that treating the log as memory would claim
+  continuity (§7). Plone settled it: memory here is the real past of what
+  happened, a trace followed and inspected as any program's is, claiming nothing
+  about a continuing self; reading it back is meeting an Other in Mode-A, not the
+  agent meeting itself. dil-arc3's port was brought to this first (its commit of
+  2026-10-04, "recollection: the log is memory, read back as an Other"); port it
+  back here, comments only.
+
 ## Outbound disclosure (absolute)
 
 Anything pushed from this repository — a commit, a pull request, an issue or
