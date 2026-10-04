@@ -1,6 +1,6 @@
 # CONTEXT.md — Building DIL as a Codebase
 
-> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.5.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
+> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.6.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
 
 ---
 
@@ -109,7 +109,7 @@ There is no negotiated interface the host must implement to "fit" DIL. DIL is so
 
 ## 5a. The mind — where the thinking is, and whose the model is
 
-Three parts, not two. The **host** is the container and the senses: it acts on the region, takes in what returns, and carries it inward. The **mind** is the thinking: it computes, learns, enriches the data, expects, builds forward and constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between the two. (Parent specification DIL-en-v7.)
+Three parts, not two. The **host** is the container and the senses: it acts on the region, takes in what returns, and carries it inward. The **mind** is the thinking: it computes, learns, enriches the data, expects, builds forward and constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between the two. (Parent specification DIL-en-v8.)
 
 - **The host is not where the thinking is.** §2: the host "is *substrate, not self*: it carries no self and contributes no self". What it supplies is the bare capacity to emit a first action and to return. A design that puts the model in the host has put the thinking where the specification says there is none.
 - **The mind is the agent's processor — its lens.** §8.3: "the root bias is in the processor". Everything the layers leave to a declared rule is its work: expecting (T5), synthesising the Other (T6), building a situation and casting an outcome (§6.2), and emitting (§6.1 — "belongs to no single layer and is available to whichever layer's work requires it"). It sits at the loop's seams: T5's rule, where it expects, asks the store, writes, and tests; the field reaches it as it reaches every layer (INV-7).

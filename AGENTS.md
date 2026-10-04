@@ -3,7 +3,7 @@
 Guidelines for AI coding agents working in this repository.
 
 > Read this **with** two documents, not instead of them:
-> - `DIL-protocol-v0.3.5.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
+> - `DIL-protocol-v0.3.6.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
 > - `CONTEXT.md` — how to approach turning that law into running code.
 >
 > This file is neither. It is the **operating rules for an agent writing the code**: what to build, in what order, and the mistakes that look natural but break DIL. It does not re-explain the concepts; it points at them.
@@ -60,7 +60,7 @@ Each of these looks natural to an engineer and each one silently turns DIL into 
 
 ## The mind — host, mind, and DIL between them
 
-(`CONTEXT.md` §5a; parent specification DIL-en-v7 §2, §4, §6.1–§6.2, §8.3.)
+(`CONTEXT.md` §5a; parent specification DIL-en-v8 §2, §4, §6.1–§6.2, §8.3.)
 
 - **Three parts.** The **host** is the container and the senses: it acts on the region, takes in what returns, carries it inward. The **mind** is the thinking: it computes, learns, enriches, expects, builds forward, constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between them.
 - **The model is in the mind, not the host.** The host "carries no self and contributes no self". A model is the mind's replaceable engine — its weights are the parameter block §4 says "may be frozen at run time", not the self — reached where the mind says: a local model at an address, or a hosted one by an API key named by an environment variable, never written down.
@@ -96,7 +96,8 @@ Two that bite hardest in code:
 
 (Protocol §9; `CONTEXT.md` §7.)
 
-- `[data]` is mutable, overwritten each cycle. `[event]` is **append-only, records read-only**: new records may be appended; **no record, once written, is ever altered or removed** — not by the loop, not by anything, not by a third party that compromised the rest of the system.
+- **The whole store is the agent's memory** (v0.3.6): `[event]` cannot be altered or overwritten — only appended to and read — and `[data]` can be altered.
+- `[data]` is mutable: a datum's content may be rewritten (a revision) and its position moves as the loop runs. `[event]` is **append-only, records read-only**: new records may be appended; **no record, once written, is ever altered or removed** — not by the loop, not by anything, not by a third party that compromised the rest of the system.
 - The **ResistEvent** (a registered mismatch, not a document) is the atomic unit of **experience**; each cycle additionally leaves **activity records** in the `[event]` log (trace, not experience — no layer learns from them): a per-cycle seal, plus lean lines for every layer-exit, every provenance move, and every emission (each emission naming its `issuing_layer`, §6.4).
 - Four fixed tags, in order, never stripped or reordered: (1) timestamp (the host's wall-clock, epoch-ms, taken when the datum is first stamped — separate from the cycle-mark; every `[event]` record likewise takes the clock at the moment it is appended, and the cycle seal carries when its cycle began and closed), (2) cycle-mark, (3) provenance (a directed graph, v0.3.3 §9: `prior` and `nascent` one-way entries, then `running`/`simulated`/`projected`/`scar` circulating with no terminal state), (4) floor-tag. Both provenance and floor-tag name the **present** position only; their values change only under defined rules (floor-tag updates to the layer just exited). Every layer T1–T8 stamps the floor-tag; no pass-through layers. The full path — every layer exited, every provenance move — is recorded line-by-line in the `[event]` log as it occurs and read from there, **never** from a tag (v0.3.2 drops `layer_trace`).
 - **Tagging-gate, no side door.** Every datum enters through it, stamped by where it comes from (v0.3.3): host data existing before the loop ran → `prior`; a datum the agent writes anew → `nascent`, bearing the cycle that wrote it; a region return or the cycle datum → `running`, told apart by `domain`. Every entry is recorded with its tag set. A revision of a held datum is not an entry: its content changes, its provenance does not, and a bare `revision` line is recorded. Every datum the agent writes records what it was built from, by id (v0.3.4). Every datum that meets a mismatch is scarred: the return, and each datum the expectation is (`held_by`, v0.3.5). Untagged data MUST NOT enter the loop.
@@ -229,7 +230,7 @@ Keep entries newest-first within each date section.
 ## What NOT to do
 
 - Do not make DIL control the mind, its model, IO, or store, or respond to the world. (The agent acts; DIL is the condition.)
-- Do not put the model in the host. The host carries no self and contributes no self (DIL-en-v7 §2); the thinking is the mind's, and the model is its engine.
+- Do not put the model in the host. The host carries no self and contributes no self (DIL-en-v8 §2); the thinking is the mind's, and the model is its engine.
 - Do not write a `Self` class, module, or file. Do not implement "self-relocalization" as a feature — it is a consequence of INV-5 + continuity.
 - Do not design DIL as a library the host calls, or a "run then exit" process. It is a continuously-running daemon.
 - Do not build adapters/ports the host must conform to. The host declares; DIL threads through.
