@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-05
+
+### 07:30 — docs: hàng chờ cho việc mind đọc [data] để cấp cho model, mỗi lần đọc có bản ghi
+**Commit:** `b8eb4e0`
+
+Plone duyệt (B): những gì model tính dựa trên — trạng thái, giả thuyết, các bước để học — mind lấy từ `[data]` qua một góc nhìn chỉ đọc ở T5, bên cạnh `ask`, `write`, `test`. Không trễ một chu kỳ như truy vấn, không chạy lại qua các tầng; mỗi lần đọc được ghi vào `[event]`, và datum ghi ra từ đó nêu những gì nó dựa trên. Phạm vi: đầu vào của model; trạng thái làm việc của mind vẫn của nó, và đã được ghi vào `[data]`. Là cơ chế mới của protocol: làm ở dil-arc3 trước như một DEVIATION, rồi tới đây, và protocol sẽ ghi điều này.
+
+---
+
 ## [Unreleased] — 2026-10-04
 
 ### 21:40 — docs: hàng chờ cho việc đồng bộ xuống đĩa mỗi chu kỳ một lần
