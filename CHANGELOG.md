@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-04
 
+### 18:30 — docs: hàng chờ cho chú thích code theo protocol v0.3.6
+**Commit:** `45a782f`
+
+Theo chỉ đạo của Plone, chú thích trong code (`cycle.ts`, `resist-event.ts`, `recollection.ts`) được đưa về protocol v0.3.6 sau, chỉ sửa chú thích, theo bản port của dil-arc3 đã làm trước. Plone phân xử: trí nhớ ở đây là quá khứ thật của sự việc, một tệp dấu vết quan sát được kiểu khoa học máy tính, không khẳng định gì về tính liên tục bản thể; đọc lại trí nhớ là tương tác với một Other ở Mode-A. Ghi trong CLAUDE.md, mục Queued.
+
+---
+
 ### 18:05 — docs: protocol v0.3.6 — rút lại khẳng định "no layer learns from it"
 **Commit:** `0b9c766`
 
