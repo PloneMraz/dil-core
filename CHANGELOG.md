@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-11
+
+### 15:58 — docs: hàng chờ cho phiếu alertness của T5, bị chính các bản ghi của agent dội về làm loãng
+**Commit:** `11bc720`
+
+Plone chỉ đạo ghi vào hàng chờ: T5 bỏ phiếu `alertness` bằng trung bình sai số dự đoán trên mọi thực thể trong chu kỳ, gồm cả dữ liệu agent tự ghi rồi quay về và những gì bộ nhớ trả lời — vốn trả về đúng như đã ghi nên không bao giờ lệch. Ở dil-arc3 (tn36, 600 chu kỳ), mỗi chu kỳ có khoảng 7 bản đọc, chỉ 3 từ region và Other; phiếu trung bình 0.11 trong khi riêng 3 kênh ấy là 0.26, nên alertness của trường đứng ở khoảng 0.1–0.2 dù khung hình va chạm hàng trăm lần. dil-arc3 cho host khai báo những gì có thể làm loop cảnh giác (`create_t5(alerted_by=…)`, DEVIATION 8, mặc định như ở đây); alertness tăng lên (trung bình 0.09–0.22, đỉnh 0.32–0.58). Cần quyết ở đây: phiếu nên bỏ dữ liệu tự ghi như một luật, hay theo khai báo của host. Phiếu của T2 cũng đếm những bản dội về đó; chưa sửa ở dil-arc3.
+
+---
+
 ## [Unreleased] — 2026-10-05
 
 ### 07:30 — docs: hàng chờ cho việc mind đọc [data] để cấp cho model, mỗi lần đọc có bản ghi
