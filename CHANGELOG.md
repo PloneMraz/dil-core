@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-11
 
+### 16:46 — docs: email của chủ sở hữu không còn trong danh sách dữ liệu cá nhân không được công bố
+**Commit:** `1c15a35`
+
+Plone quyết định: email của anh không thuộc dữ liệu cá nhân bị cấm công bố, như trường tác giả của các commit vẫn mang nó. Quy tắc công bố trong CLAUDE.md đã sửa theo.
+
+---
+
 ### 15:58 — docs: hàng chờ cho phiếu alertness của T5, bị chính các bản ghi của agent dội về làm loãng
 **Commit:** `11bc720`
 
