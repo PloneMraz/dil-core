@@ -80,9 +80,11 @@ keeps its edit history.
   URL. A session link is a capability, not a citation: whoever holds it may be
   able to read the whole conversation.
 - **Never publish the owner's personal data**: a real name beyond the public
-  GitHub identity (Plone Mraz), email, bank or payment identifiers, account
+  GitHub identity (Plone Mraz), bank or payment identifiers, account
   screenshots, balances, or the contents of private notes — including in file
   metadata (the author fields of docx, pdf and xlsx files; the EXIF of images).
+  The owner's email is not among them (Plone, 2026-10-11): it may be published,
+  as the commits' author field does.
 - **One trailer only**: `Co-Authored-By: Claude <the model doing the work>
   <noreply@anthropic.com>`, and on a pull request the footer
   `Generated with [Claude Code](https://claude.com/claude-code)`. No other
