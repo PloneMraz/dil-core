@@ -67,6 +67,22 @@ See AGENTS.md for coding rules and build commands.
   leave out self-written returns as a rule, or take the host's declaration.
   T2's vote (the share of classified changes the region pushed) counts the
   same echoes as self-written; not changed in dil-arc3, to be looked at with it.
+- **The field has no inertia** (Plone, 2026-10-18). `blend`
+  (`src/loop/glob-mod.ts`) sets each axis that had votes to the weighted mean of
+  that cycle's votes alone; the field before enters only for an axis no layer
+  voted on, and every layer votes with weight 1. So the field is each cycle's
+  votes and nothing of the cycles before: a field set otherwise at the start
+  lasts one cycle, and two loops' fields differ only as far as what they met in
+  that cycle differs. In dil-arc3 the field's axes stayed in narrow bands (trust
+  0.7–0.87, alertness 0.04–0.3, exploration 0.03–0.4) across eleven games, and
+  two individuals whose trust differed (means 0.810 and 0.818) chose the same at
+  all 599 steps. The protocol asks for contributions that blend, never
+  last-write-wins (INV-7), and for a store that re-leans by mass and over the
+  long run (§8.4): the field before taking part in the blend — as a contribution
+  of its own, with a declared weight — would carry the loop's history into its
+  disposition. Decide here whether it should, and how much (a constant to
+  declare under §12). dil-arc3 is to try it as a declared deviation, defaulting
+  to this behaviour.
 
 ## Outbound disclosure (absolute)
 

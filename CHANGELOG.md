@@ -4,6 +4,14 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-18
+
+### docs: hàng chờ cho trường GLOB-MOD không có quán tính
+
+Plone chỉ đạo ghi vào hàng chờ: `blend` (`src/loop/glob-mod.ts`) đặt mỗi trục có phiếu bằng trung bình có trọng số của riêng các phiếu trong chu kỳ đó; giá trị trước chỉ được giữ cho trục không có phiếu nào, và mọi tầng bỏ phiếu với trọng số 1. Vì vậy trường chỉ là phiếu của chu kỳ hiện tại, không mang gì từ các chu kỳ trước: đặt trường khác đi lúc đầu chỉ có tác dụng một chu kỳ, và hai loop chỉ có trường khác nhau khi những gì chúng gặp trong chu kỳ đó khác nhau. Ở dil-arc3, các trục đứng trong dải hẹp (trust 0.7–0.87, alertness 0.04–0.3, exploration 0.03–0.4) trên mười một game, và hai cá thể có trust khác nhau (trung bình 0.810 và 0.818) chọn giống hệt nhau ở cả 599 bước. INV-7 đòi đóng góp được trộn, không bao giờ last-write-wins, và §8.4 đòi store nghiêng lại theo khối lượng và theo thời gian dài: cho trường trước tham gia lần trộn như một đóng góp có trọng số khai báo sẽ mang lịch sử của loop vào khí chất của nó. Cần quyết ở đây có nên không, và bao nhiêu (một hằng số khai báo theo §12). dil-arc3 sẽ thử nó như một deviation có khai báo, mặc định như ở đây.
+
+---
+
 ## [Unreleased] — 2026-10-11
 
 ### 16:46 — docs: email của chủ sở hữu không còn trong danh sách dữ liệu cá nhân không được công bố
