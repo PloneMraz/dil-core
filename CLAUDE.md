@@ -9,22 +9,6 @@ See AGENTS.md for coding rules and build commands.
 
 ## Queued (Plone, 2026-10-04)
 
-- **T5's alertness vote is held down by the agent's own echoes** (Plone,
-  2026-10-11). T5 votes `alertness` as the mean prediction error over every
-  entity it met in the cycle (`src/loop/layers/t5.ts`). Among them are the
-  agent's own writes coming back and what its memory answers, which return as
-  they were written and so never mismatch. In dil-arc3 (tn36, 600 cycles) a
-  cycle held about 7 such readings, three of them from the region and the
-  Other; the vote averaged 0.11 where those three alone gave 0.26, and the
-  field's alertness stayed near 0.1–0.2 though the frame collided hundreds of
-  times — it did not carry the collisions the agent met. dil-arc3 now lets the
-  host declare which returns can alert the loop (`create_t5(alerted_by=…)`, its
-  DEVIATION 8, defaulting to every return as here) and declares those that did
-  not come from the store; its alertness then rose (means 0.09–0.22, peaks
-  0.32–0.58, against peaks of 0.22–0.28). Decide here whether the vote should
-  leave out self-written returns as a rule, or take the host's declaration.
-  T2's vote (the share of classified changes the region pushed) counts the
-  same echoes as self-written; not changed in dil-arc3, to be looked at with it.
 - **The field has no inertia** (Plone, 2026-10-18). `blend`
   (`src/loop/glob-mod.ts`) sets each axis that had votes to the weighted mean of
   that cycle's votes alone; the field before enters only for an axis no layer

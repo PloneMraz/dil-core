@@ -28,6 +28,7 @@ import type { LayerSpec, Snapshottable } from "../layer.js";
 import type { ActivityEnvironment, AgencyTag } from "../types.js";
 import { MATCHING_WINDOW, STABILITY_THRESHOLD } from "../decisions.js";
 import { ALERTNESS, TRUST, axis, castVotes, rising, share, shiftedCount } from "../field.js";
+import { STORE_CHANNEL } from "./t3.js";
 
 /** What the agent emitted this cycle. */
 export interface Emission {
@@ -83,6 +84,17 @@ function jsonEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/**
+ * A change that is the echo of the agent's own store: a query to it answered
+ * (its value the query, on the store's channel) or a datum the agent wrote coming
+ * back (its value the write).
+ */
+function isStoreEcho(value: unknown): boolean {
+  if (value === null || typeof value !== "object") return false;
+  const v = value as { kind?: unknown; channel?: unknown };
+  return (v.kind === "query" && v.channel === STORE_CHANNEL) || v.kind === "write";
+}
+
 export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & Snapshottable {
   const window = opts.window ?? MATCHING_WINDOW;
   const stability = opts.stabilityThreshold ?? STABILITY_THRESHOLD;
@@ -132,7 +144,12 @@ export function createT2(opts: T2Options = {}): LayerSpec<T2Input, T2Output> & S
         }
         return { change, agency };
       });
-      const classified = tagged.filter((t) => t.agency !== "UNDECIDED");
+      // Its vote: how much of what changed the region pushed. The echoes of the
+      // agent's own store — its queries answered, its writes coming back — are
+      // tagged SELF_WRITTEN as they should be, but they are no change the region
+      // could have pushed, and counted they held the vote down (dil-arc3,
+      // 2026-10-11).
+      const classified = tagged.filter((t) => t.agency !== "UNDECIDED" && !isStoreEcho(t.change.value));
       const pushed = classified.filter((t) => t.agency === "ENV_PUSHED").length;
       castVotes(contribute, { [ALERTNESS]: share(pushed, classified.length) });
       return { tagged, crystallized };

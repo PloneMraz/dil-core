@@ -44,7 +44,7 @@
 import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, ModField, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
-import { storeQuery, type Description } from "./t3.js";
+import { STORE_CHANNEL, storeQuery, type Description } from "./t3.js";
 import type { OpenTags, TaggedDatum } from "../../store/tags.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 import { ALERTNESS, EXPLORATION, axis, castVotes, falling, shiftedCount } from "../field.js";
@@ -190,6 +190,13 @@ export interface RegionTest {
   readonly action: unknown;
 }
 
+/** The physical channel a unit arrived on (T3 types it into the content). */
+function channelOf(unit: InfoUnit | null): unknown {
+  if (unit === null) return undefined;
+  const content = unit.content as { channel?: unknown } | null;
+  return content !== null && typeof content === "object" ? content.channel : undefined;
+}
+
 export function regionTest(action: unknown): RegionTest {
   return { kind: "test", action };
 }
@@ -320,11 +327,17 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
 
         return { entity_id: id, expectation, predErr };
       });
-      // Its vote: how much of what returned did not match what it expected.
+      // Its vote: how much of what returned did not match what it expected — of
+      // what the region and the Others returned. What comes back on the store's
+      // own channel (the agent's writes, its memory's answers) returns as it was
+      // written and never mismatches; counted, it held the vote down however
+      // often the region collided (dil-arc3, 2026-10-11: 0.11 where the region's
+      // returns alone gave 0.26). No vote when nothing came from outside.
+      const fromOutside = results.filter((r) => channelOf(r.predErr.observed) !== STORE_CHANNEL);
       castVotes(contribute, {
         [ALERTNESS]:
-          results.length > 0
-            ? results.reduce((sum, r) => sum + r.predErr.delta, 0) / results.length
+          fromOutside.length > 0
+            ? fromOutside.reduce((sum, r) => sum + r.predErr.delta, 0) / fromOutside.length
             : undefined,
       });
       return {
