@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 08:35 — feat: FIELD_CARRY, trường GLOB-MOD có quán tính khai báo
+**Commit:** `42ee977`
+
+Theo hàng chờ (Plone, 2026-10-18; duyệt 2026-10-19): hằng số DECIDE@IMPL `FIELD_CARRY`, mặc định 0 — giữ đúng luật cũ, mỗi trục có phiếu là trung bình phiếu của riêng chu kỳ đó. Host khai báo một carry trong [0, 1) (`createGlobMod(initial, cycle, carry)`) thì giá trị mới = carry·trước + (1 − carry)·trung bình phiếu: vẫn là tổ hợp lồi, nên trường không thể tự khuếch đại và luôn nằm trong khoảng của giá trị khởi tạo và các phiếu — lý do trước đây không có quán tính (sợ mất bảo đảm này, và không bịa hằng số) được giữ: giá trị khác 0 là của host, khai báo từ số đo. dil-arc3 khai báo 0.95. Hàng chờ trong CLAUDE.md giờ trống. 419 test qua (3 mới).
+
+---
+
 ### 08:33 — fix: phiếu alertness không đếm tiếng vọng của chính agent
 **Commit:** `be73ad7`
 
