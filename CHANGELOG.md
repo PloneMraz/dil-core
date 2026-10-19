@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 08:30 — feat: đọc trí nhớ — T5 đọc `[data]` qua view của chu kỳ, mỗi lần đọc có bản ghi (protocol v0.3.7)
+**Commit:** `d472e53`
+
+Theo hàng chờ (Plone, 2026-10-05; duyệt 2026-10-19), port từ dil-arc3: predict rule nhận tham số thứ chín, `StoreView` — `read(datum, purpose)` trả về một datum như `[data]` đang giữ, ngay trong chu kỳ, không qua truy vấn và không chạy lại qua các tầng; datum vào trong chính chu kỳ đang đọc không được trả về (chỉ trí nhớ); `idOf` cho biết datum một unit đến từ đâu. Mỗi chu kỳ để lại một dòng `read` cho mỗi mục đích (id, không nội dung), nên tag schema lên 4; checker (C6) kiểm mỗi datum được đọc đã vào trước chu kỳ đọc nó. Văn bản protocol nâng lên v0.3.7 (§6.3 T5, §9 *Reading memory*, §13); claim của store giữ 0.3.5 để store cũ vẫn mở lại được. 413 test qua (4 mới).
+
+---
+
 ### 08:21 — feat: SYNC_CADENCE, đồng bộ đĩa mỗi bản ghi hoặc mỗi chu kỳ
 **Commit:** `c6b8f30`
 
