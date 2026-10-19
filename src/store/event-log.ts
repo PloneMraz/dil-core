@@ -103,6 +103,10 @@ export interface DurableEventLog extends EventLog {
   head(): string;
   /** Close the underlying file handle. */
   close(): void;
+  /** SYNC_CADENCE "cycle": sync to disk once a cycle, on `sync()` (decisions.ts). */
+  syncEachCycle(): void;
+  /** Sync what was appended to disk. */
+  sync(): void;
 }
 
 /**
@@ -144,5 +148,7 @@ export function createDurableEventLog(
     },
     head: () => sink.head(),
     close: () => sink.close(),
+    syncEachCycle: () => sink.syncEachCycle(),
+    sync: () => sink.sync(),
   };
 }

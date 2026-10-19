@@ -211,12 +211,26 @@ export const EVENT_SYNC_POLICY =
  * Rationale (safe default, NOT derived): the sink fsyncs on every write
  * (event-sink.ts), so no appended record is ever lost to a crash — the
  * maximally-durable choice, and the reason the write-through default forfeits no
- * record. A high-throughput deployment MAY batch the fsync to a cycle boundary
+ * record. A high-throughput deployment MAY batch the sync to a cycle boundary
  * (durability becomes cycle-atomic rather than record-atomic, trading per-record
- * durability for fewer syncs under the dense activity journal); that batching is
- * deployment-open and deliberately not built here, so the default stays the one
- * that loses nothing.
+ * durability for fewer syncs under the dense activity journal): SYNC_CADENCE
+ * below, which a host declares; the default stays the one that loses nothing.
  */
+
+/** DECIDE@IMPL tag F — when the store is synced to disk. */
+export type SyncCadence = "record" | "cycle";
+/**
+ * "record" (the default, EVENT_SYNC_POLICY): each `[event]` record is synced
+ * before its write returns, and each `[data]` write is committed. "cycle", a
+ * host's declaration: each record is still written to its file as it comes —
+ * the log still append-only and hash-chained — and `[data]`'s writes go in one
+ * transaction; both are synced once a cycle, at its close and before any commit
+ * marker. What a crash of the machine could lose is the cycle running; recovery
+ * is what the commits are for. Rationale (NOT derived): in dil-arc3, with every
+ * change of what its mind learns written, the syncs of each were about 60% of a
+ * run's time (Plone, 2026-10-04).
+ */
+export const SYNC_CADENCE: SyncCadence = "record";
 
 /** DECIDE@IMPL tag F — tamper-evidence of the persisted [event] log. */
 export const EVENT_TAMPER_EVIDENCE =

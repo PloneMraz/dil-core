@@ -252,6 +252,13 @@ export interface EventSink {
 export interface FileEventSink extends EventSink {
   close(): void;
   /**
+   * SYNC_CADENCE "cycle": from now on each record is written to its file as it
+   * comes and synced to disk only on `sync()` (decisions.ts).
+   */
+  syncEachCycle(): void;
+  /** Sync what was written to disk. */
+  sync(): void;
+  /**
    * The current chain head (CHAIN_GENESIS while empty). Read-only; a deployment
    * anchors this outside its own write reach to make a total rewrite detectable.
    */
@@ -328,6 +335,9 @@ export function createJsonlFileSink(dir: string, opts: JsonlSinkOptions = {}): F
   let currentDate = "";
   let currentSeq = 0;
   let currentBytes = 0;
+  // SYNC_CADENCE (decisions.ts): each record synced as written, unless the host
+  // declares a cycle's syncs (`syncEachCycle`).
+  let syncEach = true;
 
   /** Open (or continue) the right segment for `date`, respecting the cap. */
   function openSegment(date: string, lineBytes: number): void {
@@ -359,15 +369,24 @@ export function createJsonlFileSink(dir: string, opts: JsonlSinkOptions = {}): F
         openSegment(today, lineBytes);
       }
       fs.writeSync(fd!, line);
-      fs.fsyncSync(fd!); // durability: flush to disk before returning
+      if (syncEach) fs.fsyncSync(fd!); // durability: flush to disk before returning
       currentBytes += lineBytes;
       prev = chained.hash;
       seq += 1;
       void currentSeq;
     },
     close(): void {
-      if (fd !== null) fs.closeSync(fd);
+      if (fd !== null) {
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+      }
       fd = null;
+    },
+    syncEachCycle(): void {
+      syncEach = false;
+    },
+    sync(): void {
+      if (fd !== null) fs.fsyncSync(fd);
     },
     head: () => prev,
   };

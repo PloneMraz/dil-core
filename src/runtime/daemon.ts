@@ -34,7 +34,7 @@ import {
   BASELINE_WINDOW,
   SUFFICIENT_RECURRENCE,
 } from "../loop/decisions.js";
-import { COMMIT_EVERY } from "../store/decisions.js";
+import { COMMIT_EVERY, SYNC_CADENCE, type SyncCadence } from "../store/decisions.js";
 import type { CommitStore, CommitMarker } from "../store/commit-store.js";
 import type { DataStore } from "../store/data-store.js";
 import type { EventLog } from "../store/event-log.js";
@@ -77,6 +77,12 @@ export interface DaemonDeps {
   readonly commitEvery?: number;
   /** RECOVERY: restore the full system from this marker before starting. */
   readonly recoverFrom?: string;
+  /**
+   * When the requisitioned store is synced to disk (DECIDE@IMPL SYNC_CADENCE by
+   * default: each record): "cycle" syncs `[data]` and `[event]` once a cycle, at
+   * its close and before any commit marker.
+   */
+  readonly syncCadence?: SyncCadence;
 }
 
 export interface Daemon {
@@ -121,6 +127,7 @@ export interface Daemon {
 
 export function createDaemon(deps: DaemonDeps): Daemon {
   const commitEvery = deps.commitEvery ?? COMMIT_EVERY;
+  const syncCadence = deps.syncCadence ?? SYNC_CADENCE;
   const diversity = deps.diversity ?? createDiversityMonitor();
 
   // Resolved at STARTUP (requisition), never before: DIL imposes its store law on
@@ -137,10 +144,19 @@ export function createDaemon(deps: DaemonDeps): Daemon {
   let totalScars = 0;
   let scarsSinceCommit = 0;
 
+  /** SYNC_CADENCE "cycle": sync the requisitioned store to disk (a cycle's close). */
+  function syncStore(): void {
+    if (syncCadence === "cycle" && requisitioned) {
+      requisitioned.data.sync();
+      requisitioned.events.sync();
+    }
+  }
+
   function writeMarker(extra: Partial<Pick<CommitMarker, "recoveredFrom" | "stateHash">> = {}): string {
     if (!cycle || !events || !data || !commits) {
       throw new Error("commit requires a started daemon with a commit store");
     }
+    syncStore(); // a marker points at what is on disk
     const stateHash =
       extra.stateHash ??
       commits.putState(takeSnapshot(deps.layers, deps.glob, cycle.snapshot(), data));
@@ -161,6 +177,7 @@ export function createDaemon(deps: DaemonDeps): Daemon {
         BASELINE_WINDOW,
         SUFFICIENT_RECURRENCE,
         COMMIT_EVERY: commitEvery,
+        SYNC_CADENCE: syncCadence,
       },
     };
     scarsSinceCommit = 0;
@@ -177,6 +194,7 @@ export function createDaemon(deps: DaemonDeps): Daemon {
     last = result;
     totalScars += result.scars;
     scarsSinceCommit += result.scars;
+    syncStore();
     // §9: the counter fires a commit after COMMIT_EVERY scars, at a cycle boundary.
     if (commits && scarsSinceCommit >= commitEvery) {
       writeMarker();
@@ -198,6 +216,10 @@ export function createDaemon(deps: DaemonDeps): Daemon {
         data = requisitioned.data;
         events = requisitioned.events;
         commits = requisitioned.commits;
+        if (syncCadence === "cycle") {
+          requisitioned.data.syncEachCycle();
+          requisitioned.events.syncEachCycle();
+        }
         if (chainHead === undefined) chainHead = requisitioned.events.head;
       } else {
         if (!deps.data || !deps.events) {

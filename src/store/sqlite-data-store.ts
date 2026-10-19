@@ -21,6 +21,13 @@ import type { DataStore } from "./data-store.js";
 export interface SqliteDataStore extends DataStore {
   /** Close the underlying database handle. */
   close(): void;
+  /**
+   * SYNC_CADENCE "cycle": from now on a cycle's writes go in one transaction,
+   * committed on `sync()` (decisions.ts). Reads see every write either way.
+   */
+  syncEachCycle(): void;
+  /** Commit the writes not yet committed. */
+  sync(): void;
 }
 
 /**
@@ -43,8 +50,26 @@ export function createSqliteDataStore(dbPath: string): SqliteDataStore {
   const sizeStmt = db.prepare("SELECT count(*) AS n FROM data");
   const allStmt = db.prepare("SELECT k, v FROM data ORDER BY rowid");
 
+  // SYNC_CADENCE (decisions.ts): each write committed as it is made, unless the
+  // host declares a cycle's writes in one transaction (`syncEachCycle`).
+  let batching = false;
+  let open = false;
+  function writing(): void {
+    if (batching && !open) {
+      db.exec("BEGIN");
+      open = true;
+    }
+  }
+  function commit(): void {
+    if (open) {
+      db.exec("COMMIT");
+      open = false;
+    }
+  }
+
   return {
     put(id: string, datum: TaggedDatum): void {
+      writing();
       putStmt.run(id, JSON.stringify(datum));
     },
     get(id: string): TaggedDatum | undefined {
@@ -55,9 +80,11 @@ export function createSqliteDataStore(dbPath: string): SqliteDataStore {
       return hasStmt.get(id) !== undefined;
     },
     delete(id: string): boolean {
+      writing();
       return Number(delStmt.run(id).changes) > 0;
     },
     clear(): void {
+      writing();
       clearStmt.run();
     },
     size(): number {
@@ -68,7 +95,14 @@ export function createSqliteDataStore(dbPath: string): SqliteDataStore {
       return rows.map((r) => [r.k, JSON.parse(r.v) as TaggedDatum] as const);
     },
     close(): void {
+      commit();
       db.close();
+    },
+    syncEachCycle(): void {
+      batching = true;
+    },
+    sync(): void {
+      commit();
     },
   };
 }
