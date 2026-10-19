@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 08:21 — feat: SYNC_CADENCE, đồng bộ đĩa mỗi bản ghi hoặc mỗi chu kỳ
+**Commit:** `c6b8f30`
+
+Theo hàng chờ (Plone, 2026-10-04), port từ dil-arc3: hằng số DECIDE@IMPL tag F `SYNC_CADENCE`, mặc định `"record"` (đồng bộ từng bản ghi như trước). Host khai báo `"cycle"` (`createDaemon({ syncCadence: "cycle" })`) thì mỗi bản ghi `[event]` vẫn được ghi vào file ngay khi tới, log vẫn chỉ-thêm và nối chuỗi hash, còn các lần ghi `[data]` gom vào một transaction; cả hai được đồng bộ khi chu kỳ khép và trước mọi commit marker. Ở dil-arc3 các lần đồng bộ từng bản ghi chiếm khoảng 60% thời gian chạy. 409 test qua (4 mới).
+
+---
+
 ### 08:17 — docs: chú thích trong code theo protocol v0.3.6
 **Commit:** `2a8ca1f`
 
