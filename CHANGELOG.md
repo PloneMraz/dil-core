@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 08:35 — docs: số test trong README sau năm việc của hàng chờ
+**Commit:** `7f7d325`
+
+README ghi 419 test (trước là 413, ghi ở commit đọc trí nhớ, trước hai việc sau).
+
+---
+
 ### 08:35 — feat: FIELD_CARRY, trường GLOB-MOD có quán tính khai báo
 **Commit:** `42ee977`
 
