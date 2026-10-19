@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 08:33 — fix: phiếu alertness không đếm tiếng vọng của chính agent
+**Commit:** `be73ad7`
+
+Theo hàng chờ (Plone, 2026-10-11; duyệt 2026-10-19): làm thành luật, không để host khai báo. T5 bỏ phiếu bằng mức lệch của những gì region và các Other trả về; những gì quay về trên kênh riêng của store (`STORE_CHANNEL`: dữ liệu agent tự ghi, câu trả lời của bộ nhớ) luôn khớp nên không được đếm, và nếu chỉ có chúng thì T5 không bỏ phiếu. T2 bỏ khỏi phiếu những thay đổi là tiếng vọng của store (truy vấn được trả lời, bản ghi quay về) — vẫn gắn `SELF_WRITTEN` như cũ. Luật dựa trên kênh store, vốn là kênh nội bộ của DIL (§6.4), thay vì phân loại `SELF_WRITTEN` của T2, vì phiếu của T5 tính trên unit chứ không trên thay đổi. Ở dil-arc3 phiếu từng đứng ở 0.11 trong khi riêng các kênh của region cho 0.26. 416 test qua (3 mới).
+
+---
+
 ### 08:30 — feat: đọc trí nhớ — T5 đọc `[data]` qua view của chu kỳ, mỗi lần đọc có bản ghi (protocol v0.3.7)
 **Commit:** `d472e53`
 
