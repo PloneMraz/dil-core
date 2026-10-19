@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-19
+
+### 08:17 — docs: chú thích trong code theo protocol v0.3.6
+**Commit:** `2a8ca1f`
+
+Theo hàng chờ (Plone, 2026-10-04): chú thích được port ngược từ dil-arc3. `recollection.ts` nói log là trí nhớ, đọc lại như một Other trong Mode-A, không phải agent tự gặp chính mình, và vẫn không được tuyên bố tính liên tục của self (§7); bản ghi hoạt động là vết, không phải trải nghiệm, không bao giờ thành sẹo; nội dung một datum đã sửa nằm trong `[data]`, snapshot của commit để khôi phục chứ không để đọc (v0.3.6 §9). Chỉ sửa chú thích; 405 test qua.
+
+---
+
 ## [Unreleased] — 2026-10-18
 
 ### docs: hàng chờ cho trường GLOB-MOD không có quán tính
