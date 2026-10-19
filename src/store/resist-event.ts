@@ -182,6 +182,28 @@ export interface RevisionActivity {
   readonly t: number;
 }
 
+/**
+ * A read of `[data]` (v0.3.7, §9 "Reading memory"): T5's rule read these data
+ * directly, through the cycle's read-only view — no query, no pass through the
+ * layers. One line for each purpose, each cycle: which data, in which cycle, by
+ * which layer, for what. Like an emission's, the line is the cycle datum's. It
+ * carries no content: what was read is in `[data]`.
+ */
+export interface ReadActivity {
+  readonly kind: "activity";
+  readonly activityKind: "read";
+  /** The cycle datum the read belongs to. */
+  readonly datumId: string;
+  readonly cycleMark: number;
+  /** The layer whose work read (T5). */
+  readonly issuingLayer: LayerIndex;
+  /** What the data were read for, as the reader names it. */
+  readonly purpose: string;
+  /** The data read, by id, in the order first read. */
+  readonly read: readonly string[];
+  readonly t: number;
+}
+
 export interface LayerExitActivity {
   readonly kind: "activity";
   readonly activityKind: "layer-exit";
@@ -309,7 +331,8 @@ export type ActivityRecord =
   | CrystallizationActivity
   | ExpectationActivity
   | ResistanceReadingActivity
-  | RevisionActivity;
+  | RevisionActivity
+  | ReadActivity;
 
 /**
  * The manifest — the log's CONSTITUTION (§9, §8.5). A one-time genesis record,
@@ -366,6 +389,18 @@ export function recordRevision(
   t: number,
 ): RevisionActivity {
   return { kind: "activity", activityKind: "revision", datumId, cycleMark, issuingLayer, t };
+}
+
+/** Build a `read` line: at cycle N, layer L read these data for this purpose (no content). */
+export function recordRead(
+  datumId: string,
+  cycleMark: number,
+  issuingLayer: LayerIndex,
+  purpose: string,
+  read: readonly string[],
+  t: number,
+): ReadActivity {
+  return { kind: "activity", activityKind: "read", datumId, cycleMark, issuingLayer, purpose, read: [...read], t };
 }
 
 export function recordLayerExit(

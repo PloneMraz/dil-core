@@ -33,6 +33,7 @@ import type {
   EmissionActivity,
   CrystallizationActivity,
   ExpectationActivity,
+  ReadActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
@@ -268,6 +269,9 @@ export function checkConformance(
   );
   const expectations = records.filter(
     (r): r is ExpectationActivity => r.kind === "activity" && r.activityKind === "expectation",
+  );
+  const readLines = records.filter(
+    (r): r is ReadActivity => r.kind === "activity" && r.activityKind === "read",
   );
   const results: CriterionResult[] = [];
 
@@ -592,6 +596,12 @@ export function checkConformance(
           !Array.isArray(w.builtFrom) ||
           w.builtFrom.some((id) => !entered.has(id) || entered.get(id)! > cycle),
       );
+    // v0.3.7 §9 ("Reading memory"): what was read of `[data]` was memory — data
+    // whose entry the trace shows before the cycle that read them. What arrives
+    // in a cycle is met in it, not recalled.
+    const unremembered = readLines
+      .flatMap((r) => r.read.map((id) => ({ id, cycle: r.cycleMark })))
+      .find(({ id, cycle }) => !entered.has(id) || entered.get(id)! >= cycle);
     // v0.3.5 §9: every datum an expectation named as what it is shows its entry
     // by then, and — when that expectation mismatched against what the region
     // returned — met the mismatch: a scar naming it at that cycle.
@@ -617,6 +627,7 @@ export function checkConformance(
       claim("host data entered only via the tagging-gate — every datum leaving `prior` or `nascent` shows its gate-admissible tag set in the trace (§13.6)", "trace", unseenEntry ? "fail" : "pass"),
       claim("every datum that ran or was revised shows its entry, with its tag set, in the trace (§9)", "trace", noEntry ? "fail" : "pass"),
       claim("every datum the agent wrote says what it was built from, each a datum whose entry the trace shows (§9)", "trace", unbuilt ? "fail" : "pass"),
+      claim("every datum read of `[data]` shows its entry in the trace before the cycle that read it (§9, v0.3.7)", "trace", unremembered ? "fail" : "pass"),
       claim("every datum an expectation was (held_by) shows its entry, and met its mismatch against the region as a scar (§9, v0.3.5)", "trace", unheld ? "fail" : "pass"),
     ];
     push(
@@ -637,6 +648,8 @@ export function checkConformance(
                 ? `datum ${noEntry.datumId} appears at cycle ${noEntry.cycleMark} with no recorded entry before it (§9)`
               : unbuilt
                 ? `datum ${unbuilt.w.datumId}, written at cycle ${unbuilt.cycle}, does not say what it was built from, or names data with no recorded entry (§9)`
+              : unremembered
+                ? `datum ${unremembered.id}, read at cycle ${unremembered.cycle}, shows no entry before that cycle (§9, v0.3.7)`
               : unheld
                 ? `the expectation for ${unheld.entity} at cycle ${unheld.cycleMark} names as what it is data with no recorded entry, or data that did not scar when it mismatched against the region (§9)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior and nascent each entered once); every datum that ran shows its entry; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",

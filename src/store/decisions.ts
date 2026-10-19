@@ -32,8 +32,10 @@
  *   3 → v0.3.3's 6-state graph (adds `nascent`, a datum the agent writes anew),
  *       entries by origin (region returns and the cycle datum enter at
  *       `running`), and the `revision` record.
+ *   4 → v0.3.7's `read` record: what T5 read of `[data]`, by id, for what
+ *       (§9 "Reading memory").
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * The first schema version under the self-describing, version-stamped chain — the

@@ -46,6 +46,7 @@ export {
   type WriteRequest,
   type T5Result,
   type T5Input,
+  type StoreView,
   type T5Output,
   type T5Options,
 } from "./t5.js";

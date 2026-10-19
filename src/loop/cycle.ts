@@ -38,6 +38,7 @@ import {
   recordExpectation,
   recordResistanceReading,
   recordRevision,
+  recordRead,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import { EXPLORATION, NEUTRAL, axis, rising, shiftedCount } from "./field.js";
@@ -65,7 +66,7 @@ import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js
 import { isStoreQuery, storeQuery, STORE_CHANNEL, type T3Input, type T3Output } from "./layers/t3.js";
 import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
-import type { T5Input, T5Output, T5Result } from "./layers/t5.js";
+import type { StoreView, T5Input, T5Output, T5Result } from "./layers/t5.js";
 import type { T6Input, T6Output } from "./layers/t6.js";
 import type { T7Input, T7Output } from "./layers/t7.js";
 import type { T8Input, T8Output } from "./layers/t8.js";
@@ -285,6 +286,36 @@ export function createCycle(deps: CycleDeps): Cycle {
    * was built from can be recorded by id (v0.3.4 §9).
    */
   const unitDatum = new WeakMap<InfoUnit, string>();
+  /**
+   * The cycle's view of `[data]` for T5, and what it read, by purpose (v0.3.7
+   * §9, "Reading memory"). Open for the pass only.
+   */
+  let view: StoreView | undefined;
+  let reads: Map<string, Set<string>> | null = null;
+  /**
+   * The cycle's read-only view of `[data]`, for T5. Memory alone: what was
+   * admitted this cycle is met in it, not recalled, and is not returned; what is
+   * written this cycle is taken after the pass. Each read is kept, by purpose,
+   * for the cycle's `read` lines.
+   */
+  function storeView(admittedNow: ReadonlySet<string>): StoreView {
+    const mine = new Map<string, Set<string>>();
+    reads = mine;
+    return {
+      read(id: string, purpose: string): TaggedDatum | undefined {
+        if (reads !== mine) throw new Error("the store's view is read within its cycle only");
+        if (admittedNow.has(id)) return undefined;
+        const held = data.get(id);
+        if (held !== undefined) {
+          const ids = mine.get(purpose) ?? new Set<string>();
+          ids.add(id);
+          mine.set(purpose, ids);
+        }
+        return held;
+      },
+      idOf: (unit: InfoUnit) => unitDatum.get(unit),
+    };
+  }
   const admit = deps.admit ?? admitReturn;
   /** Log one `layer-exit` line per datum as it leaves a layer (§9: path in [event]). */
   function logExit(layer: LayerIndex): void {
@@ -336,7 +367,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     const t4 = runLayer(layers.t4, { units: t3.output.units }, field, datum);
     datum = t4.datum;
     logExit(4);
-    const t5 = runLayer(layers.t5, { bound: t4.output.bound }, field, datum);
+    const t5 = runLayer(layers.t5, { bound: t4.output.bound, ...(view ? { view } : {}) }, field, datum);
     datum = t5.datum;
     logExit(5);
     const t6 = runLayer(layers.t6, { results: t5.output.results, envPushed }, field, datum);
@@ -405,7 +436,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t4.datum;
     logExit(4);
     channel.publish(4, t4.output);
-    const t5 = runLayer(layers.t5, gatherT5(channel), field, datum);
+    const t5 = runLayer(layers.t5, { ...gatherT5(channel), ...(view ? { view } : {}) }, field, datum);
     datum = t5.datum;
     logExit(5);
     channel.publish(5, t5.output);
@@ -552,6 +583,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       });
       runningAdmitted = [...admittedAt.values()];
       const admittedNow = new Set(runningAdmitted);
+      view = storeView(admittedNow);
 
       const pass =
         flow === "single-threaded"
@@ -616,6 +648,16 @@ export function createCycle(deps: CycleDeps): Cycle {
       // minimal scripted host no layer emits (no live region to push to) — the
       // capability is afforded, not fabricated; the buffer is then empty.
       for (const e of pass.emissions) emit(e.issuingLayer, e.action);
+
+      // ── What T5 read of `[data]` (v0.3.7 §9, "Reading memory") ──
+      // One line for each purpose, naming the data read, in the order first read.
+      // The view closes with the pass: a read after it is no read of this cycle.
+      const cycleReads = reads;
+      reads = null;
+      view = undefined;
+      for (const [purpose, ids] of cycleReads ?? []) {
+        events.append(recordRead(datumId(), cycle, 5, purpose, [...ids], now()));
+      }
 
       // ── The store answers the queries raised this cycle (§6.4, §9 open layer) ──
       // Answered now, ingested at T1 next cycle. Answering changes nothing in

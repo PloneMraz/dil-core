@@ -9,19 +9,6 @@ See AGENTS.md for coding rules and build commands.
 
 ## Queued (Plone, 2026-10-04)
 
-- **The mind reads `[data]` for what its model computes from, and each read is
-  recorded** (Plone, 2026-10-05). The whole store is the agent's memory, so
-  what a model computes from — the states it reasons over, the hypotheses it
-  predicts with, the steps it learns from — the mind takes from `[data]`, not
-  from a copy it keeps. A read-only view of `[data]` at T5, beside `ask`,
-  `write` and `test`: no query's cycle of delay, no re-run through the layers;
-  each read recorded in `[event]` (what was read, in which cycle, by which
-  layer), and a datum written from it names what it was built from. Scope: what
-  the model computes from; the mind's own working state stays its own, already
-  written to `[data]`. A new mechanism of the protocol's (T5 has had only `ask`,
-  `write`, `test`): done in dil-arc3 first as a declared deviation; then here,
-  and the protocol to say so.
-
 - **T5's alertness vote is held down by the agent's own echoes** (Plone,
   2026-10-11). T5 votes `alertness` as the mean prediction error over every
   entity it met in the cycle (`src/loop/layers/t5.ts`). Among them are the

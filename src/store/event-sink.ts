@@ -96,6 +96,17 @@ export interface SerializedRevision {
   readonly t: number;
 }
 
+/** Serialized form of a `read` line (v0.3.7 §9: what T5 read of `[data]`, by id). */
+export interface SerializedRead {
+  readonly form: "read";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly issuingLayer: LayerIndex;
+  readonly purpose: string;
+  readonly read: readonly string[];
+  readonly t: number;
+}
+
 /** Serialized form of a lean `crystallization` activity line (§7; the one self/env distinction). */
 export interface SerializedCrystallization {
   readonly form: "crystallization";
@@ -151,6 +162,7 @@ export type SerializedEventRecord =
   | SerializedExpectation
   | SerializedResistanceReading
   | SerializedRevision
+  | SerializedRead
   | SerializedManifest;
 
 function datumForm(
@@ -211,6 +223,16 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
       return { form: "crystallization", datumId: rec.datumId, cycleMark: rec.cycleMark, t: rec.t };
     case "revision":
       return { form: "revision", datumId: rec.datumId, cycleMark: rec.cycleMark, issuingLayer: rec.issuingLayer, t: rec.t };
+    case "read":
+      return {
+        form: "read",
+        datumId: rec.datumId,
+        cycleMark: rec.cycleMark,
+        issuingLayer: rec.issuingLayer,
+        purpose: rec.purpose,
+        read: rec.read,
+        t: rec.t,
+      };
     case "expectation":
       return {
         form: "expectation",
@@ -458,6 +480,18 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       datumId: rec.datumId,
       cycleMark: rec.cycleMark,
       issuingLayer: rec.issuingLayer,
+      t: rec.t,
+    };
+  }
+  if (rec.form === "read") {
+    return {
+      kind: "activity",
+      activityKind: "read",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      issuingLayer: rec.issuingLayer,
+      purpose: rec.purpose,
+      read: rec.read,
       t: rec.t,
     };
   }

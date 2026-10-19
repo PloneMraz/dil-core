@@ -45,7 +45,7 @@ import type { ContributeFn, LayerSpec, Snapshottable } from "../layer.js";
 import type { Expectation, InfoUnit, ModField, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { storeQuery, type Description } from "./t3.js";
-import type { OpenTags } from "../../store/tags.js";
+import type { OpenTags, TaggedDatum } from "../../store/tags.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 import { ALERTNESS, EXPLORATION, axis, castVotes, falling, shiftedCount } from "../field.js";
 
@@ -55,8 +55,26 @@ export interface T5Result {
   readonly predErr: PredErr;
 }
 
+/**
+ * The rule's read-only view of `[data]`, for one cycle (v0.3.7 §9, "Reading
+ * memory"). The whole store is the agent's memory, and what the mind computes
+ * from it may take from it directly: `ask` answers a cycle later and runs every
+ * layer; `read` returns a datum as `[data]` holds it, in the cycle. Memory
+ * alone: a datum admitted in the cycle reading is met in it, not recalled, and
+ * is not returned — nor is anything written in the cycle, which the driver takes
+ * after the pass. Each read is recorded in `[event]`, one `read` line for each
+ * purpose. `idOf` names the datum an observation unit came from, so the rule can
+ * read it in a later cycle by its id.
+ */
+export interface StoreView {
+  read(datumId: string, purpose: string): TaggedDatum | undefined;
+  idOf(unit: InfoUnit): string | undefined;
+}
+
 export interface T5Input {
   readonly bound: readonly BoundInfo[];
+  /** The cycle's view of `[data]`, from the driver (v0.3.7). */
+  readonly view?: StoreView;
 }
 
 export interface T5Output {
@@ -146,6 +164,10 @@ export interface T5Options {
  * is, and thinking is conditioned by the field as every layer's reading is —
  * how alert to mismatch, how far to explore: "same data plus a different field
  * yields different meaning". A rule that does not read it omits the parameter.
+ *
+ * And it receives `read`, the cycle's view of `[data]` (`StoreView`, v0.3.7):
+ * what the mind computes from, it may read from its memory directly, each read
+ * recorded. A rule that does not read omits the parameter.
  */
 export type PredictRule = (
   entityId: string,
@@ -156,6 +178,7 @@ export type PredictRule = (
   write: WriteFn,
   test?: TestFn,
   field?: ModField,
+  read?: StoreView,
 ) => InfoUnit | Expecting;
 
 /** An action pushed to the region to test an expectation (§6.4). It emits nothing else. */
@@ -264,7 +287,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const out = predict(id, window, observed, contribute, ask, write, test, field);
+        const out = predict(id, window, observed, contribute, ask, write, test, field, input.view);
         const predicted = isExpecting(out) ? out.predicted : out;
         const confidence = Math.min(1, count / recurrence);
 
