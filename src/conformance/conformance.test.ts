@@ -401,6 +401,48 @@ test("§13.4 FAILS when confidence regresses while recurrence climbs (reload mas
   assert.ok(c4.detail.includes("accrual not driving the ramp"));
 });
 
+// Regressions (2026-10-19): a pass needed only a confidence below 1 and one at 1,
+// in any order, at any recurrence. Each series below is one entity's readings.
+function accumulationOf(...series: { entity: string; rows: [number, number][] }[]): string {
+  const events = createEventLog();
+  let t = 0;
+  for (const { entity, rows } of series) {
+    rows.forEach(([recurrence, confidence], cycle) =>
+      events.append(recordExpectation(`cycle-${cycle}`, cycle, entity, entity, confidence, recurrence, 0, ++t)),
+    );
+  }
+  events.append(recordCrystallization("cycle-0", 0, ++t));
+  const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
+  return c4.claims.find((c) => c.claim.includes("accumulation observable"))!.verdict;
+}
+
+test("§13.4 accumulation FAILS: confidence rises while recurrence stands still (INV-5)", () => {
+  assert.equal(accumulationOf({ entity: "weather", rows: [[1, 0.5], [1, 1]] }), "fail");
+  assert.equal(accumulationOf({ entity: "weather", rows: [[3, 0.2], [3, 0.6], [3, 1]] }), "fail");
+});
+
+test("§13.4 accumulation FAILS: confidence falls from saturation as recurrence climbs (INV-5)", () => {
+  assert.equal(accumulationOf({ entity: "weather", rows: [[1, 1], [2, 0.5]] }), "fail");
+});
+
+test("§13.4 accumulation FAILS: confidence rises with no recurrence behind it, then recurrence resets (INV-5)", () => {
+  assert.equal(accumulationOf({ entity: "weather", rows: [[0, 0], [1, 0.5], [2, 1], [0, 0]] }), "fail");
+});
+
+test("§13.4 accumulation passes a genuine ramp, and stays partial on a series saturated from its start", () => {
+  assert.equal(accumulationOf({ entity: "weather", rows: [[0, 0], [1, 1 / 3], [2, 2 / 3], [3, 1], [4, 1]] }), "pass");
+  assert.equal(accumulationOf({ entity: "weather", rows: [[3, 1], [4, 1], [5, 1]] }), "partial");
+});
+
+test("§13.4 accumulation across entities of different histories: one ramp passes, one fault fails", () => {
+  const ramp = { entity: "frame", rows: [[0, 0], [1, 0.5], [2, 1]] as [number, number][] };
+  const thin = { entity: "status", rows: [[0, 0], [1, 0.5]] as [number, number][] };
+  const faked = { entity: "remark", rows: [[2, 0.4], [2, 1]] as [number, number][] };
+  assert.equal(accumulationOf(ramp, thin), "pass", "one entity's ramp, another not yet saturated");
+  assert.equal(accumulationOf(thin), "partial");
+  assert.equal(accumulationOf(ramp, faked), "fail", "a genuine ramp does not cover another entity's fault");
+});
+
 test("the rendered table surfaces the evidence basis and a trace-only count", () => {
   const { events, gate } = runDaemon(RUN);
   const text = renderConformance(checkConformance(events, { gate }));
