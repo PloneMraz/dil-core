@@ -128,9 +128,9 @@ export const APPRAISAL_ANCHOR_ID = "mode-a-static-guide" as const;
 export const GLOB_MOD_REPRESENTATION =
   "ModField.params: Record<string, number> (per-key gains/biases — how to read)" as const;
 export const GLOB_MOD_UPDATE_LAW =
-  "convex per-key weighted average of a cycle's contributions; untouched keys carry over; effect at N+1" as const;
+  "convex per-key weighted average of a cycle's contributions, blended with the field before by FIELD_CARRY (0: none); untouched keys carry over; effect at N+1" as const;
 /**
- * Rationale (the chosen law, "option A" — no inertia constant):
+ * Rationale (the chosen law, "option A"; its inertia, FIELD_CARRY, 0 by default):
  *   - Each layer contributes a value and a non-negative weight for one or more
  *     param keys during cycle N (INV-7: "one competing parameter; contributions
  *     blend, re-weighted each cycle").
@@ -142,14 +142,26 @@ export const GLOB_MOD_UPDATE_LAW =
  *     only at N+1; the active field is immutable within its own cycle (INV-7:
  *     "conditions the field only from N+1, never within-cycle").
  *
- * Why no inertia term / no constant: a previous-field inertia weight would be a
- * tag-B constant with no derivation yet (forbidden to invent), and would make
- * the field partly self-constituted, softening the protocol's "constituted by
- * the eight layers → runaway precluded by construction" guarantee. A convex
- * average of the current cycle's contributions keeps that guarantee exact: the
- * result is always within the range of the contributions, so the field cannot
- * amplify itself from within. No gain cap is needed.
+ * Inertia, declared and 0 by default (FIELD_CARRY below): with none, a key
+ * contributed in a cycle is that cycle's average alone, and the field holds
+ * nothing of the cycles before. A host MAY declare a carry in [0, 1): the next
+ * value is carry·before + (1 − carry)·the cycle's average — still a convex
+ * combination, of the field before and the contributions, so it stays within the
+ * range of what the eight layers contributed and the host seeded: the field
+ * cannot amplify itself from within, and no gain cap is needed. The value is the
+ * host's to declare from its measurements, never invented here.
  */
+
+/**
+ * DECIDE@IMPL — how much of the field before a contributed key keeps (INV-7,
+ * §8.4: a store re-leans by mass and over the long run). 0: the cycle's
+ * contributions alone, as dil-core always did. Rationale (NOT derived): in
+ * dil-arc3, with none, the axes stood in narrow bands across eleven games and
+ * two individuals whose trust differed chose alike at every step; it declares
+ * 0.95, and the same DIL born in other fields became other individuals
+ * (Plone, 2026-10-18/19).
+ */
+export const FIELD_CARRY = 0;
 
 /**
  * DECIDE@IMPL — the field's axes (protocol §12, INV-7; DIL-en-v7 §2 "What it

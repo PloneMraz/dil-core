@@ -86,3 +86,29 @@ test("no runaway: the blended value stays within the range of contributions", ()
     assert.ok(g >= 0.2 && g <= 0.8, `field ran out of bounds: ${g}`);
   }
 });
+
+// ── FIELD_CARRY: the field before blends in, by a declared carry ──
+
+test("with no carry (the default), a contributed key is the cycle's average alone", () => {
+  const g = createGlobMod({ trust: 0.2 });
+  g.contribute(1, { trust: 1 }, 1);
+  assert.equal(g.advance(1).params.trust, 1);
+});
+
+test("with a carry, the field before blends in: carry·before + (1 − carry)·average, still in range", () => {
+  const g = createGlobMod({ trust: 0.2 }, 0, 0.75);
+  g.contribute(1, { trust: 1 }, 1);
+  assert.ok(Math.abs(g.advance(1).params.trust! - (0.75 * 0.2 + 0.25 * 1)) < 1e-12);
+  g.advance(2); // no contribution: the key carries over unchanged
+  assert.ok(Math.abs(g.current().params.trust! - 0.4) < 1e-12);
+  for (let c = 3; c < 50; c++) {
+    g.contribute(1, { trust: 1 }, 1);
+    const v = g.advance(c).params.trust!;
+    assert.ok(v >= 0.2 && v <= 1, "within the range of the seed and the contributions");
+  }
+});
+
+test("a carry outside [0, 1) is refused", () => {
+  assert.throws(() => createGlobMod({}, 0, 1), /carry/);
+  assert.throws(() => createGlobMod({}, 0, -0.1), /carry/);
+});

@@ -7,7 +7,8 @@
  * *what is read*.
  *
  * The update law is declared in decisions.ts (GLOB_MOD_UPDATE_LAW, "option A"):
- * a convex per-key weighted average of a cycle's contributions, untouched keys
+ * a convex per-key weighted average of a cycle's contributions — blended with the
+ * field before by a declared carry, 0 by default (FIELD_CARRY) — untouched keys
  * carrying over, taking effect at N+1. Two structural guarantees:
  *   - N+1, never within-cycle: contributions land in a `pending` buffer; the
  *     active field changes only at `advance()`. `advance()` routes through
@@ -20,6 +21,7 @@
 import { assertGlobModUpdate } from "../invariants/guards.js";
 import type { LayerIndex } from "../invariants/types.js";
 import type { ModField } from "./types.js";
+import { FIELD_CARRY } from "./decisions.js";
 
 export class GlobModError extends Error {
   constructor(detail: string) {
@@ -71,12 +73,14 @@ function freezeField(params: Record<string, number>, t: number): ModField {
 
 /**
  * Convex per-key weighted average of the contributions, over the previous
- * params. Keys with positive total weight get Σ(wᵢ·vᵢ)/Σ(wᵢ); every other key
- * carries over unchanged.
+ * params. Keys with positive total weight get Σ(wᵢ·vᵢ)/Σ(wᵢ) — blended with the
+ * value before by `carry` when it had one: carry·before + (1 − carry)·average
+ * (FIELD_CARRY, decisions.ts); every other key carries over unchanged.
  */
 function blend(
   prev: Readonly<Record<string, number>>,
   contributions: readonly Contribution[],
+  carry: number,
 ): Record<string, number> {
   const weightedSum: Record<string, number> = {};
   const weightTotal: Record<string, number> = {};
@@ -90,7 +94,9 @@ function blend(
   for (const key of Object.keys(weightedSum)) {
     const w = weightTotal[key] ?? 0;
     if (w > 0) {
-      next[key] = weightedSum[key]! / w;
+      const average = weightedSum[key]! / w;
+      const before = prev[key];
+      next[key] = carry > 0 && typeof before === "number" ? carry * before + (1 - carry) * average : average;
     }
   }
   return next;
@@ -99,7 +105,11 @@ function blend(
 export function createGlobMod(
   initialParams: Readonly<Record<string, number>> = {},
   cycle = 0,
+  carry: number = FIELD_CARRY,
 ): GlobMod {
+  if (!Number.isFinite(carry) || carry < 0 || carry >= 1) {
+    throw new GlobModError(`carry must be in [0, 1) (convexity, and the contributions must reach it), got ${carry}`);
+  }
   let field = freezeField({ ...initialParams }, cycle);
   let currentCycle = cycle;
   let pending: Contribution[] = [];
@@ -122,7 +132,7 @@ export function createGlobMod(
         contribCycle: currentCycle,
         effectCycle: nextCycle,
       });
-      field = freezeField(blend(field.params, pending), nextCycle);
+      field = freezeField(blend(field.params, pending, carry), nextCycle);
       currentCycle = nextCycle;
       pending = [];
       return field;
