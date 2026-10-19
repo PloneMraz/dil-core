@@ -6,6 +6,17 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-19
 
+### 21:30 — fix: tích luỹ INV-5 chỉ đạt khi recurrence kéo confidence lên
+**Commit:** `817bf75`
+
+Plone duyệt, sau khi một bản kiểm cho thấy bộ đo có thể cho PASS sai: `measureAccumulation` (`src/conformance/checker.ts`) đánh dấu đạt khi chuỗi confidence của một thực thể có một giá trị dưới 1 và một giá trị bằng 1, bất kể thứ tự và bất kể recurrence. Ba chuỗi sai đều đạt: r = 1, 1 với c = 0,5 → 1; r đứng ở 3 với c 0,2 → 0,6 → 1; và c rơi từ 1 xuống 0,5 khi r tăng 1 → 2 (phép kiểm cũ "r tăng thì c phải tăng" chỉ xét khi chưa bão hoà). Code trái với chính docstring của nó.
+
+Confidence là hàm của số lần tích luỹ, đơn điệu tới khi bão hoà ở 1 (T5), nên giờ trong chuỗi của một thực thể: **fail** khi recurrence giảm; khi confidence đổi mà recurrence đứng yên; khi confidence giảm ở bất kỳ mức nào, kể cả từ bão hoà, trong lúc recurrence tăng; hoặc khi recurrence tăng lúc chưa bão hoà mà confidence không tăng. **Pass** chỉ khi có một lần đọc dưới bão hoà và một lần sau đó đạt bão hoà với recurrence lớn hơn. Còn lại là partial.
+
+Năm test hồi quy: confidence tăng khi recurrence đứng yên; confidence rơi từ bão hoà; recurrence bị đặt lại; ramp thật và chuỗi bão hoà từ đầu; nhiều thực thể có lịch sử khác nhau (một ramp thật cộng một thực thể chưa bão hoà thì đạt, một ramp thật không che được lỗi của thực thể khác). Trên code cũ, ba trong năm hỏng. 424 test, 0 lỗi; README ghi số mới.
+
+---
+
 ### 08:35 — docs: số test trong README sau năm việc của hàng chờ
 **Commit:** `7f7d325`
 
