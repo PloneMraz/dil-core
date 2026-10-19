@@ -16,20 +16,21 @@
  *
  *     read [event] ──► an expectation ──► the region answers ──► mismatch ──► scar
  *
- * WHY THE LOG IS AN OTHER AND NOT A MEMORY. §7 forbids the alternative outright:
- * "Continuity is not measurable from within... An implementation MUST NOT claim
- * self-continuity as an internal measurement." An agent treating the log as *its
- * own past* would be asserting exactly that continuity. It may only treat the
- * log as something that RETURNS — and a returning record satisfies §8.4's
- * B-source rule better than most live sources do, being immutable: it "says no
- * in a way the agent cannot re-interpret away". The agent may collide with the
- * record. It may not conclude that the record was itself.
+ * THE LOG IS MEMORY, READ BACK AS AN OTHER (protocol v0.3.6; Plone, 2026-10-04).
+ * The whole store is the agent's memory, the log in it the part that is only
+ * appended to and read. That memory is the real past of what happened: a trace
+ * that can be followed and inspected as any program's trace can. It asserts
+ * nothing about a self that continues — §7 still forbids an implementation to
+ * "claim self-continuity as an internal measurement". Reading it back is a
+ * meeting with an Other in Mode-A, not the agent meeting itself: the record
+ * returns, being immutable it "says no in a way the agent cannot re-interpret
+ * away" (§8.4), and the agent may collide with it. It may not conclude that the
+ * record was itself.
  *
- * ONLY SCARS ARE RECALLABLE, and that is not a shortcut. §9 admits activity
- * records to the log as "trace, not experience: no layer learns from it", which
- * "keeps the audit trail complete across quiet stretches without letting
- * uncontested information into the agent's memory". Recalling only collided
- * material keeps that line exactly where §9 draws it.
+ * ONLY SCARS ARE RECALLABLE, and that is not a shortcut. §10 names retrieval of
+ * RESISTANCE: what returns here is what collided. An activity record is trace,
+ * not experience (§9): it never becomes a scar, and this channel does not
+ * return it.
  *
  * WHAT IT DOES NOT REACH, declared. The record was written under the same lens
  * that now reads it. A standing bias is recorded and returned and agrees with

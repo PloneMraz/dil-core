@@ -70,7 +70,7 @@ export interface EventRecord {
 /**
  * One cycle's activity, for the log's AUDIT role (§9 "completeness of trace"):
  * what was emitted, what returned, in which flow mode. Trace, not experience —
- * no layer learns from it.
+ * it never becomes a scar; like all the store, it is the agent's memory.
  */
 export interface ActivityEvent {
   readonly cycle: number;
@@ -113,8 +113,8 @@ export interface ActivityEvent {
   /**
    * The full tag set of every datum the agent wrote this cycle — written anew
    * (entering at `nascent`) or revised (its provenance unchanged) — as it stands
-   * once written (v0.3.3). Tags only, never content: what a revised datum held
-   * is read from the commit snapshot, not the log. Each of these arrives at T1
+   * once written (v0.3.3). Tags only, never content: what a revised datum holds
+   * is in `[data]` (v0.3.6 §9). Each of these arrives at T1
    * the next cycle and runs every layer. Absent when nothing was written. Each
    * also says what it was built from (v0.3.4).
    */
@@ -140,7 +140,7 @@ export interface WrittenTags extends RecalledTags {
 
 /**
  * Activity records — the log's TRACE lines (§9: "an activity record is trace, not
- * experience"; no layer learns from any of them). Every movement of a datum is a
+ * experience"; none becomes a scar). Every movement of a datum is a
  * line, written as it occurs: it is only a log, dense but only a log. The kinds:
  *
  *   - `cycle-seal`  — the per-cycle record §9 mandates (emitted/observed/flow),
@@ -169,7 +169,8 @@ export interface CycleSealActivity {
  * of a datum it already holds. The datum stays the same datum — no provenance
  * move, no entry. A bare record that the revision occurred: which datum, in which
  * cycle, by which layer. It carries no content, as no `[event]` does; what the
- * datum held is read from the commit snapshot.
+ * datum holds is in `[data]`. A commit's snapshot keeps the store's content by
+ * design, outside the store, for recovery — not for reading (v0.3.6 §9).
  */
 export interface RevisionActivity {
   readonly kind: "activity";

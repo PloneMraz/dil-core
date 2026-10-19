@@ -9,23 +9,6 @@ See AGENTS.md for coding rules and build commands.
 
 ## Queued (Plone, 2026-10-04)
 
-- **Bring the code's comments to protocol v0.3.6.** The protocol and the
-  specification now say the whole store is the agent's memory and no longer
-  claim that no layer learns from an activity record. The code still says so:
-  `src/loop/cycle.ts` (the activity record's comment), `src/store/resist-event.ts`
-  (two), and `src/loop/recollection.ts`, whose section "WHY THE LOG IS AN OTHER
-  AND NOT A MEMORY" argues that treating the log as memory would claim
-  continuity (§7). Plone settled it: memory here is the real past of what
-  happened, a trace followed and inspected as any program's is, claiming nothing
-  about a continuing self; reading it back is meeting an Other in Mode-A, not the
-  agent meeting itself. And `src/store/resist-event.ts` (two: the written
-  tags, `RevisionActivity`) says what a revised datum held "is read from the
-  commit snapshot": what it holds is in `[data]`; the snapshot keeps the store's
-  content by design, outside the store, for recovery, not for reading (v0.3.6,
-  §9). dil-arc3's port was brought to this first (its commit of
-  2026-10-04, "recollection: the log is memory, read back as an Other"); port it
-  back here, comments only.
-
 - **Sync to disk once a cycle, as a declared constant** (Plone, 2026-10-04).
   The durable `[event]` sink syncs each record to disk before returning, and
   the SQLite `[data]` store commits each write. In dil-arc3 with every change
