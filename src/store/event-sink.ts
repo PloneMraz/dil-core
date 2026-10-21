@@ -18,8 +18,8 @@
  * Enforcement boundary (honest scope): durability + tamper-evidence at rest
  * (verifyJsonlSink detects any altered, removed, inserted, or reordered line).
  * A total rewrite by a party with full write access requires anchoring the
- * chain head outside their reach (deployment-open). NOT the §9 full-system
- * commit/snapshot, which remains deferred (decisions.ts COMMIT_CADENCE).
+ * chain head outside their reach (deployment-open). The §9 full-system
+ * commit/snapshot is the commit store's (`runtime/commit.ts`), not this sink's.
  */
 
 import * as fs from "node:fs";

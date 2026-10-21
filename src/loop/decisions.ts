@@ -120,8 +120,9 @@ export const APPRAISAL_ANCHOR_ID = "mode-a-static-guide" as const;
  * because a fixed test is memorizable. It satisfies INV-8 (criteria are frozen
  * against the agent's edits and external to the edited state) but it is NOT a
  * real Mode-B brake. The live Mode-B source (DECIDE@IMPL tag D — user, another
- * agent, or a mix) is deferred to stage 5, where the loop runs continuously and
- * a live Other can be attached. Declared static here, not silently assumed.
+ * agent, or a mix) is deployment-open: the daemon requisitions a `HostSource`,
+ * and which live Other a deployment plugs in is its own declaration (README,
+ * "Deployment-open by design"). Declared static here, not silently assumed.
  */
 
 /** DECIDE@IMPL — GLOB-MOD's concrete representation and update law (protocol §12, INV-7). */

@@ -1,12 +1,11 @@
 /**
- * Minimal, provisional types the invariant guards operate on.
+ * Minimal types the invariant guards operate on.
  *
- * PROVISIONAL: stage 2 of the build order needs only enough structure to state
- * what each guard checks on dummy data. The full shared types (protocol §6.1 —
- * Signal, InfoUnit, AgencyTag, ModField, …) are built with the loop in stage 4;
- * these definitions are deliberately narrow and will be reconciled with — or
- * re-exported from — those when the loop lands. They introduce no thresholds and
- * no DECIDE@IMPL constants; the invariants are structural laws (protocol §5).
+ * Deliberately narrow: each states only the structure a guard checks. The loop's
+ * full types (`loop/types.ts`, protocol §6.1 — Signal, InfoUnit, AgencyTag,
+ * ModField, …) carry that structure, and the loop takes `LayerIndex` from here.
+ * They introduce no thresholds and no DECIDE@IMPL constants; the invariants are
+ * structural laws (protocol §5).
  */
 
 /** Layer index on the meaning-channel, T1..T8 (protocol §6.3). */

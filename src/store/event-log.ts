@@ -12,9 +12,9 @@
  * record and exposes NO update/remove API — only append and read. That stops
  * accidental and in-process mutation. For DURABILITY (records surviving the
  * process), pass an optional EventSink: every appended record is mirrored to it
- * at append time. The stronger, tamper-EVIDENT guarantee against a compromised
- * host (content-addressed commit markers) remains deferred (decisions.ts
- * COMMIT_CADENCE) and is NOT provided by the sink.
+ * at append time. Tamper-evidence at rest is the sink's hash chain
+ * (`event-sink.ts`), and the content-addressed commit markers that pin its head
+ * are the commit store's (`runtime/commit.ts`): neither is this module's.
  */
 
 import type { EventRecord, LogRecord } from "./resist-event.js";

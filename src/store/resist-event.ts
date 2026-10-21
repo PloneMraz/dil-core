@@ -29,9 +29,9 @@ export interface ResistEvent {
 /**
  * The full field-state anchored with an event (DECIDE@IMPL tag G).
  *
- * PROVISIONAL shape: the full ModField/GLOB-MOD type lands with the loop
- * (stage 4); for now the anchor carries the cycle's field parameters verbatim so
- * the depth is genuinely "full field-state", not a lossy trace.
+ * The anchor carries the cycle's field parameters verbatim — `ModField.params`,
+ * the whole of GLOB-MOD's representation, its `t` being the anchor's own cycle —
+ * so the depth is genuinely "full field-state", not a lossy trace.
  */
 export interface ContextAnchor {
   readonly depth: typeof CONTEXT_ANCHOR_DEPTH; // "full-field-state"
