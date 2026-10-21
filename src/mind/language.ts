@@ -15,8 +15,10 @@
  * that failed changes nothing and is said so in the next prompt.
  *
  * The prompt names no environment: what the region is, the model reads from
- * what comes back. OPEN: its expectation is not yet tied to the datum it wrote
- * (`heldBy`), so a failed expectation scars the return and not the thought.
+ * what comes back. What it expects of an entity is held by the thought it came
+ * from (`heldBy`, v0.3.5) once that thought's id has come back, the cycle after
+ * it was written: an expectation that fails then scars the thought too. Until
+ * then it holds no datum.
  */
 
 import { AXES, axis } from "../loop/field.js";
@@ -77,7 +79,9 @@ function cuesOf(ask: unknown): Description[] {
 
 export function languageModel(opts: LanguageModelOptions): LanguageModel {
   const send = opts.chat ?? sendChat;
-  const beliefs = new Map<string, unknown>();
+  // What it expects of each entity, and the thought it came from: its handle
+  // while the thought's id has not come back, then the id.
+  const beliefs = new Map<string, { value: unknown; from: object; id?: string }>();
   const notes: string[] = [];
   let pending: Proposal | null = null;
   let lastProblem: string | undefined;
@@ -101,7 +105,14 @@ export function languageModel(opts: LanguageModelOptions): LanguageModel {
   return {
     notes: () => [...notes],
 
-    expect: (s) => (beliefs.has(s.entityId) ? { value: beliefs.get(s.entityId) } : {}),
+    expect: (s) => {
+      const b = beliefs.get(s.entityId);
+      return b === undefined ? {} : { value: b.value, heldBy: b.id !== undefined ? [b.id] : [] };
+    },
+
+    acknowledge(handle, datumId) {
+      for (const b of beliefs.values()) if (b.from === handle) b.id = datumId;
+    },
 
     think(c: Context): Thinking | null {
       const messages = prompt(c);
@@ -119,14 +130,15 @@ export function languageModel(opts: LanguageModelOptions): LanguageModel {
         return { writes: [{ payload: { text: result.text, taken: false }, builtFrom: shownFrom }] };
       }
       lastProblem = undefined;
+      const handle = {};
       if (answer.expect === null || answer.expect === undefined) beliefs.delete(c.entityId);
-      else beliefs.set(c.entityId, answer.expect);
+      else beliefs.set(c.entityId, { value: answer.expect, from: handle });
       pending =
         answer.command === null || answer.command === undefined
           ? null
           : { action: answer.command, ...(typeof answer.note === "string" ? { why: answer.note } : {}) };
       return {
-        writes: [{ payload: { text: result.text, taken: true }, builtFrom: shownFrom }],
+        writes: [{ payload: { text: result.text, taken: true }, builtFrom: shownFrom, handle }],
         asks: cuesOf(answer.ask),
       };
     },

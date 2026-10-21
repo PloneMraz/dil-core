@@ -109,6 +109,24 @@ test("a request that fails changes nothing", () => {
   assert.match(model.notes()[0]!, /refused/);
 });
 
+test("what it expects is held by the thought it came from: once the thought's id is back, a failure scars it", () => {
+  const send = scripted(
+    JSON.stringify({ expect: w("rain"), note: "it changed", ask: [], command: null }),
+    JSON.stringify({ expect: null, ask: [], command: null }),
+  );
+  const model = languageModel({ endpoint: ENDPOINT, chat: send });
+  const { step, data, events } = loop(createMind(model).rule);
+  step("sun");
+  step("rain"); // the standing expectation fails: it thinks, and now expects rain
+  step("rain"); // the thought comes back, with its id
+  step("sun"); // its expectation fails
+  const thoughts = data.entries().filter(([, d]) => d.open.kind === "thought");
+  const id = thoughts[0]![0];
+  assert.equal(data.get(id)!.fixed.provenance, "scar", "the thought the expectation came from met the mismatch");
+  const scars = events.all().filter((e) => e.kind === "scar").map((e) => (e as { datumId?: string }).datumId);
+  assert.ok(scars.includes(id), "with its own scar record");
+});
+
 // ── the real transport, against a server in a process of its own ──
 
 const SERVER = `

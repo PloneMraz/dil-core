@@ -54,6 +54,11 @@ export interface Write {
   readonly tags?: OpenTags;
   /** What it was built from: units the mind handed it, or datum ids (v0.3.4). */
   readonly builtFrom: readonly (InfoUnit | string)[];
+  /**
+   * A handle the model keeps for the datum: the mind tells it the datum's id
+   * (`acknowledge`) when the write comes back from the store, the cycle after.
+   */
+  readonly handle?: object;
 }
 
 /** What the mind hands the model to think or propose from. */
@@ -86,6 +91,8 @@ export interface Model {
   think?(context: Context): Thinking | null;
   /** What to do next; null: nothing to command. */
   propose?(context: Context): Proposal | null;
+  /** A datum it asked to be written, with a handle, has come back: its id. */
+  acknowledge?(handle: object, datumId: string): void;
 }
 
 /**

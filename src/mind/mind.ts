@@ -88,13 +88,25 @@ export function createMind(model: Model): Mind {
   let recalled: Context["recalled"][number][] = [];
   let thoughtCycle = -1;
   let thoughtsThisCycle = 0;
+  // What it wrote with a model's handle, until the write comes back with its id.
+  let awaited: { readonly payload: string; readonly handle: object }[] = [];
 
   const rule: PredictRule = (entityId, window, observed, _contribute, ask, write, test, field) => {
     const cycle = field?.t ?? 0;
     const standing = window.length > 0 ? window[window.length - 1]! : observed;
 
-    // What memory answered: held for the next thought, and expected as it is.
+    // What memory answered: held for the next thought, and expected as it is. A
+    // write of its own coming back tells the model, by its handle, the id it took.
     if (channelOf(observed) === STORE_CHANNEL) {
+      const back = valueOf(observed) as { payload?: unknown } | null;
+      if (back !== null && typeof back === "object" && "payload" in back) {
+        const payload = JSON.stringify(back.payload);
+        const i = awaited.findIndex((a) => a.payload === payload);
+        if (i >= 0) {
+          model.acknowledge?.(awaited[i]!.handle, entityId);
+          awaited = awaited.filter((_, j) => j !== i);
+        }
+      }
       recalled.push({ id: entityId, unit: observed, value: valueOf(observed) });
       return standing;
     }
@@ -108,6 +120,7 @@ export function createMind(model: Model): Mind {
         };
         write(request);
         writes += 1;
+        if (w.handle !== undefined) awaited.push({ payload: JSON.stringify(w.payload), handle: w.handle });
       }
     };
 

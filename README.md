@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase implements **protocol v0.3.7** (the store's claim stays `0.3.5`; v0.3.7's `read` record moves the tag schema to 4): **428 tests, 0 failures.**
+All six build stages are implemented, and the codebase implements **protocol v0.3.7** (the store's claim stays `0.3.5`; v0.3.7's `read` record moves the tag schema to 4): **429 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 
@@ -220,7 +220,7 @@ The protocol itself distinguishes these (§12): what is *not yet built* versus w
 
 The one honest residual: the graph's **scar-reentry roads** (`scar→running`/`→simulated`/`→projected`) and `simulated→running` / `projected→simulated` exist and validate, but the minimal scripted host never meets their *conditions* — a real host that draws the `[data]` pool back into situations would. This is emergence-by-condition, not unbuilt work: the roads are there; whether they are taken depends on the situation.
 
-Two residuals of the mind (`src/mind`): a language model's expectation is not yet tied to the datum it wrote (`heldBy`), so a failed expectation scars the return and not the thought that made it; and `languageModel` holds one expected value per entity, revised only when that value fails, so it cannot expect a sequence: smoke-tested against a local Qwen3.6-35B-A3B (`scripts/smoke-language-model.mjs`, CHANGELOG), on a value that runs in a cycle of three it settled on the majority value and missed every third.
+One residual of the mind (`src/mind`): `languageModel` holds one expected value per entity, revised only when that value fails, so it cannot expect a sequence: smoke-tested against a local Qwen3.6-35B-A3B (`scripts/smoke-language-model.mjs`, CHANGELOG), on a value that runs in a cycle of three it settled on the majority value and missed every third.
 
 ### Deployment-open by design (no core work owed — each deployment declares its own)
 
