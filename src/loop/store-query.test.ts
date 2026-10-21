@@ -29,6 +29,7 @@ import {
   recordProvenance,
   type CycleSealActivity,
   type EmissionActivity,
+  type EventRecord,
   type LayerExitActivity,
   type ProvenanceActivity,
 } from "../store/resist-event.js";
@@ -484,4 +485,40 @@ test("a rule that asks leaves a trace the checker accepts", () => {
 
   const failed = checkConformance(events).results.filter((r) => r.verdict === "fail");
   assert.deepEqual(failed.map((r) => `${r.id}: ${r.detail}`), []);
+});
+
+// A store arrival that mismatches holds its own scar (2026-10-21): before, the cycle
+// datum stood for every collision on the store channel; what a query recalled is a
+// datum held, and an expectation that fails on it fails on that datum.
+
+/** Asks about the world once, and expects of what it recalls something other than it holds. */
+function expectingOtherwise(): PredictRule {
+  let asked = false;
+  return (entityId, window, observed, contribute, ask, write) => {
+    if (!asked) {
+      asked = true;
+      ask({ kind: "world" });
+    }
+    if (entityId === UNRELATED) return { ...observed, content: { says: "Not what it holds." } };
+    return persistence(entityId, window, observed, contribute, ask, write);
+  };
+}
+
+test("an expectation that fails on what a query recalled scars the datum recalled, not the cycle datum", () => {
+  const data = seededStore();
+  const events = createEventLog();
+  const cycle = cycleWithRule(data, events, expectingOtherwise());
+  cycle.run({ signals: [status(1)], changes: [] });
+  cycle.run({ signals: [status(2)], changes: [] });
+
+  const scars = events.all().filter((r): r is EventRecord => r.kind === "scar");
+  assert.equal(scars.length, 1, "one collision");
+  assert.equal(scars[0]!.datumId, UNRELATED, "its record names the datum recalled");
+  assert.equal(data.get(UNRELATED)!.fixed.provenance, "scar");
+  assert.deepEqual(
+    moves(events, UNRELATED).map((m) => `${m.from}→${m.to}`),
+    ["prior→running", "running→scar"],
+  );
+  assert.ok(!moves(events, "cycle-1").some((m) => m.to === "scar"), "the cycle datum does not stand for it");
+  assert.notEqual(checkConformance(events, {}).results.find((r) => r.id === "6")!.verdict, "fail");
 });

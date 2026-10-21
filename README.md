@@ -33,7 +33,7 @@ If a design ever has DIL generating output to the world, commanding the model, o
 
 ## Status
 
-All six build stages are implemented, and the codebase implements **protocol v0.3.7** (the store's claim stays `0.3.5`; v0.3.7's `read` record moves the tag schema to 4): **427 tests, 0 failures.**
+All six build stages are implemented, and the codebase implements **protocol v0.3.7** (the store's claim stays `0.3.5`; v0.3.7's `read` record moves the tag schema to 4): **428 tests, 0 failures.**
 
 A short quick-start run scores **4 pass / 3 partial / 0 fail** against the seven §13 conformance criteria; a longer run with diverse resistance sources scores **6 pass / 1 partial / 0 fail**, read by an independent auditor from the durable `[event]` log on disk. Every partial is honest and derived, not attested:
 

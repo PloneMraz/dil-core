@@ -625,11 +625,18 @@ export function createCycle(deps: CycleDeps): Cycle {
           unitDatum.set(unit, id);
         }
       }
-      // What came back from the store, recalled or written, is a datum too.
+      // What came back from the store, recalled or written, is a datum too. What a
+      // query brought back is a datum held, recalled: an expectation that fails on
+      // it fails on that datum, which holds the scar (as a recalled scar is the
+      // datum its record names). A write coming back is the agent's own act.
+      const recalledOf = new Map<InfoUnit, string>();
       for (let i = regionInput.signals.length; i < host.signals.length; i++) {
         const unit = pass.units[i];
         const entity = (host.signals[i]!.raw_payload as { entity?: unknown }).entity;
-        if (unit !== undefined && typeof entity === "string") unitDatum.set(unit, entity);
+        if (unit !== undefined && typeof entity === "string") {
+          unitDatum.set(unit, entity);
+          if (i < regionInput.signals.length + returned.length) recalledOf.set(unit, entity);
+        }
       }
 
       // ── §7 crystallization: T2 drew the self/environment distinction ──
@@ -901,11 +908,12 @@ export function createCycle(deps: CycleDeps): Cycle {
       // it cast — `projected → scar`, "the emission was made, the region
       // returned, and the datum collided and held" — or a collision that has no
       // return of its own to hold the scar (an absence, where nothing returned;
-      // a return the host kept out; a store arrival), for which it stands.
-      // Otherwise the region's return is the datum that collided, and a cast
-      // that did not collide returns to use: `projected → running`.
+      // a return the host kept out; the agent's own write coming back), for which
+      // it stands. Otherwise the datum that came back is the one that collided —
+      // the region's return, or what a query recalled — and a cast that did not
+      // collide returns to use: `projected → running`.
       const returnOf = (e: PredErr): string | undefined =>
-        e.observed !== null ? datumOf.get(e.observed) : undefined;
+        e.observed !== null ? (datumOf.get(e.observed) ?? recalledOf.get(e.observed)) : undefined;
       const cycleCollides = collisions.some(
         ({ source_id, e }) => returnOf(e) === undefined || (forwardBuilt && cast.has(source_id)),
       );
