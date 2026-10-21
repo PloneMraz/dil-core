@@ -24,7 +24,8 @@ import { createT7 } from "../loop/layers/t7.js";
 import { createT8 } from "../loop/layers/t8.js";
 import { createDataStore } from "../store/data-store.js";
 import { createEventLog } from "../store/event-log.js";
-import { recordProvenance, recordCrystallization, recordExpectation } from "../store/resist-event.js";
+import { recordProvenance, recordCrystallization, recordExpectation, recordScar } from "../store/resist-event.js";
+import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import type { HostDeclaration } from "../host/declaration.js";
 import type { HostCycleInput } from "../loop/cycle.js";
 import type { EventLog } from "../store/event-log.js";
@@ -450,4 +451,37 @@ test("the rendered table surfaces the evidence basis and a trace-only count", ()
   assert.ok(text.includes("[trace]"), "claims are tagged with their basis");
   assert.ok(text.includes("[structural]"), "structural claims are visible");
   assert.ok(/\d+\/\d+ criteria confirmable from \[event\] alone/.test(text), "a trace-only count is shown");
+});
+
+// Regressions (2026-10-21): the monotonicity claim read a scar's datum stamp — the
+// cycle the datum ENTERED — as the cycle the record happened in. Since v0.3.5 a
+// datum an expectation was (held_by) is scarred cycles after it entered, so every
+// host that keeps v0.3.5 read as "not monotonic … accrual is suspect".
+function monotonicityOf(...scars: { stamped: number; scarredAt: number }[]): string {
+  const events = createEventLog();
+  let t = 0;
+  events.append(recordCrystallization("cycle-0", 0, ++t));
+  for (const { stamped, scarredAt } of scars) {
+    const scar = {
+      payload: {}, open: { domain: "mind", kind: "hypothesis", source: "mind" },
+      fixed: { timestamp: ++t, cycleMark: stamped, provenance: "scar" as const, floorTag: 5 as const },
+    };
+    const event = { source_id: "ch", expected: 1, received: 2, mismatch_kind: "value-mismatch" as const, t };
+    events.append(recordScar(scar, event, { depth: CONTEXT_ANCHOR_DEPTH, cycle: scarredAt, fieldState: {} }, `d-${t}`));
+  }
+  const c4 = checkConformance(events, {}).results.find((r) => r.id === "4")!;
+  return c4.claims.find((c) => c.claim.includes("non-decreasing"))!.verdict;
+}
+
+test("§13.4 reads a scar by the cycle it happened in: a held_by scar of an older datum is no step back", () => {
+  // Cycle 9's return, then a hypothesis written at cycle 4 scarred at cycle 10.
+  assert.equal(monotonicityOf({ stamped: 9, scarredAt: 9 }, { stamped: 4, scarredAt: 10 }), "pass");
+});
+
+test("§13.4 stays partial when the cycles records happened in go back (a fork re-entered earlier cycles)", () => {
+  assert.equal(monotonicityOf({ stamped: 9, scarredAt: 9 }, { stamped: 3, scarredAt: 3 }), "partial");
+});
+
+test("§13.4 stays partial when a scar records a datum stamped after the collision it met", () => {
+  assert.equal(monotonicityOf({ stamped: 12, scarredAt: 10 }), "partial");
 });

@@ -437,8 +437,20 @@ export function checkConformance(
   if (records.length === 0) {
     push("4", "Self", [claim("state accrues — cycle-marks non-decreasing (INV-5)", "trace", "unverifiable")], "no [event] records to read");
   } else {
-    const marks = datumBearing.map((r) => datumOf(r).fixed.cycleMark ?? -1);
-    const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!);
+    // The cycle each record HAPPENED in, in log order: a seal's is its cycle
+    // datum's mark; a scar's is its anchor's cycle — not the mark its datum was
+    // stamped with, which is the cycle the datum entered. Since v0.3.5 a datum an
+    // expectation was (held_by) is scarred when the expectation fails, cycles after
+    // it entered, so its stamp may lie behind the log's present without anything
+    // having re-entered an earlier cycle. What a scar's stamp may not do is lie
+    // AHEAD of its anchor: no datum is scarred before it entered.
+    const happened = (r: DatumBearing): number =>
+      r.kind === "scar" ? r.anchor.cycle : (datumOf(r).fixed.cycleMark ?? -1);
+    const marks = datumBearing.map(happened);
+    const scarredAhead = datumBearing.filter(
+      (r): r is EventRecord => r.kind === "scar" && (r.scar.fixed.cycleMark ?? -1) > r.anchor.cycle,
+    );
+    const nonDecreasing = marks.every((m, i) => i === 0 || m >= marks[i - 1]!) && scarredAhead.length === 0;
     // §7 crystallization: T2 draws the self/environment distinction ONCE, at the
     // T2 of cycle-0. The trace must show it as a one-time act — at most one
     // crystallization record, and it may only mark cycle 0 (the from-within
@@ -475,7 +487,9 @@ export function checkConformance(
       claims,
       (nonDecreasing
         ? "state accrues (cycle-marks non-decreasing, INV-5), no internal continuity claim; self-continuity itself is attributable only by a third party (§7)"
-        : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
+        : scarredAhead.length > 0
+          ? `a scar records a datum stamped in a later cycle than the collision (${scarredAhead[0]!.datumId ?? "the cycle datum"}) — no datum is scarred before it entered`
+          : "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles (cross-check the commit DAG: fork markers carry recoveredFrom) or accrual is suspect") +
         crystallizationNote +
         "; " + accum.note,
     );
