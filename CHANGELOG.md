@@ -6,6 +6,20 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-21
 
+### 12:02 — docs: năm chú thích thôi gọi là deferred hay provisional những gì đã xây
+**Commit:** `90518dc`
+
+Plone duyệt, sau một lượt rà các giới hạn còn mở. `event-sink.ts` và `event-log.ts` còn ghi commit/snapshot §9 và commit marker "remains deferred" — đã có (`runtime/commit.ts`); `resist-event.ts` còn gọi `ContextAnchor` là "PROVISIONAL… lands with the loop (stage 4)" — vòng lặp đã có, anchor mang đúng `ModField.params`; `loop/decisions.ts` còn ghi nguồn Mode-B sống "deferred to stage 5" — stage 5 đã có, nguồn sống là việc của deployment; `invariants/types.ts` còn hứa "will be reconciled when the loop lands" — vòng lặp lấy `LayerIndex` từ đó, kiểu hẹp là có chủ ý. Chỉ là chú thích.
+
+---
+
+### 12:02 — fix: expectation của language mind được thought sinh ra nó giữ, khi id của thought đã về
+**Commit:** `43824af`
+
+Plone duyệt (giới hạn README tự khai: "a language model's expectation is not yet tied to the datum it wrote"). Mỗi thought được giữ kèm một handle (`Write.handle`); khi bản ghi dội về từ store ở cycle sau, mind nhận ra nó theo payload và báo id cho model (`Model.acknowledge`). Từ đó `languageModel.expect` trả `heldBy: [id của thought]`, nên expectation sai thì chính thought cũng bị scar, với bản ghi riêng (v0.3.5); trước khi id về, nó không giữ datum nào. Một test: thought chờ đợi "rain", id về, "sun" tới — thought ở `scar` và có bản ghi scar; trên code cũ, test hỏng. 429 test, 0 lỗi; README còn một giới hạn của mind (một giá trị mỗi entity) và ghi số mới.
+
+---
+
 ### 11:50 — fix: mismatch trên datum mà truy vấn gọi lại thì scar chính datum đó, không phải cycle datum
 **Commit:** `6c14499`
 
