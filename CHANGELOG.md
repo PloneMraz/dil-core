@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-21
 
+### 11:50 — fix: mismatch trên datum mà truy vấn gọi lại thì scar chính datum đó, không phải cycle datum
+**Commit:** `6c14499`
+
+Plone duyệt (điểm mở của dil-arc3, "open in dil-core too"). Trước đây mọi va chạm trên kênh store đều để cycle datum đứng thay: `returnOf` chỉ biết datum của lần quay về từ region. Giờ cái một truy vấn gọi lại là một datum được giữ: expectation sai trên nó thì sai trên chính datum đó, datum đó chuyển `running → scar` và bản ghi scar gọi tên nó — như một scar được gọi lại là datum mà bản ghi của nó gọi tên. Bản ghi của chính agent dội về vẫn để cycle datum đứng thay: đó là hành động của chính nó. Phía expectation vẫn chỉ bị scar khi so với cái region trả về, như trước. Một test: rule chờ đợi ở datum gọi lại một điều khác với điều nó giữ — scar gọi tên datum đó, datum đi `prior → running → scar`, cycle datum không đi tới scar, §13.6 không fail; trên code cũ, test hỏng. 428 test, 0 lỗi; README ghi số mới.
+
+---
+
 ### 11:16 — fix: tính đơn điệu của §13.4 đọc scar theo cycle nó xảy ra, không theo dấu của datum
 **Commit:** `cac2b40`
 
