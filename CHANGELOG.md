@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-21
+
+### 11:16 — fix: tính đơn điệu của §13.4 đọc scar theo cycle nó xảy ra, không theo dấu của datum
+**Commit:** `cac2b40`
+
+Plone duyệt, sau khi dil-arc3 thấy mọi store của nó ra §13.4 "cycle-marks not monotonic — either a recovery fork re-entered earlier cycles … or accrual is suspect" dù không có fork hay reload nào. Phép kiểm đi qua các bản ghi scar và cycle seal theo thứ tự log và đòi `cycleMark` không giảm, nhưng `cycleMark` của một scar là dấu của datum — cycle nó vào store — chứ không phải cycle nó bị scar. Từ v0.3.5, mọi datum mà một expectation dựa vào (`held_by`) bị scar khi expectation sai, nhiều cycle sau khi nó vào: một hypothesis ghi ở cycle 4, scar ở cycle 10, đọc thành một bước lùi. Giờ scar được đọc theo `anchor.cycle` (cycle va chạm), seal theo cycle của nó; và thêm điều kiện chặt hơn: dấu của datum không được ở sau anchor của scar (không datum nào bị scar trước khi nó vào). Ba test hồi quy: scar `held_by` của datum cũ không còn là bước lùi; cycle thật sự lùi (fork) vẫn partial; scar ghi datum có dấu sau va chạm vẫn partial. Trên code cũ, hai trong ba hỏng. 427 test, 0 lỗi; README ghi số mới. Phán định §13.4 vẫn là partial: self-continuity chỉ bên thứ ba mới nói được.
+
+---
+
 ## [Unreleased] — 2026-10-19
 
 ### 21:30 — fix: tích luỹ INV-5 chỉ đạt khi recurrence kéo confidence lên
