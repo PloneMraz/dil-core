@@ -39,6 +39,7 @@ import {
   recordResistanceReading,
   recordRevision,
   recordRead,
+  recordReadRecord,
 } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH, FIT_FLOOR, FIT_FLOOR_PARAM, H_COUNT } from "../store/decisions.js";
 import { EXPLORATION, NEUTRAL, axis, rising, shiftedCount } from "./field.js";
@@ -66,7 +67,8 @@ import type { Emission, ObservedChange, T2Input, T2Output } from "./layers/t2.js
 import { isStoreQuery, storeQuery, STORE_CHANNEL, type T3Input, type T3Output } from "./layers/t3.js";
 import { answerQuery, type StoreReturn } from "./store-query.js";
 import type { T4Input, T4Output } from "./layers/t4.js";
-import type { StoreView, T5Input, T5Output, T5Result } from "./layers/t5.js";
+import type { RecordView, StoreView, T5Input, T5Output, T5Result } from "./layers/t5.js";
+import { createRecordView, recordSeq } from "./record-view.js";
 import type { T6Input, T6Output } from "./layers/t6.js";
 import type { T7Input, T7Output } from "./layers/t7.js";
 import type { T8Input, T8Output } from "./layers/t8.js";
@@ -82,8 +84,6 @@ export interface Layers {
   readonly t7: LayerSpec<T7Input, T7Output>;
   readonly t8: LayerSpec<T8Input, T8Output>;
 }
-
-import type { RecalledFrom } from "./recollection.js";
 
 export interface CycleDeps {
   readonly layers: Layers;
@@ -101,16 +101,6 @@ export interface CycleDeps {
   readonly now?: () => number;
   /** RECOVERY-ONLY: resume the driver from a §9 snapshot instead of cycle-0. */
   readonly resume?: DriverState;
-  /**
-   * The host's resistance-retrieval channel (§10), if one is declared.
-   *
-   * The driver does not call it — T5 does, through its declared PredictRule. The
-   * driver only asks which scars it returned, so their return can be recorded in
-   * `[event]` (§9: every transition along a provenance edge is recorded as it
-   * occurs). Without this, `scar → running` could never fire and the store would
-   * stay write-only.
-   */
-  readonly recollection?: { drain(): readonly RecalledFrom[] };
   /**
    * How a return from the region enters `[data]`: its payload and open tags,
    * or null to keep that one out (§10: selective-write is `DECIDE@IMPL`).
@@ -293,6 +283,35 @@ export function createCycle(deps: CycleDeps): Cycle {
   let view: StoreView | undefined;
   let reads: Map<string, Set<string>> | null = null;
   /**
+   * The cycle's view of `[event]` for T5, and what it read, by purpose (v0.3.9
+   * §9, "Reading the record"). An open link: built every cycle, never declared
+   * or switched off; open for the pass only.
+   */
+  let record: RecordView | undefined;
+  let recordReads: Map<string, number[]> | null = null;
+  /**
+   * The cycle's read-only view of `[event]`, for T5: what the log held before
+   * the cycle (`before`, its size when the cycle began). Each read is kept, by
+   * purpose, for the cycle's `read-record` lines.
+   */
+  function recordView(before: number): RecordView {
+    const mine = new Map<string, number[]>();
+    recordReads = mine;
+    const inner = createRecordView(events, before, (purpose, seqs) => {
+      const kept = mine.get(purpose) ?? [];
+      for (const s of seqs) if (!kept.includes(s)) kept.push(s);
+      mine.set(purpose, kept);
+    });
+    const open = (): void => {
+      if (recordReads !== mine) throw new Error("the record's view is read within its cycle only");
+    };
+    return {
+      recent: (purpose, limit) => (open(), inner.recent(purpose, limit)),
+      about: (datumId, purpose, limit) => (open(), inner.about(datumId, purpose, limit)),
+      scars: (sourceId, purpose, limit) => (open(), inner.scars(sourceId, purpose, limit)),
+    };
+  }
+  /**
    * The cycle's read-only view of `[data]`, for T5. Memory alone: what was
    * admitted this cycle is met in it, not recalled, and is not returned; what is
    * written this cycle is taken after the pass. Each read is kept, by purpose,
@@ -367,7 +386,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     const t4 = runLayer(layers.t4, { units: t3.output.units }, field, datum);
     datum = t4.datum;
     logExit(4);
-    const t5 = runLayer(layers.t5, { bound: t4.output.bound, ...(view ? { view } : {}) }, field, datum);
+    const t5 = runLayer(layers.t5, { bound: t4.output.bound, ...(view ? { view } : {}), ...(record ? { record } : {}) }, field, datum);
     datum = t5.datum;
     logExit(5);
     const t6 = runLayer(layers.t6, { results: t5.output.results, envPushed }, field, datum);
@@ -436,7 +455,7 @@ export function createCycle(deps: CycleDeps): Cycle {
     datum = t4.datum;
     logExit(4);
     channel.publish(4, t4.output);
-    const t5 = runLayer(layers.t5, { ...gatherT5(channel), ...(view ? { view } : {}) }, field, datum);
+    const t5 = runLayer(layers.t5, { ...gatherT5(channel), ...(view ? { view } : {}), ...(record ? { record } : {}) }, field, datum);
     datum = t5.datum;
     logExit(5);
     channel.publish(5, t5.output);
@@ -478,6 +497,8 @@ export function createCycle(deps: CycleDeps): Cycle {
     }),
     run(regionInput): CycleResult {
       const field = glob.current();
+      // What the log held when the cycle began: the record T5 may read (v0.3.9).
+      const before = events.size();
 
       // ── Query-returns join what the region returned (§6, link 1) ──
       // "Input channels: query returns, messages from an Other, event streams,
@@ -584,6 +605,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       runningAdmitted = [...admittedAt.values()];
       const admittedNow = new Set(runningAdmitted);
       view = storeView(admittedNow);
+      record = recordView(before);
 
       const pass =
         flow === "single-threaded"
@@ -666,6 +688,16 @@ export function createCycle(deps: CycleDeps): Cycle {
         events.append(recordRead(datumId(), cycle, 5, purpose, [...ids], now()));
       }
 
+      // ── What T5 read of `[event]` (v0.3.9 §9, "Reading the record") ──
+      // One line for each purpose, naming the records read by their place in the
+      // chain, in the order first read. Closed with the pass, as the store's is.
+      const cycleRecordReads = recordReads;
+      recordReads = null;
+      record = undefined;
+      for (const [purpose, seqs] of cycleRecordReads ?? []) {
+        events.append(recordReadRecord(datumId(), cycle, 5, purpose, seqs, now()));
+      }
+
       // ── The store answers the queries raised this cycle (§6.4, §9 open layer) ──
       // Answered now, ingested at T1 next cycle. Answering changes nothing in
       // `[data]`; the datum moves only when it runs. Memory is what the store
@@ -698,6 +730,16 @@ export function createCycle(deps: CycleDeps): Cycle {
         }
         const builtFrom: string[] = [];
         for (const source of w.builtFrom) {
+          // A record of the history, read: `event:<seq>`, one the log held
+          // before this cycle (v0.3.9).
+          const seqOf = typeof source === "string" ? recordSeq(source) : undefined;
+          if (seqOf !== undefined) {
+            if (seqOf >= before) {
+              throw new Error(`write: builtFrom names "${source as string}", which the log did not hold before this cycle`);
+            }
+            if (!builtFrom.includes(source as string)) builtFrom.push(source as string);
+            continue;
+          }
           const sourceId = typeof source === "string" ? source : unitDatum.get(source);
           if (sourceId === undefined || !data.has(sourceId)) {
             throw new Error(
@@ -798,19 +840,6 @@ export function createCycle(deps: CycleDeps): Cycle {
         events.append(
           recordResistanceReading(datumId(), cycle, "region", a.entity_id, "absence", a.recurrence, a.delta, "-", now()),
         );
-      }
-
-      // ── Scars that returned as material (§9, `scar → running`) ──
-      // A recalled scar is "data in use"; §9 is explicit that a scar is not a
-      // resting place. The datum key is the recalled scar's own (`cycle-N`), not
-      // this cycle's: it is that datum which moved, not this one.
-      // The move is the datum's own and happens once: a scar recalled again once
-      // it is back in use does not move again, and `[data]` follows the log.
-      for (const r of deps.recollection?.drain() ?? []) {
-        const held = data.get(r.datumId);
-        if (held === undefined || held.fixed.provenance !== "scar") continue;
-        data.put(r.datumId, toRunning(held, cycle));
-        events.append(recordProvenance(r.datumId, cycle, "scar", "running", now()));
       }
 
       // ── Forward-building (§6.2): build situations, cast outcomes ──

@@ -19,7 +19,7 @@
 
 import type { EventRecord, LogRecord } from "./resist-event.js";
 import type { EventSink, JsonlSinkOptions } from "./event-sink.js";
-import { createJsonlFileSink, readLogRecords } from "./event-sink.js";
+import { createJsonlFileSink, readLogRecords, readLogRecordsBack } from "./event-sink.js";
 import { INDEX_KEYS } from "./decisions.js";
 
 /** Recursively freeze an object so no nested field can be altered. */
@@ -46,6 +46,28 @@ export interface ReadableEventLog {
   size(): number;
   /** Scar lookup by resistance source (activity records carry no source_id). */
   bySourceId(source_id: string): readonly EventRecord[];
+  /**
+   * The records before `before` (a place in the chain), newest first, at most
+   * `scan` of them (v0.3.9 §9, "Reading the record"). Bounded, so a read in a
+   * cycle costs what it scans, never the whole log.
+   */
+  back(before: number, scan: number): readonly SeqRecord[];
+}
+
+/** A record with its place in the chain: `seq`, as its line carries it. */
+export interface SeqRecord {
+  readonly seq: number;
+  readonly record: LogRecord;
+}
+
+/**
+ * The place in the chain an id names, when it names a record of the log —
+ * `event:<seq>`, as a datum built from a record read names it — rather than a
+ * datum; undefined otherwise (v0.3.9).
+ */
+export function recordSeq(id: string): number | undefined {
+  const m = /^event:(\d+)$/.exec(id);
+  return m ? Number(m[1]) : undefined;
 }
 
 /**
@@ -93,6 +115,13 @@ export function createEventLog(sink?: EventSink): EventLog {
     },
     bySourceId(source_id: string): readonly EventRecord[] {
       return bySource.get(source_id) ?? [];
+    },
+    back(before: number, scan: number): readonly SeqRecord[] {
+      const out: SeqRecord[] = [];
+      for (let seq = Math.min(before, records.length) - 1; seq >= 0 && out.length < scan; seq--) {
+        out.push({ seq, record: records[seq]! });
+      }
+      return out;
     },
   };
 }
@@ -145,6 +174,9 @@ export function createDurableEventLog(
       return readLogRecords(dir).filter(
         (r): r is EventRecord => r.kind === "scar" && r.event.source_id === source_id,
       );
+    },
+    back(before: number, scan: number): readonly SeqRecord[] {
+      return readLogRecordsBack(dir, before, scan);
     },
     head: () => sink.head(),
     close: () => sink.close(),

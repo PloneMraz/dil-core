@@ -38,16 +38,19 @@ export {
 
 export { MultiStreamError } from "./gathers.js";
 
-// The resistance-retrieval channel (§10): the store answering, as an
+// The record's view (v0.3.9 §9, "Reading the record"): the open link through
+// which the rule reads `[event]`, every cycle — §10's resistance-retrieval
+// channel.
+export { createRecordView, recordSeq } from "./record-view.js";
+
+// Recollection: one law over the record — what the region gave last time, as an
 // expectation and as nothing else.
 export {
-  createLogRecollection,
+  recall,
   recollecting,
-  DEFAULT_MAX_SCAN,
   RECOLLECTION_LAYER,
-  type Recollection,
+  RECOLLECTION_PURPOSE,
   type RecollectionOptions,
-  type RecalledFrom,
 } from "./recollection.js";
 
 // The T3 query answered from the agent's own store (§6.4, §9 open layer): the

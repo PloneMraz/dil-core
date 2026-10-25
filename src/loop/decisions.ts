@@ -83,6 +83,16 @@ export const SUFFICIENT_RECURRENCE = 3;
  * this count it is held with proportionally lower confidence, not asserted.
  */
 
+/** Records a read of `[event]` goes back through, newest first (v0.3.9 §9). */
+export const RECORD_SCAN = 4096;
+/**
+ * Rationale: the log has no maximum length (§9) and a read in a cycle must not
+ * grow with it, so each read of the record is bounded by what it scans — about
+ * fifty cycles of lines at the eighty or so a cycle the reference loop writes.
+ * A tunable starting value, not derived. What lies further back is still on
+ * disk for a third party; the reach of a read is this bound, not the log.
+ */
+
 /** DECIDE@IMPL — T5's expectation-update function. */
 export const EXPECTATION_UPDATE_LAW =
   "persistence: predict the most recent observation for the entity" as const;

@@ -34,9 +34,11 @@ import type {
   CrystallizationActivity,
   ExpectationActivity,
   ReadActivity,
+  ReadRecordActivity,
 } from "../store/resist-event.js";
 import type { TaggedDatum } from "../store/tags.js";
 import { isProvenanceEdge } from "../store/data-store.js";
+import { recordSeq } from "../store/event-log.js";
 import { invalidOpenTagReason, type OpenTags as OpenTagsLike } from "../store/tags.js";
 import type { GateResult } from "../precondition/gate.js";
 import { REFLECTION_MECHANISM } from "../runtime/decisions.js";
@@ -283,6 +285,19 @@ export function checkConformance(
   const readLines = records.filter(
     (r): r is ReadActivity => r.kind === "activity" && r.activityKind === "read",
   );
+  const readRecordLines = records.filter(
+    (r): r is ReadRecordActivity => r.kind === "activity" && r.activityKind === "read-record",
+  );
+  /**
+   * The cycle each record belongs to, by its place in the chain (`seq`, its index
+   * in the log): -1 for the manifest, written before any cycle.
+   */
+  const cycleAt = records.map((r) =>
+    r.kind === "scar" ? r.anchor.cycle : r.kind === "manifest" ? -1 : r.activityKind === "cycle-seal" ? r.activity.cycle : r.cycleMark,
+  );
+  /** v0.3.9: a record of the history the log held before `cycle`. */
+  const heldBefore = (seq: number, cycle: number): boolean =>
+    Number.isInteger(seq) && seq >= 0 && seq < records.length && cycleAt[seq]! < cycle;
   const results: CriterionResult[] = [];
 
   /** Push a criterion, rolling its verdict up from the claims. */
@@ -618,7 +633,13 @@ export function checkConformance(
       .find(
         ({ w, cycle }) =>
           !Array.isArray(w.builtFrom) ||
-          w.builtFrom.some((id) => !entered.has(id) || entered.get(id)! > cycle),
+          w.builtFrom.some((id) => {
+            // v0.3.9: a record read is named `event:<seq>`, one the log held
+            // before the cycle that wrote.
+            const seq = recordSeq(id);
+            if (seq !== undefined) return !heldBefore(seq, cycle);
+            return !entered.has(id) || entered.get(id)! > cycle;
+          }),
       );
     // v0.3.7 §9 ("Reading memory"): what was read of `[data]` was memory — data
     // whose entry the trace shows before the cycle that read them. What arrives
@@ -626,6 +647,11 @@ export function checkConformance(
     const unremembered = readLines
       .flatMap((r) => r.read.map((id) => ({ id, cycle: r.cycleMark })))
       .find(({ id, cycle }) => !entered.has(id) || entered.get(id)! >= cycle);
+    // v0.3.9 §9 ("Reading the record"): what was read of `[event]` was history —
+    // records the log held before the cycle that read them.
+    const unrecorded = readRecordLines
+      .flatMap((r) => r.records.map((seq) => ({ seq, cycle: r.cycleMark })))
+      .find(({ seq, cycle }) => !heldBefore(seq, cycle));
     // v0.3.5 §9: every datum an expectation named as what it is shows its entry
     // by then, and — when that expectation mismatched against what the region
     // returned — met the mismatch: a scar naming it at that cycle.
@@ -650,8 +676,9 @@ export function checkConformance(
       claim("`prior` and `nascent` each entered once, never re-entered (§9)", "trace", doubleEntry ? "fail" : "pass"),
       claim("host data entered only via the tagging-gate — every datum leaving `prior` or `nascent` shows its gate-admissible tag set in the trace (§13.6)", "trace", unseenEntry ? "fail" : "pass"),
       claim("every datum that ran or was revised shows its entry, with its tag set, in the trace (§9)", "trace", noEntry ? "fail" : "pass"),
-      claim("every datum the agent wrote says what it was built from, each a datum whose entry the trace shows (§9)", "trace", unbuilt ? "fail" : "pass"),
+      claim("every datum the agent wrote says what it was built from, each a datum whose entry the trace shows or a record the log held before (§9)", "trace", unbuilt ? "fail" : "pass"),
       claim("every datum read of `[data]` shows its entry in the trace before the cycle that read it (§9, v0.3.7)", "trace", unremembered ? "fail" : "pass"),
+      claim("every record read of `[event]` was in the log before the cycle that read it (§9, v0.3.9)", "trace", unrecorded ? "fail" : "pass"),
       claim("every datum an expectation was (held_by) shows its entry, and met its mismatch against the region as a scar (§9, v0.3.5)", "trace", unheld ? "fail" : "pass"),
     ];
     push(
@@ -671,9 +698,11 @@ export function checkConformance(
               : noEntry
                 ? `datum ${noEntry.datumId} appears at cycle ${noEntry.cycleMark} with no recorded entry before it (§9)`
               : unbuilt
-                ? `datum ${unbuilt.w.datumId}, written at cycle ${unbuilt.cycle}, does not say what it was built from, or names data with no recorded entry (§9)`
+                ? `datum ${unbuilt.w.datumId}, written at cycle ${unbuilt.cycle}, does not say what it was built from, or names data with no recorded entry or a record the log did not hold before (§9)`
               : unremembered
                 ? `datum ${unremembered.id}, read at cycle ${unremembered.cycle}, shows no entry before that cycle (§9, v0.3.7)`
+              : unrecorded
+                ? `record #${unrecorded.seq}, read at cycle ${unrecorded.cycle}, was not in the log before that cycle (§9, v0.3.9)`
               : unheld
                 ? `the expectation for ${unheld.entity} at cycle ${unheld.cycleMark} names as what it is data with no recorded entry, or data that did not scar when it mismatched against the region (§9)`
               : "scars carry the ResistEvent and every cycle left an activity record; provenance moves only along the §9 graph edges (prior and nascent each entered once); every datum that ran shows its entry; all records carry four fixed tags, ≥3 open tags incl domain, and a context anchor; the log is append-only with read-only records",

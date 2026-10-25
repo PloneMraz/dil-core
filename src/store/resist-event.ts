@@ -204,6 +204,28 @@ export interface ReadActivity {
   readonly t: number;
 }
 
+/**
+ * A read of `[event]` (v0.3.9, §9 "Reading the record"): T5's rule read these
+ * records of the agent's history, through the cycle's read-only view of the log.
+ * One line for each purpose, each cycle: which records, by their place in the
+ * chain (`seq`), in which cycle, by which layer, for what. Like a `read` line,
+ * it is the cycle datum's and carries no content: what was read is in the log.
+ */
+export interface ReadRecordActivity {
+  readonly kind: "activity";
+  readonly activityKind: "read-record";
+  /** The cycle datum the read belongs to. */
+  readonly datumId: string;
+  readonly cycleMark: number;
+  /** The layer whose work read (T5). */
+  readonly issuingLayer: LayerIndex;
+  /** What the records were read for, as the reader names it. */
+  readonly purpose: string;
+  /** The records read, by their place in the chain, in the order first read. */
+  readonly records: readonly number[];
+  readonly t: number;
+}
+
 export interface LayerExitActivity {
   readonly kind: "activity";
   readonly activityKind: "layer-exit";
@@ -332,7 +354,8 @@ export type ActivityRecord =
   | ExpectationActivity
   | ResistanceReadingActivity
   | RevisionActivity
-  | ReadActivity;
+  | ReadActivity
+  | ReadRecordActivity;
 
 /**
  * The manifest — the log's CONSTITUTION (§9, §8.5). A one-time genesis record,
@@ -401,6 +424,18 @@ export function recordRead(
   t: number,
 ): ReadActivity {
   return { kind: "activity", activityKind: "read", datumId, cycleMark, issuingLayer, purpose, read: [...read], t };
+}
+
+/** Build a `read-record` line: at cycle N, layer L read these records of `[event]` for this purpose (no content). */
+export function recordReadRecord(
+  datumId: string,
+  cycleMark: number,
+  issuingLayer: LayerIndex,
+  purpose: string,
+  records: readonly number[],
+  t: number,
+): ReadRecordActivity {
+  return { kind: "activity", activityKind: "read-record", datumId, cycleMark, issuingLayer, purpose, records: [...records], t };
 }
 
 export function recordLayerExit(

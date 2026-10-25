@@ -3,7 +3,7 @@
 Guidelines for AI coding agents working in this repository.
 
 > Read this **with** two documents, not instead of them:
-> - `DIL-protocol-v0.3.8.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
+> - `DIL-protocol-v0.3.9.md` — the **law**. Normative. Where this file and the protocol differ, the protocol wins.
 > - `CONTEXT.md` — how to approach turning that law into running code.
 >
 > This file is neither. It is the **operating rules for an agent writing the code**: what to build, in what order, and the mistakes that look natural but break DIL. It does not re-explain the concepts; it points at them.
@@ -96,7 +96,7 @@ Two that bite hardest in code:
 
 (Protocol §9; `CONTEXT.md` §7.)
 
-- **The whole store is the agent's history; `[data]` is its memory** (v0.3.8, correcting v0.3.6's wording): `[data]` can be altered; `[event]`, the record of what happened, cannot be altered or overwritten — only appended to and read. The agent may read `[event]`, and what it learns from it is held in `[data]`; it never works on `[event]` as on `[data]`.
+- **The whole store is the agent's history; `[data]` is its memory** (v0.3.8, correcting v0.3.6's wording): `[data]` can be altered; `[event]`, the record of what happened, cannot be altered or overwritten — only appended to and read. The agent may read `[event]` — through the record's view, open to the predict rule every cycle, never a switch (v0.3.9) — and what it learns from it is held in `[data]`; it never works on `[event]` as on `[data]`.
 - `[data]` is mutable: a datum's content may be rewritten (a revision) and its position moves as the loop runs. `[event]` is **append-only, records read-only**: new records may be appended; **no record, once written, is ever altered or removed** — not by the loop, not by anything, not by a third party that compromised the rest of the system.
 - The **ResistEvent** (a registered mismatch, not a document) is the atomic unit of **experience**; each cycle additionally leaves **activity records** in the `[event]` log (trace, not experience — they never become scars): a per-cycle seal, plus lean lines for every layer-exit, every provenance move, and every emission (each emission naming its `issuing_layer`, §6.4).
 - Four fixed tags, in order, never stripped or reordered: (1) timestamp (the host's wall-clock, epoch-ms, taken when the datum is first stamped — separate from the cycle-mark; every `[event]` record likewise takes the clock at the moment it is appended, and the cycle seal carries when its cycle began and closed), (2) cycle-mark, (3) provenance (a directed graph, v0.3.3 §9: `prior` and `nascent` one-way entries, then `running`/`simulated`/`projected`/`scar` circulating with no terminal state), (4) floor-tag. Both provenance and floor-tag name the **present** position only; their values change only under defined rules (floor-tag updates to the layer just exited). Every layer T1–T8 stamps the floor-tag; no pass-through layers. The full path — every layer exited, every provenance move — is recorded line-by-line in the `[event]` log as it occurs and read from there, **never** from a tag (v0.3.2 drops `layer_trace`).

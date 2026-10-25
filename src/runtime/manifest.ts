@@ -27,6 +27,7 @@ import {
   STABILITY_THRESHOLD,
   BASELINE_WINDOW,
   SUFFICIENT_RECURRENCE,
+  RECORD_SCAN,
   APPRAISAL_ANCHOR_KIND,
   APPRAISAL_ANCHOR_ID,
 } from "../loop/decisions.js";
@@ -37,7 +38,7 @@ import { CONFORMANCE_DIVERSITY_WINDOW, CONFORMANCE_MIN_DISTINCT_SOURCES } from "
 export function collectManifest(t: number): ManifestRecord {
   return recordManifest(DIL_CLAIM.protocol, SCHEMA_VERSION, {
     tagA_representation: "Signal/InfoUnit/RefFrame shapes — a type-level choice (loop/decisions.ts), not a runtime value",
-    tagB_thresholds: { MATCHING_WINDOW, STABILITY_THRESHOLD, BASELINE_WINDOW, SUFFICIENT_RECURRENCE },
+    tagB_thresholds: { MATCHING_WINDOW, STABILITY_THRESHOLD, BASELINE_WINDOW, SUFFICIENT_RECURRENCE, RECORD_SCAN },
     tagC_appraisalAnchor: { kind: APPRAISAL_ANCHOR_KIND, id: APPRAISAL_ANCHOR_ID },
     tagD_modeBSource: MODE_B_SOURCE,
     tagE_reflection: REFLECTION_MECHANISM,

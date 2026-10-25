@@ -47,6 +47,7 @@ export {
   type T5Result,
   type T5Input,
   type StoreView,
+  type RecordView,
   type T5Output,
   type T5Options,
 } from "./t5.js";

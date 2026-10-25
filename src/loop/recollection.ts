@@ -1,20 +1,25 @@
 /**
- * Recollection — the store answering, as an expectation and as nothing else.
+ * Recollection — a law a mind may think by, over the record it reads.
  *
  * §9 makes the store the seat of experience: "The self accrues from scars." §10
  * requires a private store to carry the resistance-retrieval channel, "otherwise
- * drift is certain". Neither clause was satisfied anywhere: scars were written
- * and never returned, and the three edges §9 defines for their return —
- * `scar → running`, `scar → simulated`, `scar → projected` — could not fire,
- * because nothing in the loop read the store at all.
+ * drift is certain". The channel is the record's view (v0.3.9, `record-view.ts`):
+ * an open link, handed to every predict rule every cycle. This is one law built
+ * on it, not the link itself, and a rule takes it only by being it.
  *
- * This is that channel. Note what §10 actually names: retrieval of RESISTANCE,
- * not retrieval of data. So the log's only output here is an expectation — what
- * the region gave, last time, in this same situation. Nothing else crosses. The
- * expectation then meets the region, and what the region does with it is the
- * region's to decide:
+ * Note what §10 names: retrieval of RESISTANCE, not retrieval of data. So what
+ * this law takes from the log is an expectation — what the region gave, last
+ * time, in this same situation — held by the datum that collided then. Nothing
+ * else crosses. The expectation meets the region, and what the region does with
+ * it is the region's to decide:
  *
  *     read [event] ──► an expectation ──► the region answers ──► mismatch ──► scar
+ *
+ * The scar it recalls is the datum the expectation is (`heldBy`, v0.3.5): used
+ * again, it returns to `running` (§9 `scar → running`), and if the region
+ * contradicts it, it is scarred again — the driver does both, as for any held
+ * datum. Measured as a predictor, it loses to persistence (dil-arc3's LOG): the
+ * record holds the region's exceptions, faithfully.
  *
  * THE LOG IS HISTORY, READ BACK AS AN OTHER (protocol v0.3.8; Plone,
  * 2026-10-25). The whole store is the agent's history, `[data]` its memory and
@@ -29,10 +34,10 @@
  * away" (§8.4), and the agent may collide with it. It may not conclude that the
  * record was itself.
  *
+/**
  * ONLY SCARS ARE RECALLABLE, and that is not a shortcut. §10 names retrieval of
  * RESISTANCE: what returns here is what collided. An activity record is trace,
- * not experience (§9): it never becomes a scar, and this channel does not
- * return it.
+ * not experience (§9), and this law does not take one.
  *
  * WHAT IT DOES NOT REACH, declared. The record was written under the same lens
  * that now reads it. A standing bias is recorded and returned and agrees with
@@ -43,50 +48,13 @@
  */
 
 import type { InfoUnit } from "./types.js";
-import type { ReadableEventLog } from "../store/event-log.js";
-import { persistence, type PredictRule } from "./layers/t5.js";
+import { persistence, type Expecting, type PredictRule, type RecordView } from "./layers/t5.js";
 
 /** The reference frame a recalled unit is referred to (INV-4: non-null). */
 export const RECOLLECTION_LAYER = 5 as const;
 
-/**
- * Where a recalled expectation came from — a scar, named by the datum key it
- * takes in `[data]` and the cycle it was recorded at.
- */
-export interface RecalledFrom {
-  readonly entityId: string;
-  /** The cycle the recalled scar was recorded at. */
-  readonly cycle: number;
-  /**
-   * The `[data]` key of the recalled scar: the datum the record names — the
-   * region's return that collided — or, where it names none (an absence), the
-   * cycle datum `cycle-N` that stood for it.
-   */
-  readonly datumId: string;
-  readonly t: number;
-}
-
-export interface Recollection {
-  /**
-   * What the region gave, last time, in the situation this observation names —
-   * or null when the record holds nothing about it.
-   *
-   * `observed` is read to identify WHICH situation is being asked about. Its
-   * content is never used as the answer: that would be the prediction scoring
-   * itself (INV-8).
-   */
-  recall(entityId: string, observed: InfoUnit): InfoUnit | null;
-  /**
-   * The scars recalled since the last drain, for the driver to record.
-   *
-   * A recalled scar has returned "to the store as data in use" (§9,
-   * `scar → running`), and §9 requires every such transition to be recorded in
-   * `[event]` as it occurs. A layer MUST NOT write to the log, so the
-   * recollection reports and the DRIVER writes — the same division the rest of
-   * the loop keeps.
-   */
-  drain(): readonly RecalledFrom[];
-}
+/** The purpose its reads of the record are recorded under. */
+export const RECOLLECTION_PURPOSE = "recollection" as const;
 
 export interface RecollectionOptions {
   /**
@@ -98,85 +66,55 @@ export interface RecollectionOptions {
    * situation rather than about this entity in general.
    */
   readonly key?: (unit: InfoUnit) => string;
-  /**
-   * How many of an entity's records to scan back through, newest first. A bound,
-   * not a policy: the log is unbounded by §9 and a per-cycle read must not grow
-   * with it.
-   */
-  readonly maxScan?: number;
 }
 
 /** Default situation key: every situation is the same one. */
 const ENTITY_ONLY = (_unit: InfoUnit): string => "";
 
-export const DEFAULT_MAX_SCAN = 64;
-
 /**
- * A Recollection over an `[event]` log.
+ * What the region gave, last time, in the situation this observation names —
+ * held by the datum that collided then — or null when the record, as far as the
+ * view reaches, holds nothing about it.
  *
- * Takes a ReadableEventLog and nothing more: the type gives it no way to write,
- * so §8.4's "Mode-B returns; it does not write" holds by construction — this
- * channel cannot append to `[event]`, reach into `[data]`, or correct the store.
+ * `observed` is read to identify WHICH situation is being asked about. Its
+ * content is never used as the answer: that would be the prediction scoring
+ * itself (INV-8). Each scar the view returns is a record read, recorded under
+ * `recollection`.
  */
-export function createLogRecollection(
-  log: ReadableEventLog,
+export function recall(
+  record: RecordView,
+  entityId: string,
+  observed: InfoUnit,
   opts: RecollectionOptions = {},
-): Recollection {
+): Expecting | null {
   const key = opts.key ?? ENTITY_ONLY;
-  const maxScan = opts.maxScan ?? DEFAULT_MAX_SCAN;
-  let recalled: RecalledFrom[] = [];
-
-  return {
-    drain(): readonly RecalledFrom[] {
-      const out = recalled;
-      recalled = [];
-      return out;
-    },
-    recall(entityId, observed): InfoUnit | null {
-      const wanted = key(observed);
-      const records = log.bySourceId(entityId);
-      const from = Math.max(0, records.length - maxScan);
-
-      for (let i = records.length - 1; i >= from; i--) {
-        const { event } = records[i]!;
-        // An absence scar records that nothing came back. There is no
-        // observation in it to recall, and inventing one would fabricate a
-        // return the region never made.
-        if (event.received === null || event.received === undefined) continue;
-
-        const past: InfoUnit = {
-          content: event.received,
-          ref_frame: { boundLayer: RECOLLECTION_LAYER, ref: `recollection:${entityId}` },
-          t: event.t,
-        };
-        if (key(past) === wanted) {
-          const rec = records[i]!;
-          recalled.push({
-            entityId,
-            cycle: rec.anchor.cycle,
-            datumId: rec.datumId ?? `cycle-${rec.anchor.cycle}`,
-            t: event.t,
-          });
-          return past;
-        }
-      }
-      return null;
-    },
-  };
+  const wanted = key(observed);
+  for (const { record: r } of record.scars(entityId, RECOLLECTION_PURPOSE)) {
+    if (r.kind !== "scar") continue;
+    // An absence scar records that nothing came back. There is no observation
+    // in it to recall, and inventing one would fabricate a return the region
+    // never made.
+    if (r.event.received === null || r.event.received === undefined || r.datumId === undefined) continue;
+    const past: InfoUnit = {
+      content: r.event.received,
+      ref_frame: { boundLayer: RECOLLECTION_LAYER, ref: `recollection:${entityId}` },
+      t: r.event.t,
+    };
+    if (key(past) === wanted) return { predicted: past, heldBy: [r.datumId] };
+  }
+  return null;
 }
 
 /**
- * A PredictRule that asks the record first and falls back when it is silent.
+ * A PredictRule that reads the record first and falls back when it is silent.
  *
- * The record answers only about a situation it actually holds; a situation it
- * has never met leaves the fallback in charge, so this is never worse-informed
- * than the law it extends.
+ * The record answers only about a situation it holds within the view's reach; a
+ * situation it has never met leaves the fallback in charge, so this is never
+ * worse-informed than the law it extends. With no view — a rule run outside a
+ * cycle — the fallback answers.
  */
-export function recollecting(
-  recollection: Recollection,
-  fallback: PredictRule = persistence,
-): PredictRule {
-  return (entityId, window, observed, contribute, ask, write) =>
-    recollection.recall(entityId, observed) ??
-    fallback(entityId, window, observed, contribute, ask, write);
+export function recollecting(fallback: PredictRule = persistence, opts: RecollectionOptions = {}): PredictRule {
+  return (entityId, window, observed, contribute, ask, write, test, field, read, record) =>
+    (record ? recall(record, entityId, observed, opts) : null) ??
+    fallback(entityId, window, observed, contribute, ask, write, test, field, read, record);
 }

@@ -15,11 +15,10 @@
  *
  * WHY THE RULE IS A SEAM. §9 makes the store the seat of experience — "the self
  * accrues from scars" — and §10 requires a private store to carry the
- * resistance-retrieval channel. Until now nothing in the loop could read the
- * store at all, so those clauses were satisfied nowhere: scars were written and
- * never returned. This seam is the retrieval channel. A rule may consult the
- * `[event]` log and answer "what did the region give, last time, here"; see
- * `store/recollection.ts`.
+ * resistance-retrieval channel. The channel is the record's view, handed to
+ * the rule every cycle (`RecordView`, v0.3.9): an open link, never a switch. A
+ * rule may read the `[event]` log through it and answer "what did the region
+ * give, last time, here"; see `loop/recollection.ts`.
  *
  * WHICH SLOT THE RECORD ENTERS, AND WHY IT MATTERS. The record supplies the
  * EXPECTATION; the region supplies the OBSERVATION. It must not be the other way
@@ -46,6 +45,7 @@ import type { Expectation, InfoUnit, ModField, PredErr } from "../types.js";
 import type { BoundInfo } from "./t4.js";
 import { STORE_CHANNEL, storeQuery, type Description } from "./t3.js";
 import type { OpenTags, TaggedDatum } from "../../store/tags.js";
+import type { SeqRecord } from "../../store/event-log.js";
 import { BASELINE_WINDOW, SUFFICIENT_RECURRENCE } from "../decisions.js";
 import { ALERTNESS, EXPLORATION, axis, castVotes, falling, shiftedCount } from "../field.js";
 
@@ -71,10 +71,33 @@ export interface StoreView {
   idOf(unit: InfoUnit): string | undefined;
 }
 
+/**
+ * The rule's read-only view of `[event]`, for one cycle (v0.3.9 §9, "Reading the
+ * record"). The whole store is the agent's history; `[data]` is its memory and
+ * `[event]` the record of what happened, which the agent reads and never alters.
+ * The link is open: the driver hands it to the rule every cycle, and whether to
+ * read is the rule's. Each way of reading goes back from the newest record
+ * before the cycle that reads, at most `RECORD_SCAN` records, and returns at
+ * most `limit`: `recent`, every record; `about`, the records of one datum (its
+ * entry, its moves, its revisions, the lines it left, and for a cycle datum its
+ * seal and the lines of its cycle); `scars`, the scars recorded against one
+ * resistance source. What it returns is what was read: each is recorded in
+ * `[event]`, one `read-record` line for each purpose, by its place in the chain
+ * (`seq`). What the agent learns from it it writes to `[data]`, naming a record
+ * read among what the datum was built from as `event:<seq>`.
+ */
+export interface RecordView {
+  recent(purpose: string, limit?: number): readonly SeqRecord[];
+  about(datumId: string, purpose: string, limit?: number): readonly SeqRecord[];
+  scars(sourceId: string, purpose: string, limit?: number): readonly SeqRecord[];
+}
+
 export interface T5Input {
   readonly bound: readonly BoundInfo[];
   /** The cycle's view of `[data]`, from the driver (v0.3.7). */
   readonly view?: StoreView;
+  /** The cycle's view of `[event]`, from the driver (v0.3.9). */
+  readonly record?: RecordView;
 }
 
 export interface T5Output {
@@ -168,6 +191,10 @@ export interface T5Options {
  * And it receives `read`, the cycle's view of `[data]` (`StoreView`, v0.3.7):
  * what the mind computes from, it may read from its memory directly, each read
  * recorded. A rule that does not read omits the parameter.
+ *
+ * And it receives `record`, the cycle's view of `[event]` (`RecordView`,
+ * v0.3.9): the record of what happened, open to it every cycle, each read
+ * recorded. A rule that does not read the record omits the parameter.
  */
 export type PredictRule = (
   entityId: string,
@@ -179,6 +206,7 @@ export type PredictRule = (
   test?: TestFn,
   field?: ModField,
   read?: StoreView,
+  record?: RecordView,
 ) => InfoUnit | Expecting;
 
 /** An action pushed to the region to test an expectation (§6.4). It emits nothing else. */
@@ -294,7 +322,7 @@ export function createT5(opts: T5Options = {}): LayerSpec<T5Input, T5Output> & S
         // The rule may report upward into the field; the contribution is bound
         // to T5, since it is T5's declared rule that made it. It may also ask
         // the store; the query is traced to T5 for the same reason.
-        const out = predict(id, window, observed, contribute, ask, write, test, field, input.view);
+        const out = predict(id, window, observed, contribute, ask, write, test, field, input.view, input.record);
         const predicted = isExpecting(out) ? out.predicted : out;
         const confidence = Math.min(1, count / recurrence);
 

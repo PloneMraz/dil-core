@@ -58,6 +58,7 @@ export type {
   ExpectationActivity,
   ResistanceReadingActivity,
   ReadActivity,
+  ReadRecordActivity,
   ManifestRecord,
   LogRecord,
 } from "./resist-event.js";
@@ -71,6 +72,7 @@ export {
   recordExpectation,
   recordResistanceReading,
   recordRead,
+  recordReadRecord,
   recordManifest,
   EventRecordError,
 } from "./resist-event.js";
@@ -85,8 +87,10 @@ export {
   createEventLog,
   createDurableEventLog,
   deepFreeze,
+  recordSeq,
   type EventLog,
   type ReadableEventLog,
+  type SeqRecord,
   type DurableEventLog,
 } from "./event-log.js";
 

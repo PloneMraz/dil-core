@@ -71,6 +71,8 @@ export function inspectEventLog(log: EventLog): string {
         return `  #${i}  [revision] ${r.datumId} @T${r.issuingLayer} (c${r.cycleMark}) ${clock(r.t)}`;
       case "read":
         return `  #${i}  [read] ${r.datumId} @T${r.issuingLayer} ${r.purpose}: ${r.read.join(",") || "-"} (c${r.cycleMark}) ${clock(r.t)}`;
+      case "read-record":
+        return `  #${i}  [read-record] ${r.datumId} @T${r.issuingLayer} ${r.purpose}: ${r.records.map((n) => `#${n}`).join(",") || "-"} (c${r.cycleMark}) ${clock(r.t)}`;
       case "crystallization":
         return `  #${i}  [crystallization] ${r.datumId} self|env (c${r.cycleMark}) ${clock(r.t)}`;
       case "expectation":

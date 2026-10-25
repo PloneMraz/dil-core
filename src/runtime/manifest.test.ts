@@ -52,7 +52,7 @@ test("collectManifest captures the declared DECIDE@IMPL constitution", () => {
   const m = collectManifest(1);
   assert.equal(m.kind, "manifest");
   assert.equal(m.protocol, "0.3.5");
-  assert.equal(m.schemaVersion, 4);
+  assert.equal(m.schemaVersion, 5);
   // a representative slice of the constitution — the values a third party needs
   // to re-appraise the trace under the very constants that governed it
   for (const key of ["tagB_thresholds", "tagC_appraisalAnchor", "tagD_modeBSource", "tagE_reflection", "tagH_forwardBuilding", "diversity"]) {
@@ -60,7 +60,7 @@ test("collectManifest captures the declared DECIDE@IMPL constitution", () => {
   }
   assert.deepEqual(
     (m.decisions as Record<string, unknown>).tagB_thresholds,
-    { MATCHING_WINDOW: 8, STABILITY_THRESHOLD: 3, BASELINE_WINDOW: 16, SUFFICIENT_RECURRENCE: 3 },
+    { MATCHING_WINDOW: 8, STABILITY_THRESHOLD: 3, BASELINE_WINDOW: 16, SUFFICIENT_RECURRENCE: 3, RECORD_SCAN: 4096 },
   );
 });
 

@@ -107,6 +107,17 @@ export interface SerializedRead {
   readonly t: number;
 }
 
+/** Serialized form of a `read-record` line (v0.3.9 §9: what T5 read of `[event]`, by seq). */
+export interface SerializedReadRecord {
+  readonly form: "read-record";
+  readonly datumId: string;
+  readonly cycleMark: number;
+  readonly issuingLayer: LayerIndex;
+  readonly purpose: string;
+  readonly records: readonly number[];
+  readonly t: number;
+}
+
 /** Serialized form of a lean `crystallization` activity line (§7; the one self/env distinction). */
 export interface SerializedCrystallization {
   readonly form: "crystallization";
@@ -163,6 +174,7 @@ export type SerializedEventRecord =
   | SerializedResistanceReading
   | SerializedRevision
   | SerializedRead
+  | SerializedReadRecord
   | SerializedManifest;
 
 function datumForm(
@@ -231,6 +243,16 @@ export function serializeEventRecord(rec: LogRecord): SerializedEventRecord {
         issuingLayer: rec.issuingLayer,
         purpose: rec.purpose,
         read: rec.read,
+        t: rec.t,
+      };
+    case "read-record":
+      return {
+        form: "read-record",
+        datumId: rec.datumId,
+        cycleMark: rec.cycleMark,
+        issuingLayer: rec.issuingLayer,
+        purpose: rec.purpose,
+        records: rec.records,
         t: rec.t,
       };
     case "expectation":
@@ -495,6 +517,18 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
       t: rec.t,
     };
   }
+  if (rec.form === "read-record") {
+    return {
+      kind: "activity",
+      activityKind: "read-record",
+      datumId: rec.datumId,
+      cycleMark: rec.cycleMark,
+      issuingLayer: rec.issuingLayer,
+      purpose: rec.purpose,
+      records: rec.records,
+      t: rec.t,
+    };
+  }
   if (rec.form === "crystallization") {
     return {
       kind: "activity",
@@ -574,6 +608,62 @@ export function deserializeEventRecord(rec: SerializedEventRecord): LogRecord {
 /** All LogRecords across the directory's segments, read from the substrate. */
 export function readLogRecords(dir: string): LogRecord[] {
   return readJsonlSink(dir).map(deserializeEventRecord);
+}
+
+/**
+ * The records before `before` (a place in the chain), newest first, at most
+ * `scan` of them — read from the end of the newest segment backward, a block at
+ * a time, so what it costs is what it scans, never the whole log (v0.3.9 §9,
+ * "Reading the record"). The records of the cycle that reads, still being
+ * appended, lie past `before` and are passed over.
+ */
+export function readLogRecordsBack(
+  dir: string,
+  before: number,
+  scan: number,
+): { seq: number; record: LogRecord }[] {
+  const out: { seq: number; record: LogRecord }[] = [];
+  if (scan <= 0) return out;
+  const segments = listSegments(dir);
+  const BLOCK = 1 << 16;
+  for (let s = segments.length - 1; s >= 0 && out.length < scan; s--) {
+    const fd = fs.openSync(segments[s]!.file, "r");
+    try {
+      let pos = fs.fstatSync(fd).size;
+      let rest = Buffer.alloc(0);
+      while (out.length < scan) {
+        if (pos === 0) {
+          if (rest.length > 0) take(rest);
+          break;
+        }
+        const n = Math.min(BLOCK, pos);
+        pos -= n;
+        const block = Buffer.alloc(n);
+        fs.readSync(fd, block, 0, n, pos);
+        let buf = Buffer.concat([block, rest]);
+        // Every complete line after the first newline; what precedes it may be
+        // cut, and waits for the block before.
+        let end = buf.length;
+        for (let i = buf.length - 1; i >= 0 && out.length < scan; i--) {
+          if (buf[i] !== 0x0a) continue;
+          if (end > i + 1) take(buf.subarray(i + 1, end));
+          end = i;
+        }
+        rest = buf.subarray(0, end);
+        buf = Buffer.alloc(0);
+      }
+    } finally {
+      fs.closeSync(fd);
+    }
+  }
+  return out;
+
+  function take(line: Buffer): void {
+    if (out.length >= scan) return;
+    const parsed = JSON.parse(line.toString("utf8")) as ChainedEventLine;
+    if (parsed.seq >= before) return;
+    out.push({ seq: parsed.seq, record: deserializeEventRecord(parsed.record) });
+  }
 }
 
 /**

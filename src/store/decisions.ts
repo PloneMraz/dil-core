@@ -34,8 +34,10 @@
  *       `running`), and the `revision` record.
  *   4 → v0.3.7's `read` record: what T5 read of `[data]`, by id, for what
  *       (§9 "Reading memory").
+ *   5 → v0.3.9's `read-record` record: what T5 read of `[event]`, by seq, for
+ *       what (§9 "Reading the record").
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /**
  * The first schema version under the self-describing, version-stamped chain — the
