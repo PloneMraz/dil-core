@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
+### 07:55 — docs: vì sao `[event]` chỉ được ghi thêm — agent không được viết lại quá khứ để chứng minh mình đúng
+**Commit:** `df017ef`
+
+Plone duyệt. Mục "The `[data]` / `[event]` store" của README mở đầu bằng bốn đoạn nói *lý do* của cơ chế đã mô tả bên dưới: agent có thể sai về quá khứ, nhưng không được viết lại quá khứ để chứng minh mình đúng. Ranh giới nằm *trong* trí nhớ của agent: điều nó đã học (`[data]`) thì sửa được, điều đã xảy ra với nó (`[event]`) thì chỉ được ghi thêm. Hash chain không làm việc viết lại thành bất khả, mà làm nó lộ ra với ai kiểm chuỗi theo một đầu chuỗi công bố ngoài tầm với của agent (đúng giới hạn README đã tự khai). Đoạn cuối so với lịch sử loài người: bản ghi này không thoát khỏi thiên kiến, nhưng thiên kiến của nó khác loại — ghi ngay lúc xảy ra, theo luật công bố trước lượt chạy, giữ mọi thất bại như mọi thành công, tách lời agent tự nói khỏi cái thế giới trả về, và không đổi giữa người đọc này với người đọc khác. Chỉ là tài liệu.
+
+---
+
 ### 07:30 — docs: effector của host, không phải "body", thực hiện những gì T5 test
 **Commit:** `7088e62`
 
