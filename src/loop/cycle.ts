@@ -214,7 +214,7 @@ export interface CycleResult {
   readonly collisionSources: readonly string[];
   /**
    * The actions T5 pushed to the region as tests this cycle (§6.4), in order.
-   * dil-core has no body to carry them out; a host that has one does.
+   * dil-core has no effectors to carry them out; a host that has them does.
    */
   readonly tests: readonly unknown[];
 }

@@ -145,8 +145,8 @@ export interface T5Options {
  * region is not only predicting what comes back but deciding what to try next,
  * so that the return can meet the expectation. The rule thinks; it does not act:
  * `test` records the action as an emission from T5 (register ↔, one activity
- * record naming T5), and the action reaches the region only if the host has a
- * body to carry it out — dil-core has none, and records it. It is readable by T2
+ * record naming T5), and the action reaches the region only if the host has
+ * effectors to carry it out — dil-core has none, and records it. It is readable by T2
  * next cycle, like every lateral emission. `CycleResult.tests` hands the cycle's
  * tests to the host.
  *

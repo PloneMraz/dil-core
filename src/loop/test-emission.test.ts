@@ -5,8 +5,8 @@
  * The rule thinks; it does not act. `test` records the action as an emission
  * from T5 — register ↔, one activity record naming T5 — readable by T2 next
  * cycle like every lateral emission, and handed to the host as
- * `CycleResult.tests`. dil-core has no body to carry it out; a host that has one
- * does.
+ * `CycleResult.tests`. dil-core has no effectors to carry it out; a host that has
+ * them does.
  */
 
 import { test } from "node:test";
