@@ -6,7 +6,7 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
-### 08:45 — docs: `[data]` được sửa khi vòng lặp chạy, là trí nhớ của agent — không phải "overwritten each cycle"
+### 08:35 — docs: `[data]` được sửa khi vòng lặp chạy, là trí nhớ của agent — không phải "overwritten each cycle"
 **Commit:** `4001f3b`
 
 Tìm thấy trên đường làm v0.3.8: ba chú thích (`data-store.ts` ×2, `sqlite-data-store.test.ts`) còn nói `[data]` bị ghi đè mỗi cycle — cách đọc mà v0.3.6 đã sửa — và `data-store.ts` gọi nó là "the loop's working memory". Giờ nói `[data]` được sửa khi vòng lặp chạy, và là trí nhớ của agent. Chỉ là chú thích; 429 test qua.
