@@ -182,6 +182,14 @@ dil conformance <store-dir>  # score the §13 criteria from traces alone
 
 ## The `[data]` / `[event]` store
 
+**An agent can be wrong about its past. It must not be able to rewrite the past to prove itself right.**
+
+Every agent accumulates bias: interpretations harden into beliefs, failures are explained away, contradictions forgotten. DIL draws one boundary inside the agent's memory. What it has learned — its hypotheses, its experiences, what it expects — is `[data]`, and it may revise it. What happened to it — each observation that arrived, each command, each mismatch, and what every belief was built from — is `[event]`, and it may only add to it.
+
+So the agent may change its mind about the past, but not the record of how it came to that mind: the moment it can rewrite that record, it can manufacture a past in which it was never wrong. The hash chain does not make a rewrite impossible; it makes one visible to anyone who checks the chain against a head published beyond the agent's reach.
+
+Human history is written after the fact, by those who keep it, and read through each reader's lens. This record is not free of bias, but its bias is of another kind: written as things happen, by a rule declared before the run, it keeps every failure as faithfully as every success, marks what the agent said of itself apart from what the world returned, and stays the same from one reader to the next — so where two readers disagree, they can return to the same record and check.
+
 Two store kinds (protocol §9), on the host's **requisitioned substrate** — never RAM:
 
 - **`[data]`** — mutable working memory (the present), a **SQLite** table under `store/memory/` (via `node:sqlite`). Its provenance is a directed **state-graph** (§9): `prior` is a one-way entry, and `running` / `simulated` / `projected` / `scar` circulate with **no terminal state** — a datum is never a conclusion at rest, but data waiting to be used.
