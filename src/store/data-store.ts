@@ -1,8 +1,8 @@
 /**
  * The [data] store and the provenance lifecycle (protocol §9).
  *
- * `[data]` is mutable — overwritten each cycle — unlike the immutable `[event]`
- * log. It is the loop's working memory.
+ * `[data]` is mutable — its content revised as the loop runs — unlike the
+ * immutable `[event]` log. It is the agent's memory.
  *
  * Lifecycle: prior → running → scar. The store records and tags origin ONLY; the
  * tag is mechanical (presence/absence of a cycle-mark and a resistance-stamp)
@@ -148,7 +148,7 @@ export function toProjected<T>(datum: TaggedDatum<T>): TaggedDatum<T> {
   return { ...datum, fixed: { ...datum.fixed, provenance: "projected" } };
 }
 
-/** The mutable [data] store: overwritten each cycle, keyed by datum id. */
+/** The mutable [data] store: revised as the loop runs, keyed by datum id. */
 export interface DataStore {
   put(id: string, datum: TaggedDatum): void;
   get(id: string): TaggedDatum | undefined;

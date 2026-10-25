@@ -3,7 +3,7 @@
  *
  * The durable [data] representation DIL imposes on the substrate. Verifies the
  * DataStore contract over node:sqlite: round-trip of a full TaggedDatum, mutable
- * overwrite (the present, overwritten each cycle), delete/clear/size, and that
+ * overwrite (the present, revised as the loop runs), delete/clear/size, and that
  * entries() preserves insertion order across updates.
  */
 
