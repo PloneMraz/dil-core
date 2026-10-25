@@ -6,6 +6,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
+### 09:07 — feat: đọc bản ghi — rule đọc `[event]` qua một view mở ở mọi cycle, mỗi lần đọc có bản ghi (protocol v0.3.9)
+**Commit:** `c258f43`
+
+Plone: đọc event-log là một liên kết mở, không phải công tắc. Trước đây cách đọc `[event]` duy nhất là recollection — một predict rule host phải tự wire qua `Cycle({ recollection })`, không khai thì tắt. Giờ driver đưa rule của T5 một `RecordView` ở mọi cycle, không cần khai gì: `recent`, `about(datum)`, `scars(nguồn)`, từ mới đến cũ, chỉ thấy những gì log có trước cycle đang đọc, mỗi lần đọc quét lùi tối đa `RECORD_SCAN = 4096` bản ghi (tag B, khai trong manifest). Mỗi lần đọc để lại một dòng `read-record` cho mỗi mục đích, nêu bản ghi theo `seq`, không mang nội dung (tag schema lên 5). Điều agent học được từ bản ghi thì nó ghi vào `[data]`, nêu bản ghi đã đọc trong `builtFrom` dưới dạng `event:<seq>`; driver từ chối bản ghi mà log chưa có trước cycle đó. Log bền đọc ngược từ cuối segment mới nhất, từng khối, nên một lần đọc chỉ tốn đúng phần nó quét, không bao giờ cả log. Tiêu chí 6 của checker kiểm mọi bản ghi được đọc, và mọi bản ghi được dùng để dựng datum, đều có trong log trước cycle đó.
+
+Recollection còn lại như một luật dựng trên view: `recall()` trả về cái region đã cho lần trước, do datum đã va chạm khi đó giữ (`heldBy`), nên driver chuyển nó `scar → running` và scar lại khi lệch, như mọi datum được giữ; tùy chọn `recollection` của Cycle và `drain` của nó bỏ đi. Protocol v0.3.9: §6.3 T5, §9 "Reading the record", `built_from` nêu được bản ghi, kênh của §10, tag B ở §12, tiêu chí 6 của §13; spec không đổi; claim vẫn 0.3.5. Thêm `read-record.test.ts` (đọc theo seq, checker, log bền đọc ngược qua nhiều segment) và các test của liên kết mở; hai file test của recollection viết lại trên view. 440 test qua.
+
+---
+
 ### 08:35 — docs: `[data]` được sửa khi vòng lặp chạy, là trí nhớ của agent — không phải "overwritten each cycle"
 **Commit:** `4001f3b`
 
