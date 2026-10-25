@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
+### 09:19 — fix: checker đọc "trước cycle" theo vị trí trong chuỗi, không theo số cycle
+**Commit:** `6388158`
+
+Hai claim v0.3.9 của tiêu chí 6 coi một bản ghi là có trước một cycle khi số cycle của chính nó nhỏ hơn. Một store mang bản ghi của lượt chạy trước — scar của cycle 7 đứng trước cycle 0 của lượt này — vì thế bị đánh fail dù log đã có bản ghi đó trước lần đọc. Những gì log có trước một cycle là những gì đứng trước bản ghi đầu tiên của cycle đó trong chuỗi, và checker giờ đọc đúng như vậy. Tìm ra khi port sang dil-arc3; test cấp cycle giờ chạy checker trên một store như thế. 440 test qua.
+
+---
+
 ### 09:07 — feat: đọc bản ghi — rule đọc `[event]` qua một view mở ở mọi cycle, mỗi lần đọc có bản ghi (protocol v0.3.9)
 **Commit:** `c258f43`
 
