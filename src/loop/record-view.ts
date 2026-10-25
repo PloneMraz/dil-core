@@ -11,8 +11,8 @@
  * reach into `[data]` or correct the store. It sees what the log held before the
  * cycle that reads (`before`, a place in the chain): what is being appended in
  * this cycle is met in it, not yet history. Each way of reading goes back from
- * there, newest first, through at most `scan` records, and returns at most
- * `limit`; what it returns is what was read, and `onRead` is told, by purpose,
+ * there, newest first, through at most `scan` records — read only as far as it
+ * needs — and returns at most `limit`; what it returns is what was read, and `onRead` is told, by purpose,
  * so the driver records it — a layer does not write the log.
  */
 
@@ -41,7 +41,7 @@ export function createRecordView(
   function read(purpose: string, keep: (r: LogRecord) => boolean, limit: number): readonly SeqRecord[] {
     const out: SeqRecord[] = [];
     if (limit <= 0) return out;
-    for (const r of log.back(before, scan)) {
+    for (const r of log.iterBack(before, scan)) {
       if (!keep(r.record)) continue;
       out.push(r);
       if (out.length >= limit) break;
@@ -54,5 +54,7 @@ export function createRecordView(
     about: (datumId, purpose, limit = scan) => read(purpose, (r) => datumOf(r) === datumId, limit),
     scars: (sourceId, purpose, limit = scan) =>
       read(purpose, (r) => r.kind === "scar" && r.event.source_id === sourceId, limit),
+    cycles: (purpose, limit = scan) =>
+      read(purpose, (r) => r.kind === "activity" && r.activityKind === "cycle-seal", limit),
   };
 }

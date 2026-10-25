@@ -57,6 +57,11 @@ function readOnlyLog(records: readonly import("./store/resist-event.js").LogReco
         .slice(Math.max(0, Math.min(before, records.length) - scan), Math.min(before, records.length))
         .map((record, i, kept) => ({ seq: Math.min(before, records.length) - kept.length + i, record }))
         .reverse(),
+    iterBack: function* (before: number, scan: number) {
+      for (let seq = Math.min(before, records.length) - 1, taken = 0; seq >= 0 && taken < scan; seq--, taken++) {
+        yield { seq, record: records[seq]! };
+      }
+    },
     append: () => {
       throw new Error("dil: this is a read-only audit view — the [event] log cannot be appended to here");
     },

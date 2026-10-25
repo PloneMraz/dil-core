@@ -144,3 +144,38 @@ test("the durable log reads back from disk, across segments, as the log in memor
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("cycles reads the seals of the latest cycles, newest first, each a record read", () => {
+  const events = createEventLog();
+  const clock = { cycle: 0 };
+  const seen: number[][] = [];
+  const rule: PredictRule = (entityId, window, observed, contribute, ask, write, _test, _field, _read, record) => {
+    if (record) seen.push(record.cycles("what happened", 2).map((r) => (r.record.kind === "activity" && r.record.activityKind === "cycle-seal" ? r.record.activity.cycle : -1)));
+    return persistence(entityId, window, observed, contribute, ask, write);
+  };
+  run(events, rule, clock, 4);
+  assert.deepEqual(seen, [[], [0], [1, 0], [2, 1]]);
+  const lines = readRecordLines(events);
+  assert.deepEqual(lines.map((l) => [l.cycleMark, l.purpose, l.records.length]), [[1, "what happened", 1], [2, "what happened", 2], [3, "what happened", 2]]);
+});
+
+test("the durable log read record by record stops where the reader stops, and agrees with back", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dil-read-record-"));
+  try {
+    const durable = createDurableEventLog(dir, { maxSegmentBytes: 4096, dateStamp: () => "20261025" });
+    const clock = { cycle: 0 };
+    run(durable, recordReadingRule(clock), clock, 5);
+    durable.sync();
+    const n = durable.size();
+    const firstThree: number[] = [];
+    for (const r of durable.iterBack(n, 1000)) {
+      firstThree.push(r.seq);
+      if (firstThree.length === 3) break;
+    }
+    assert.deepEqual(firstThree, [n - 1, n - 2, n - 3]);
+    assert.deepEqual([...durable.iterBack(n - 4, 9)], durable.back(n - 4, 9));
+    durable.close();
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

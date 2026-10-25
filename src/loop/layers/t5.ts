@@ -81,7 +81,9 @@ export interface StoreView {
  * most `limit`: `recent`, every record; `about`, the records of one datum (its
  * entry, its moves, its revisions, the lines it left, and for a cycle datum its
  * seal and the lines of its cycle); `scars`, the scars recorded against one
- * resistance source. What it returns is what was read: each is recorded in
+ * resistance source; `cycles`, the seals of the latest cycles — what each
+ * admitted, emitted and wrote — so what happened is read cycle by cycle without
+ * every line between. What it returns is what was read: each is recorded in
  * `[event]`, one `read-record` line for each purpose, by its place in the chain
  * (`seq`). What the agent learns from it it writes to `[data]`, naming a record
  * read among what the datum was built from as `event:<seq>`.
@@ -90,6 +92,7 @@ export interface RecordView {
   recent(purpose: string, limit?: number): readonly SeqRecord[];
   about(datumId: string, purpose: string, limit?: number): readonly SeqRecord[];
   scars(sourceId: string, purpose: string, limit?: number): readonly SeqRecord[];
+  cycles(purpose: string, limit?: number): readonly SeqRecord[];
 }
 
 export interface T5Input {

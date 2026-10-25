@@ -309,6 +309,7 @@ export function createCycle(deps: CycleDeps): Cycle {
       recent: (purpose, limit) => (open(), inner.recent(purpose, limit)),
       about: (datumId, purpose, limit) => (open(), inner.about(datumId, purpose, limit)),
       scars: (sourceId, purpose, limit) => (open(), inner.scars(sourceId, purpose, limit)),
+      cycles: (purpose, limit) => (open(), inner.cycles(purpose, limit)),
     };
   }
   /**

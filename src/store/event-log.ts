@@ -19,7 +19,7 @@
 
 import type { EventRecord, LogRecord } from "./resist-event.js";
 import type { EventSink, JsonlSinkOptions } from "./event-sink.js";
-import { createJsonlFileSink, readLogRecords, readLogRecordsBack } from "./event-sink.js";
+import { createJsonlFileSink, iterLogRecordsBack, readLogRecords, readLogRecordsBack } from "./event-sink.js";
 import { INDEX_KEYS } from "./decisions.js";
 
 /** Recursively freeze an object so no nested field can be altered. */
@@ -52,6 +52,8 @@ export interface ReadableEventLog {
    * cycle costs what it scans, never the whole log.
    */
   back(before: number, scan: number): readonly SeqRecord[];
+  /** `back`, record by record, read only as far as the reader goes. */
+  iterBack(before: number, scan: number): Iterable<SeqRecord>;
 }
 
 /** A record with its place in the chain: `seq`, as its line carries it. */
@@ -88,6 +90,11 @@ export interface EventLog extends ReadableEventLog {
 export function createEventLog(sink?: EventSink): EventLog {
   const records: LogRecord[] = [];
   const bySource = new Map<string, EventRecord[]>();
+  function* iterBack(before: number, scan: number): Iterable<SeqRecord> {
+    for (let seq = Math.min(before, records.length) - 1, taken = 0; seq >= 0 && taken < scan; seq--, taken++) {
+      yield { seq, record: records[seq]! };
+    }
+  }
 
   return {
     append(record: LogRecord): void {
@@ -117,12 +124,9 @@ export function createEventLog(sink?: EventSink): EventLog {
       return bySource.get(source_id) ?? [];
     },
     back(before: number, scan: number): readonly SeqRecord[] {
-      const out: SeqRecord[] = [];
-      for (let seq = Math.min(before, records.length) - 1; seq >= 0 && out.length < scan; seq--) {
-        out.push({ seq, record: records[seq]! });
-      }
-      return out;
+      return [...iterBack(before, scan)];
     },
+    iterBack,
   };
 }
 
@@ -177,6 +181,9 @@ export function createDurableEventLog(
     },
     back(before: number, scan: number): readonly SeqRecord[] {
       return readLogRecordsBack(dir, before, scan);
+    },
+    iterBack(before: number, scan: number): Iterable<SeqRecord> {
+      return iterLogRecordsBack(dir, before, scan);
     },
     head: () => sink.head(),
     close: () => sink.close(),
