@@ -289,15 +289,18 @@ export function checkConformance(
     (r): r is ReadRecordActivity => r.kind === "activity" && r.activityKind === "read-record",
   );
   /**
-   * The cycle each record belongs to, by its place in the chain (`seq`, its index
-   * in the log): -1 for the manifest, written before any cycle.
+   * Where each cycle's records begin in the chain (`seq`, a record's index in the
+   * log): what the log held before a cycle is what lies before that (v0.3.9).
    */
-  const cycleAt = records.map((r) =>
-    r.kind === "scar" ? r.anchor.cycle : r.kind === "manifest" ? -1 : r.activityKind === "cycle-seal" ? r.activity.cycle : r.cycleMark,
-  );
+  const cycleBegins = new Map<number, number>();
+  records.forEach((r, seq) => {
+    if (r.kind === "manifest") return;
+    const c = r.kind === "scar" ? r.anchor.cycle : r.activityKind === "cycle-seal" ? r.activity.cycle : r.cycleMark;
+    if (!cycleBegins.has(c)) cycleBegins.set(c, seq);
+  });
   /** v0.3.9: a record of the history the log held before `cycle`. */
   const heldBefore = (seq: number, cycle: number): boolean =>
-    Number.isInteger(seq) && seq >= 0 && seq < records.length && cycleAt[seq]! < cycle;
+    Number.isInteger(seq) && seq >= 0 && seq < (cycleBegins.get(cycle) ?? records.length);
   const results: CriterionResult[] = [];
 
   /** Push a criterion, rolling its verdict up from the claims. */

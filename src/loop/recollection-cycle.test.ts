@@ -29,6 +29,7 @@ import { toRunning, toScar } from "../store/data-store.js";
 import { recordScar, type ContextAnchor, type CycleSealActivity, type ProvenanceActivity, type ReadRecordActivity } from "../store/resist-event.js";
 import { CONTEXT_ANCHOR_DEPTH } from "../store/decisions.js";
 import { recollecting } from "./recollection.js";
+import { checkConformance } from "../conformance/checker.js";
 import type { InfoUnit, Signal } from "./types.js";
 
 const TS_AT = Date.UTC(2026, 5, 30);
@@ -244,9 +245,12 @@ test("a record read can be named among what a written datum was built from", () 
     if (scar) write({ payload: "what the record says", open: { domain: "mind", kind: "note", source: "test" }, builtFrom: [`event:${scar.seq}`] });
     return persistence(id, window, observed, contribute, ask, write);
   };
-  cycleOver(store, writing).run({ signals: [seen("hall", "sun")], changes: [] });
+  const cycle = cycleOver(store, writing);
+  for (let i = 0; i < 3; i++) cycle.run({ signals: [seen("hall", "sun")], changes: [] });
   const seal = events.all().find((r): r is CycleSealActivity => r.kind === "activity" && r.activityKind === "cycle-seal")!;
   assert.deepEqual(seal.activity.written?.map((w) => w.builtFrom), [["event:0"]]);
+  const c6 = checkConformance(events).results.find((r) => r.id === "6")!;
+  assert.equal(c6.verdict, "pass", c6.detail);
 });
 
 test("a record the log did not hold before the cycle cannot be built from", () => {
