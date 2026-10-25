@@ -70,7 +70,7 @@ export interface EventRecord {
 /**
  * One cycle's activity, for the log's AUDIT role (§9 "completeness of trace"):
  * what was emitted, what returned, in which flow mode. Trace, not experience —
- * it never becomes a scar; like all the store, it is the agent's memory.
+ * it never becomes a scar; like all the store, it is the agent's history.
  */
 export interface ActivityEvent {
   readonly cycle: number;
@@ -98,7 +98,7 @@ export interface ActivityEvent {
    * the tagging-gate" from the trace — neither is possible while a recalled
    * datum's tags live only in mutable `[data]`. The content stays out: an
    * activity record is trace, not experience, and §9 keeps the trail complete
-   * "without letting uncontested information into the agent's memory".
+   * "without letting uncontested information become experience".
    * Absent when nothing was recalled, so every other record is byte-identical.
    */
   readonly recalled?: readonly RecalledTags[];

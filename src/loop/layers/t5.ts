@@ -57,7 +57,7 @@ export interface T5Result {
 
 /**
  * The rule's read-only view of `[data]`, for one cycle (v0.3.7 §9, "Reading
- * memory"). The whole store is the agent's memory, and what the mind computes
+ * memory"). `[data]` is the agent's memory, and what the mind computes
  * from it may take from it directly: `ask` answers a cycle later and runs every
  * layer; `read` returns a datum as `[data]` holds it, in the cycle. Memory
  * alone: a datum admitted in the cycle reading is met in it, not recalled, and

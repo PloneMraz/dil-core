@@ -1,8 +1,8 @@
 /**
  * SQLite-backed [data] store (DECIDE@IMPL tag F — store representation).
  *
- * `[data]` is the mutable present — DIL's working memory, overwritten each cycle
- * (protocol §9). The durable representation DIL imposes on the host's substrate
+ * `[data]` is the mutable present — the agent's memory, its content revised as
+ * the loop runs (protocol §9). The durable representation DIL imposes on the host's substrate
  * is a SQLite table under `store/memory/`, using `node:sqlite` — SQLite built
  * into Node (synchronous, matching the DataStore interface; zero external
  * dependency, no native build). One row per key: the `TaggedDatum` serialized as

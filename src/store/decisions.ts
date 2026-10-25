@@ -102,9 +102,10 @@ export const STORE_REPRESENTATION =
  *
  * `event-log/` and `commits/` sit BESIDE memory/, not inside it: they are
  * outside the loop's mutable reach, which is what makes them trustworthy as
- * evidence about it. (The protocol's "the [event] log is the agent's memory"
- * names its experiential ROLE — what the self accrues from — not this folder;
- * the folder named memory/ holds the mutable working state only.) Store-kind is
+ * evidence about it. (The protocol names the whole store the agent's history
+ * and `[data]` its memory, v0.3.8: the folder named memory/ is that memory, the
+ * mutable working state; the record beside it the agent reads and never
+ * alters.) Store-kind is
  * carried by *location*, not by a name prefix; an item's human-readable name is
  * the derived projection of its tags (display-name.ts), not a place tags live.
  */

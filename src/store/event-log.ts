@@ -5,8 +5,8 @@
  * may be appended to the end, but no record, once written, may be altered or
  * removed — by the loop, by anything, or by a third party that has compromised
  * the rest of the system. This is the single source an auditor can trust
- * unconditionally, and it doubles as the agent's memory and the conformance
- * trace (one artifact, two roles — no parallel trace channel).
+ * unconditionally, and it doubles as the record in the agent's history and the
+ * conformance trace (one artifact, two roles — no parallel trace channel).
  *
  * Enforcement boundary (honest scope): in-memory, this module deep-freezes every
  * record and exposes NO update/remove API — only append and read. That stops

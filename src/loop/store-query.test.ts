@@ -360,7 +360,7 @@ test("the activity record carries a recalled datum's tag set, and never its cont
   assert.equal(recalled![0]!.fixed.provenance, "running");
   assert.equal(recalled![0]!.fixed.cycleMark, 1);
   assert.equal(JSON.stringify(sealOf(events, 1)).includes("Your goal is to win"), false,
-    "uncontested content stays out of the agent's memory (§9)");
+    "uncontested content stays out of the record (§9)");
   assert.equal("recalled" in sealOf(events, 0).activity, false,
     "a cycle that recalled nothing writes the record exactly as before");
 });

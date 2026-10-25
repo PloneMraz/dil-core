@@ -1,6 +1,6 @@
 # CONTEXT.md — Building DIL as a Codebase
 
-> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.7.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
+> Orientation document for whoever implements `dil-core`. Read this **with** the protocol (`DIL-protocol-v0.3.8.md`), which is the law; this file is how to approach turning that law into running code without making the mistakes that look natural but break DIL. It is not itself normative — where this file and the protocol differ, the protocol wins.
 
 ---
 
@@ -109,7 +109,7 @@ There is no negotiated interface the host must implement to "fit" DIL. DIL is so
 
 ## 5a. The mind — where the thinking is, and whose the model is
 
-Three parts, not two. The **host** is the container and the senses: it acts on the region, takes in what returns, and carries it inward. The **mind** is the thinking: it computes, learns, enriches the data, expects, builds forward and constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between the two. (Parent specification DIL-en-v8.)
+Three parts, not two. The **host** is the container and the senses: it acts on the region, takes in what returns, and carries it inward. The **mind** is the thinking: it computes, learns, enriches the data, expects, builds forward and constructs behaviour, and commands the host. **DIL** is the operating mechanism the data runs by between the two. (Parent specification DIL-en-v9.)
 
 - **The host is not where the thinking is.** §2: the host "is *substrate, not self*: it carries no self and contributes no self". What it supplies is the bare capacity to emit a first action and to return. A design that puts the model in the host has put the thinking where the specification says there is none.
 - **The mind is the agent's processor — its lens.** §8.3: "the root bias is in the processor". Everything the layers leave to a declared rule is its work: expecting (T5), synthesising the Other (T6), building a situation and casting an outcome (§6.2), and emitting (§6.1 — "belongs to no single layer and is available to whichever layer's work requires it"). It sits at the loop's seams: T5's rule, where it expects, asks the store, writes, and tests; the field reaches it as it reaches every layer (INV-7).
@@ -137,7 +137,7 @@ Pass all → the king sits, the loop starts. Fail any → non-start, report the 
 
 ## 7. Conformance — the trace is the [event] log
 
-There is **no separate trace format to design**. The trace a third party reads to check conformance **is the `[event]` log** — the same append-only, read-only log the loop already writes to live. One artifact, two roles: it is the agent's memory (what the self accrues from) *and* the audit trace (what an external party reads to certify). Do not build a parallel trace channel.
+There is **no separate trace format to design**. The trace a third party reads to check conformance **is the `[event]` log** — the same append-only, read-only log the loop already writes to live. One artifact, two roles: it is the record in the agent's history (what the self accrues from) *and* the audit trace (what an external party reads to certify). Do not build a parallel trace channel.
 
 A conformance checker reads the `[event]` log and scores the seven criteria of protocol §13 from it. This is writable once the store exists and the loop emits events; it does not block building the core, but is needed to certify a built core.
 

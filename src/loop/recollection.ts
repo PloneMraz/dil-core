@@ -16,10 +16,12 @@
  *
  *     read [event] ──► an expectation ──► the region answers ──► mismatch ──► scar
  *
- * THE LOG IS MEMORY, READ BACK AS AN OTHER (protocol v0.3.6; Plone, 2026-10-04).
- * The whole store is the agent's memory, the log in it the part that is only
- * appended to and read. That memory is the real past of what happened: a trace
- * that can be followed and inspected as any program's trace can. It asserts
+ * THE LOG IS HISTORY, READ BACK AS AN OTHER (protocol v0.3.8; Plone,
+ * 2026-10-25). The whole store is the agent's history, `[data]` its memory and
+ * the log the record that is only appended to and read: the agent reads it, and
+ * what it takes from it is held in its memory. That record is the real past of
+ * what happened: a trace that can be followed and inspected as any program's
+ * trace can. It asserts
  * nothing about a self that continues — §7 still forbids an implementation to
  * "claim self-continuity as an internal measurement". Reading it back is a
  * meeting with an Other in Mode-A, not the agent meeting itself: the record
