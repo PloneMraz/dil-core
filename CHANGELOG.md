@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
+### 08:30 — docs: protocol v0.3.8 và spec v9 — toàn bộ store là lịch sử của agent, `[data]` là trí nhớ của nó
+**Commit:** `d95120d`
+
+Plone đính chính một lỗi diễn đạt: v0.3.6 gọi toàn bộ store là trí nhớ của agent. Nói cho chính xác, toàn bộ store — `[data]` và `[event]` — là lịch sử của agent. `[data]` là trí nhớ của nó: điều nó đã học và làm việc trên đó, sửa được. `[event]` là bản ghi những gì đã xảy ra với nó, chỉ được ghi thêm và đọc: agent đọc được nó, và điều nó học được từ đó nằm trong `[data]`; nó không bao giờ làm việc trực tiếp trên `[event]` như trên `[data]`. Theo cách 1 Plone chọn (lên version, như v0.3.6 từng lên version chỉ vì diễn đạt): `DIL-protocol-v0.3.7.md` → `DIL-protocol-v0.3.8.md` (dòng Changes-in-v0.3.8; §1, §9 sửa; *Reading memory* vẫn là đọc `[data]`), `DIL-en-v8.md` → `DIL-en-v9.md` (§ store; "memory-with-scars" thành "history with scars"). Dòng Changes-in-v0.3.6 giữ nguyên như đã viết. Không đổi yêu cầu nào với implementation; claim của store vẫn 0.3.5. README, AGENTS, CONTEXT trỏ tới file mới; đoạn README vừa thêm sáng nay giờ đặt ranh giới *trong lịch sử*, và sửa luôn "it may only add to it" — agent không ghi vào `[event]`, vòng lặp ghi. Chú thích trong code gọi store hay log là trí nhớ giờ nói lịch sử hay bản ghi (`recollection.ts`, `t5.ts`, `decisions.ts`, `event-log.ts`, `resist-event.ts`, một thông điệp test); hai chỗ còn trích những cách đọc v0.3.6 đã sửa (activity record giữ ngoài "the agent's memory", `[data]` "overwritten each cycle") giờ nói đúng như giao thức. Các chú thích ghi "v0.3.7 §9" nơi đọc trí nhớ ra đời thì giữ. 429 test qua.
+
+---
+
 ### 07:55 — docs: vì sao `[event]` chỉ được ghi thêm — agent không được viết lại quá khứ để chứng minh mình đúng
 **Commit:** `df017ef`
 
