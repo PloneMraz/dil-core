@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-25
+
+### 07:30 — docs: effector của host, không phải "body", thực hiện những gì T5 test
+**Commit:** `7088e62`
+
+Plone chốt thuật ngữ cho các dự án dùng DIL: phần nhận vào và thực thi là host, gồm cơ quan cảm giác và effector (thuật ngữ sinh lý: cơ quan thi hành đáp ứng); không dùng "body". Ba chú thích ở `loop/cycle.ts`, `loop/layers/t5.ts` và `loop/test-emission.test.ts` giờ nói dil-core không có effector nào để thực hiện lệnh; host nào có thì làm. Các chữ "body" còn lại là phần thân của một yêu cầu HTTP hay của một bản ghi, nghĩa khác; câu CONTEXT.md trích nguyên văn spec §4 ("the agent's 'body' is the block of state…") giữ nguyên. 429 test qua.
+
+---
+
 ## [Unreleased] — 2026-10-21
 
 ### 12:02 — docs: năm chú thích thôi gọi là deferred hay provisional những gì đã xây
