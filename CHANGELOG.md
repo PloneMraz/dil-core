@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-10-25
 
+### 13:28 — feat: view của bản ghi đọc theo từng cycle (`cycles`), và đọc ngược chỉ tới đâu người đọc cần
+**Commit:** `600d1e3`
+
+Plone giữ cách mind của dil-arc3 đọc các bước gần đây từ lịch sử của nó, nên cần dấu niêm của các cycle gần nhất — mỗi cycle nhận gì, phát gì, ghi gì — mà không phải đọc mọi dòng ở giữa. `RecordView` có thêm `cycles(purpose, limit)`; mỗi dấu niêm trả về là một bản ghi đã đọc như mọi bản ghi khác. View giờ đọc qua `iterBack`, cách đọc ngược từng bản ghi của một log đọc được: log bền chỉ giải mã tới đâu người đọc cần, nên một lần đọc tìm thấy điều nó cần ở gần cuối không còn giải mã cả phần quét. Hai test; 442 test qua.
+
+---
+
 ### 09:19 — fix: checker đọc "trước cycle" theo vị trí trong chuỗi, không theo số cycle
 **Commit:** `6388158`
 
