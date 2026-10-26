@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-27
+
+### 00:04 — docs: tên thật của chủ repo được phép ở chỗ anh ký tên tác giả
+**Commit:** `dfc7599`
+
+Quy định outbound trong [CLAUDE.md](CLAUDE.md) cấm công khai tên thật ngoài Plone Mraz, kể cả trong trường tác giả của file, trong khi [CITATION.cff](CITATION.cff) và khối BibTeX trong README từ lâu đã ghi `Huynh, Mai Phuc` kèm ORCID. Plone (2026-10-26): tên thật không có vấn đề gì; duyệt sửa 2026-10-27. Quy định giờ nói: "Huỳnh Mai Phúc (Plone Mraz)", kèm nơi làm việc và ORCID, được đứng trong metadata trích dẫn (`CITATION.cff`, BibTeX, bản ghi DOI) và dòng hay trường tác giả của một văn bản. Phần còn lại giữ nguyên. Cùng câu với dil-arc3. Chỉ docs.
+
+---
+
 ## [Unreleased] — 2026-10-26
 
 ### 23:43 — chore: metadata trích dẫn lên version 0.2.0, kèm DOI Hugging Face của bản v0.3.9
