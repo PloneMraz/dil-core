@@ -27,7 +27,10 @@ keeps its edit history.
   screenshots, balances, or the contents of private notes — including in file
   metadata (the author fields of docx, pdf and xlsx files; the EXIF of images).
   The owner's email is not among them (Plone, 2026-10-11): it may be published,
-  as the commits' author field does.
+  as the commits' author field does. Nor is his real name where he signs as an
+  author (Plone, 2026-10-27): "Huỳnh Mai Phúc (Plone Mraz)" (`Huynh, Mai Phuc`),
+  with his affiliation and ORCID, may stand in citation metadata — `CITATION.cff`,
+  the README's BibTeX, a DOI record — and in a document's author line or field.
 - **One trailer only**: `Co-Authored-By: Claude <the model doing the work>
   <noreply@anthropic.com>`, and on a pull request the footer
   `Generated with [Claude Code](https://claude.com/claude-code)`. No other
