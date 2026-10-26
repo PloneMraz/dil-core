@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-10-26
+
+### 23:43 — chore: metadata trích dẫn lên version 0.2.0, kèm DOI Hugging Face của bản v0.3.9
+**Commit:** `b2d1927`
+
+Metadata trích dẫn vẫn ghi `version 0.1.0`, `date-released 2026-08-04`, từ lúc protocol còn v0.3.2. Bản mirror Hugging Face `plonemraz/dil-core` được đồng bộ lại với GitHub tại `9a2b8fa` (commit tổng hợp `bfcdb5e` chỉ có bên HF được thay; nội dung của nó trùng `fec5e7e`, trừ `AGENTS.md` xuống dòng CRLF), và Plone tạo DOI mới cho bản đó: `10.57967/hf/11267` (DataCite: version `9a2b8fa`). DOI cũ `10.57967/hf/10230` vẫn chỉ `95d590c` (`v0.1.1`). [package.json](package.json), [CITATION.cff](CITATION.cff) và khối BibTeX trong README giờ ghi version `0.2.0`, ngày 2026-10-26, và DOI mới — nói rõ nó là snapshot tại `9a2b8fa` (protocol v0.3.9), không phải tại chính commit này. Số version 0.2.0 là chọn, không có tag. `cffconvert --validate` qua. Chỉ metadata.
+
+---
+
 ## [Unreleased] — 2026-10-25
 
 ### 13:28 — feat: view của bản ghi đọc theo từng cycle (`cycles`), và đọc ngược chỉ tới đâu người đọc cần
