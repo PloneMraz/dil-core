@@ -255,10 +255,11 @@ Machine-readable metadata lives in [`CITATION.cff`](CITATION.cff) (CFF 1.2.0) â€
   author  = {Huynh, Mai Phuc},
   title   = {dil-core: a reference implementation of the DIL (Data Integration Loop) protocol},
   year    = {2026},
-  version = {0.1.0},
+  version = {0.2.0},
   license = {MIT-0},
+  doi     = {10.57967/hf/11267},
   url     = {https://github.com/PloneMraz/dil-core},
-  note    = {ORCID: 0009-0009-0571-7151}
+  note    = {ORCID: 0009-0009-0571-7151. DOI: Hugging Face snapshot at commit 9a2b8fa (protocol v0.3.9)}
 }
 ```
 
