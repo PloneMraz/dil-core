@@ -283,6 +283,8 @@ But — as the coupling above shows — the loop cannot reach that threshold fro
 
 The pipeline below is the core of which the full layer architecture (§7) is a detailed implementation. Every layer maps onto one link of this loop.
 
+![Figure 1. The canonical loop](figures/DIL-figure-1-loop.svg)
+
 *Figure 1. The canonical loop: six sequential links — (1) Ingest, (2) Differentiate, (3) Integrate, (4) Appraise, (5) Respond, (6) Feedback — forming a closed cycle (INV-1), the whole bathed in the global modulatory field (GLOB-MOD), a field condition with no position in the chain that conditions how every link interprets.*
 
 **The six sequential links.**
@@ -382,6 +384,8 @@ ResistEvent := { source_id, expected, received, mismatch_kind, t } // a MISMATCH
 ## 7.2 Dependency graph
 
 Arrows mean “provides a reference frame for,” on the meaning-channel.
+
+![Figure 2. The eight layers as a closed loop](figures/DIL-figure-2-layers.svg)
 
 *Figure 2. The eight layers as a closed loop (the layer wiring of the loop), T1 (Activity-Environment Confirmation) through T8 (Multi-Entity Abstraction). The graph has no endpoint: T8 closes back into the loop, not into a sink (INV-1). Solid blue: the meaning-channel — within a cycle, layer N consumes only layers at or below its own index, one-directionally, never running backward (INV-3); a layer may consume several lower layers at once (multi-stream fan-in). Heavier solid blue: cross-cycle update — a layer's output updates several layers at once for the next cycle (e.g. T8 updating T4, T5, T6 simultaneously), an update across cycles, not a backward read within one. Dashed gold: the modulatory field (GLOB-MOD), global, reaching every layer downward as a background condition (INV-7), taking effect at N+1, never within-cycle.*
 
