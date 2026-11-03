@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-03
 
+### 16:59 — docs: dòng tác giả của DIL-en-v9 ghi tên thật và liên kết ORCID
+**Commit:** `7fc0489`
+
+Dòng tác giả của `DIL-en-v9.md` đổi từ "Plone Mraz" thành "Huỳnh Mai Phúc (Plone Mraz)", và dòng ORCID có liên kết tới orcid.org, như bản gốc trong Plone's documents (Plone, 2026-11-03). Nội dung đặc tả không đổi.
+
+---
+
 ### 13:05 — docs: dòng tác giả của protocol ghi tên thật và ORCID
 **Commit:** `b6aac26`
 
