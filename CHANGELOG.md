@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-03
 
+### 19:32 — docs: hai hình của DIL-en-v9, như bản gốc
+**Commit:** `796b210`
+
+`DIL-en-v9.md` có thêm hai hình của bản gốc trong Plone's documents (Plone, 2026-11-03): Hình 1, vòng lặp chuẩn (§6), và Hình 2, tám tầng thành một vòng khép kín (§7.2), mỗi hình kèm chú thích; hai file SVG nằm trong `figures/`. Bản này giờ trùng từng byte với bản gốc. Nội dung đặc tả không đổi.
+
+---
+
 ### 16:59 — docs: dòng tác giả của DIL-en-v9 ghi tên thật và liên kết ORCID
 **Commit:** `7fc0489`
 
