@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-11-03
+
+### 13:05 — docs: dòng tác giả của protocol ghi tên thật và ORCID
+**Commit:** `b6aac26`
+
+Dòng `Author:` của `DIL-protocol-v0.3.9.md` đổi từ "Plone Mraz" thành "Huỳnh Mai Phúc (Plone Mraz)", và có thêm dòng `ORCID:`. Plone (2026-11-03) chọn bản trong Plone's documents làm bản gốc của protocol; mọi bản khác chép theo bản đó. Nội dung chuẩn không đổi.
+
+---
+
 ## [Unreleased] — 2026-10-27
 
 ### 00:04 — docs: tên thật của chủ repo được phép ở chỗ anh ký tên tác giả
