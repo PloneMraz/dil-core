@@ -4,11 +4,11 @@ A Substrate-Neutral Specification of Self-Enriching, Audit-Ready Agents in Purel
 
 *Document type: a conceptual specification — evaluated by structural conformance (whether a system satisfies E1–E4 and INV-1…8), not by empirical measurement.*
 
-**Plone Mraz**
+**Huỳnh Mai Phúc (Plone Mraz)**
 
 *Independent researcher – Vietnam 2026*
 
-ORCID: [0009-0009-0571-7151]
+ORCID: [0009-0009-0571-7151](https://orcid.org/0009-0009-0571-7151)
 
 # Abstract
 
