@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-04
 
+### 09:30 — docs: mục Companion specification của DIL-en-v9, như bản gốc
+**Commit:** `cd245b8`
+
+`DIL-en-v9.md` có thêm mục cuối "Companion specification" của bản gốc trong Plone's documents (Plone, 2026-11-04): DIL là bản đối ứng thông tin của RSIL, trích RSIL kèm DOI `10.57967/hf/11396`, và nêu hai chỗ khác nhau giữa hai đặc tả (`AgencyTag`; phạm vi nền tảng), đối xứng với mục cùng tên trong RSIL. Bản này giờ trùng từng byte với bản gốc. Phần đặc tả trước đó không đổi.
+
+---
+
 ### 08:39 — docs: README theo đúng code — số test, output mẫu của Quick start, `FIELD_CARRY`
 **Commit:** `4e6a24f`
 
