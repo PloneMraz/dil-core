@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-04
 
+### 17:04 — chore: metadata trích dẫn ghi DOI `10.57967/hf/11268`
+**Commit:** `267e60a`
+
+[CITATION.cff](CITATION.cff) và khối BibTeX trong README giờ ghi DOI `10.57967/hf/11268` (DataCite: version `1aba031`), thay cho `10.57967/hf/11267` (version `9a2b8fa`), để paper của dil-arc3, CITATION.cff và README cùng trỏ một DOI (Plone, 2026-11-04). Lý do chọn bản này: metadata ghi version `0.2.0`, mà số đó chỉ có từ `b2d1927`; tại `9a2b8fa`, `package.json` vẫn ghi `0.1.0`. Hai snapshot chỉ khác nhau ở metadata (CHANGELOG, CITATION.cff, README, package.json), còn code và protocol thì như nhau. Cả hai DOI vẫn findable. `cffconvert --validate` qua. Chỉ sửa metadata.
+
+---
+
 ### 09:30 — docs: mục Companion specification của DIL-en-v9, như bản gốc
 **Commit:** `cd245b8`
 
