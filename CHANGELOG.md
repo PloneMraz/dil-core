@@ -886,16 +886,14 @@ Tiếp nối sửa README: câu chốt "one sentence to keep" trước lặp y h
 ### — docs: bỏ cách ngôn "reigns; it does not rule" trong README (nói thẳng)
 **Commit:** (docs)
 
-Cách ngôn "DIL **reigns; it does not rule**" đứng trơ trong README mời người đọc tranh cãi ngữ nghĩa: bản thân DIL *là* một tập rule (invariants…), nên đối lập reign/rule đọc như tự mâu thuẫn. Viết lại 2 chỗ ở README nói thẳng ý đồ, không chẻ chữ: DIL là **luật của CÁCH vận hành** (invariants, dòng chảy dữ liệu), **không phải kẻ hành động** — "DIL is the law of how the machine runs, not an actor within it … the agent, not DIL, is what acts" và câu chốt "DIL is the law of that operation, never its actor". Không đổi mã/hành vi. (Motif "reign not rule" ở CONTEXT §1 / AGENTS §Sovereign — nơi *có giải thích* — tạm giữ; xem báo cáo về việc đồng bộ câu chốt lặp ở CONTEXT/AGENTS.)
-**Commits:** `ad6ee88` (engines + CI), `2a34d99` (LICENSE)
+Cách ngôn "DIL **reigns; it does not rule**" đứng trơ trong README mời người đọc tranh cãi ngữ nghĩa: bản thân DIL *là* một tập rule (invariants…), nên đối lập reign/rule đọc như tự mâu thuẫn. Viết lại 2 chỗ ở README nói thẳng ý đồ, không chẻ chữ: DIL là **luật của CÁCH vận hành** (invariants, dòng chảy dữ liệu), **không phải kẻ hành động** — "DIL is the law of how the machine runs, not an actor within it … the agent, not DIL, is what acts" và câu chốt "DIL is the law of that operation, never its actor". Không đổi mã/hành vi. (Motif "reign not rule" ở CONTEXT §1 / AGENTS §Sovereign — nơi *có giải thích* — tạm giữ; xem báo cáo về việc đồng bộ câu chốt lặp ở CONTEXT/AGENTS.) **Commits:** `ad6ee88` (engines + CI), `2a34d99` (LICENSE)
 
 Ba việc cũ chưa làm, đã xử lý:
 - **LICENSE:** repo trước không có giấy phép (mặc định all-rights-reserved) và package.json không có trường `license`. Thêm **MIT LICENSE** (copyright Plone Mraz, 2026 — do chủ repo chọn), đặt `"license": "MIT"`, ghi mục License trong README.
 - **CI:** không có `.github/`. Thêm [.github/workflows/ci.yml](.github/workflows/ci.yml): trên push `master` + PR → `pnpm install --frozen-lockfile` → typecheck (`tsc --noEmit`) → `pnpm test` (compile + `node --test`) trên Node 24. Đã kiểm frozen-lockfile install cục bộ (xanh).
 - **engines:** package.json không khai runtime. Thêm `engines.node ">=24.0.0"` — mốc mà `node:sqlite` (kho `[data]`) chạy **không cờ** `--experimental-sqlite` (đúng cái test script dựa vào; máy dev là Node v24.14), kèm `packageManager` pin đúng pnpm repo dùng.
 
-Không đụng mã nguồn/logic; không đổi hành vi (265 test giữ nguyên).
-**Commit:** `9753e4d`
+Không đụng mã nguồn/logic; không đổi hành vi (265 test giữ nguyên). **Commit:** `9753e4d`
 
 Ba thứ phân tích cạn-nguồn / new-in-kind cần — không thứ nào cần bộ phân loại mismatch ("kind" ở §8.3 là *tính mới*, không phải taxonomy):
 
