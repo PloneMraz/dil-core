@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-11-04
+
+### 08:39 — docs: README theo đúng code — số test, output mẫu của Quick start, `FIELD_CARRY`
+**Commit:** `4e6a24f`
+
+Plone chỉ ra ba chỗ README lệch với code, và cả ba đều đúng (Plone, 2026-11-04). Số test: README ghi 440 từ `c258f43`; `600d1e3` thêm hai test và mục 13:28 ngày 25/10 ghi 442, nhưng README không sửa theo. `npm test` hôm nay: 442 test, 0 fail. Output mẫu của Quick start: không chỉ `schema=3` (code là `SCHEMA_VERSION = 5`) mà cả đoạn đã cũ — chạy lại đúng đoạn code đó ra 69 bản ghi chứ không phải 45, mỗi tầng có thêm dòng `layer-exit` của signal, crystallization ở `#17`, scar nằm trên dữ liệu `domain:region` và bản ghi `domain:cycle` là `cycle-seal`; dòng `prior→running` của mẫu cũ không có trong một store mới. Đoạn mẫu giờ trích từ lần chạy đó, chỉ đồng hồ là thay bằng `10:00:00`. Phần Loop decisions ghi "convex blend (no inertia constant)", trong khi `FIELD_CARRY` có từ `42ee977` (19/10); giờ ghi "convex blend, with the field before carried by `FIELD_CARRY` (0 by default: none)". Hành vi không đổi. Chỉ docs.
+
+---
+
 ## [Unreleased] — 2026-11-03
 
 ### 19:32 — docs: hai hình của DIL-en-v9, như bản gốc
