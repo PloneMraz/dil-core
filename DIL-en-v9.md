@@ -818,3 +818,12 @@ This specification **draws on no prior work directly**: it was developed by firs
 Two honest consequences follow. First, any resemblance between the constructs here and existing scholarship is **convergence, not derivation**: arrived at independently, and offered as such. Second, this document does **not** derive itself from specific bodies of work, because the author has not read them. Where DIL meets, extends, or contradicts established results — model collapse in self-training systems, predictive-processing and active inference, reflective-equilibrium method in epistemology, substrate-independence arguments in philosophy of mind, autopoiesis, and cybernetics — the author has now drawn the first pass of those connections himself, in §13, expressly as *post-hoc locating* rather than derivation, and has there stated plainly which neighbouring ideas (reinforcement learning, homeostatic set-point control) only *appear* to converge but in fact contrast. Readers with deeper expertise in each field are invited to extend and correct that mapping.
 
 The absence of a derivational reference apparatus is therefore deliberate and disclosed. The locating references gathered in §13.4 are the one exception, and are marked there for exactly what they are: pointers for the reader, not sources consulted in construction.
+# Companion specification
+
+DIL is the informational counterpart of the Relational Sensory Integration Loop (RSIL), which specifies the same relational structure for an agent with a physical body: doi.org/10.57967/hf/11396.
+
+The two are **co-ranked specifications of differing scope**. Where they coincide it is because the relational structure coincides; where they diverge the divergence is deliberate, and RSIL marks it in place. Two divergences are worth collecting here for a reader holding both documents:
+
+- **`AgencyTag`.** DIL writes `SELF_WRITTEN` where RSIL writes `SELF_CAUSED`, tracking the substrate: in a purely informational environment the agent's own change is something it *wrote*; with a body it is something it *caused*. `ENV_PUSHED` is unchanged in both.
+
+- **Substrate scope.** DIL is genuinely substrate-neutral: it is defined by the conditions E1–E4, not by what it runs on. RSIL is not: it fixes the substrate as a physical body and leaves open only the material of that body.
