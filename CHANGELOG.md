@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-04
 
+### 18:43 — docs: Markdown không ngắt dòng cứng
+**Commit:** `42fd7f1`
+
+Plone yêu cầu (2026-11-04) mọi file Markdown trong workspace không ngắt dòng cứng: mỗi đoạn văn, mỗi mục danh sách và mỗi đoạn trích nằm trên một dòng. Đọc file thô trong cửa sổ hẹp, ngắt dòng cứng chồng lên ngắt dòng của cửa sổ và cắt chữ ở hai chỗ. `README.md`, `CLAUDE.md` và `CHANGELOG.md` đã được gỡ ngắt bằng `scripts/md-unwrap.py` của workspace. Script chỉ giữ một file khi HTML render ra (markdown-it, CommonMark) giống hệt bản cũ, nên nội dung không đổi. `DIL-en-v9.md` và `DIL-protocol-v0.3.9.md` vốn không ngắt dòng cứng, và vẫn trùng từng byte với bản gốc.
+
+---
+
 ### 17:04 — chore: metadata trích dẫn ghi DOI `10.57967/hf/11268`
 **Commit:** `267e60a`
 
