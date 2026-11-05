@@ -820,7 +820,7 @@ Two honest consequences follow. First, any resemblance between the constructs he
 The absence of a derivational reference apparatus is therefore deliberate and disclosed. The locating references gathered in §13.4 are the one exception, and are marked there for exactly what they are: pointers for the reader, not sources consulted in construction.
 # Companion specification
 
-DIL is the informational counterpart of the Relational Sensory Integration Loop (RSIL), which specifies the same relational structure for an agent with a physical body: doi.org/10.57967/hf/11396.
+DIL is the informational counterpart of the Relational Sensory Integration Loop (RSIL), which specifies the same relational structure for an agent with a physical body: doi.org/10.57967/hf/11444.
 
 The two are **co-ranked specifications of differing scope**. Where they coincide it is because the relational structure coincides; where they diverge the divergence is deliberate, and RSIL marks it in place. Two divergences are worth collecting here for a reader holding both documents:
 
