@@ -6,6 +6,13 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ## [Unreleased] — 2026-11-05
 
+### 10:42 — docs: tên thật không còn là dữ liệu cá nhân
+**Commit:** `0af3360`
+
+Mục chống rò rỉ thông tin trong `CLAUDE.md` bỏ tên thật khỏi danh sách dữ liệu cá nhân (Plone, 2026-11-05): "Huỳnh Mai Phúc (Plone Mraz)" đã công khai, và được đứng ở bất cứ đâu, kể cả commit message và changelog. Ngoại lệ cũ, chỉ cho tên thật ở chỗ Plone ký tên tác giả, không còn cần nên được bỏ. Các mục còn lại của danh sách giữ nguyên.
+
+---
+
 ### 09:51 — chore: metadata trích dẫn ghi DOI `10.57967/hf/11446`
 **Commit:** `7fe2da6`
 
