@@ -4,6 +4,15 @@ All notable changes to DIL are documented here, ordered newest-first.
 
 ---
 
+## [Unreleased] — 2026-11-05
+
+### 09:51 — chore: metadata trích dẫn ghi DOI `10.57967/hf/11446`
+**Commit:** `7fe2da6`
+
+[CITATION.cff](CITATION.cff) và khối BibTeX trong README giờ ghi DOI `10.57967/hf/11446` (DataCite: version `38af037`), thay cho `10.57967/hf/11268` (version `1aba031`). Plone tạo DOI mới này để bản ghi DataCite mang tên tác giả như `CITATION.cff` ghi: mọi DOI trước của dataset chỉ ghi "Plone Mraz", vì hộp thoại tạo DOI của Hugging Face lấy tên từ thẻ tác giả, không từ hồ sơ. Ở `38af037`, `package.json` vẫn ghi `0.2.0` và protocol vẫn là v0.3.9, nên ghi chú của BibTeX chỉ đổi commit. Bản ghi vẫn chưa có ORCID (`nameIdentifiers` trống): hộp thoại không có trường đó. `DIL-en-v9.md` trích RSIL bằng DOI mới của Plone's documents, `10.57967/hf/11444` (thay `10.57967/hf/11396`), như bản gốc.
+
+---
+
 ## [Unreleased] — 2026-11-04
 
 ### 18:43 — docs: Markdown không ngắt dòng cứng
